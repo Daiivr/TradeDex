@@ -1,0 +1,35 @@
+using SysBot.Base;
+using SysBot.Pokemon.Localization;
+using System.Text.Json.Serialization;
+
+namespace SysBot.Pokemon;
+
+public class ProgramConfig : BotList<PokeBotState>
+{
+    public PokeTradeHubConfig Hub { get; set; } = new();
+
+    public ProgramMode Mode { get; set; } = ProgramMode.SV;
+
+    public string Theme { get; set; } = "";
+
+    public bool HideFontsLink { get; set; } = false;
+
+    public AppLanguage Language { get; set; } = AppLanguage.English;
+}
+
+public enum ProgramMode
+{
+    None = 0, // invalid
+
+    SWSH = 1,
+
+    BDSP = 2,
+
+    LA = 3,
+
+    SV = 4,
+
+    LGPE = 5,
+
+    PLZA = 6,
+}

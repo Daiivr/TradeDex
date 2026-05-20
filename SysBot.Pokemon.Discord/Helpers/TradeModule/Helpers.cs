@@ -1,0 +1,1677 @@
+using Discord;
+using Discord.Commands;
+using Discord.Net;
+using Discord.WebSocket;
+using PKHeX.Core;
+using PKHeX.Core.AutoMod;
+using SysBot.Base;
+using SysBot.Pokemon.Discord.Helpers;
+using SysBot.Pokemon.Helpers;
+using SysBot.Pokemon.Localization;
+using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Threading.Tasks;
+using static SysBot.Pokemon.TradeSettings.TradeSettingsCategory;
+
+namespace SysBot.Pokemon.Discord;
+
+public static class Helpers<T> where T : PKM, new()
+{
+    private static TradeQueueInfo<T> Info => SysCord<T>.Runner.Hub.Queues.Info;
+    private const string ErrorImageUrl = "https://i.imgur.com/Y64hLzW.gif";
+    private const string ErrorThumbnailUrl = "https://i.imgur.com/DWLEXyu.png";
+    private const string WarningIconUrl = "https://img.freepik.com/free-icon/warning_318-478601.jpg";
+    private const string InvalidSetImageUrl = "https://usagif.com/wp-content/uploads/gify/37-pikachu-usagif.gif";
+
+    public static Task<bool> EnsureUserNotInQueueAsync(ulong userID, int deleteDelay = 2)
+    {
+        return Task.FromResult(!Info.IsUserInQueue(userID));
+    }
+
+    public static async Task SendAlreadyInQueueEmbedAsync(SocketCommandContext context)
+    {
+        var formattedTime = DateTime.UtcNow.ToString("hh:mm tt");
+        var embed = new EmbedBuilder()
+            .WithColor(Color.Red)
+            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedAuthor), "https://i.imgur.com/0R7Yvok.gif")
+            .WithThumbnailUrl(ErrorThumbnailUrl)
+            .WithImageUrl("https://c.tenor.com/rDzirQgBPwcAAAAd/tenor.gif")
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedErrorField),
+                AppLocalization.Format(LocalizationKeys.DiscordAlreadyInQueueEmbedErrorValue, context.User.Mention), true)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedReasonField),
+                AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedReasonValue), true)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedSolutionField),
+                AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedSolutionValue))
+            .WithFooter(new EmbedFooterBuilder
+            {
+                Text = $"{context.User.Username} • {formattedTime}",
+                IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl()
+            });
+
+        await context.Channel.SendMessageAsync(embed: embed.Build()).ConfigureAwait(false);
+    }
+
+    public static async Task ReplyAndDeleteAsync(SocketCommandContext context, string message, int delaySeconds, IMessage? messageToDelete = null)
+    {
+        try
+        {
+            var sentMessage = await context.Channel.SendMessageAsync(message).ConfigureAwait(false);
+
+            // Check if message deletion is enabled in settings
+            if (!Info.Hub.Config.Discord.MessageDeletionEnabled)
+                return;
+
+            // Use configured delay from settings instead of hardcoded value
+            var configuredDelay = Info.Hub.Config.Discord.ErrorMessageDeleteDelaySeconds;
+
+            // Determine which user message to delete based on settings
+            IMessage? userMessageToDelete = null;
+            if (Info.Hub.Config.Discord.DeleteUserCommandMessages)
+            {
+                userMessageToDelete = messageToDelete ?? context.Message;
+            }
+
+            _ = DeleteMessagesAfterDelayAsync(sentMessage, userMessageToDelete, configuredDelay);
+        }
+        catch (Exception ex)
+        {
+            LogUtil.LogSafe(ex, nameof(TradeModule<T>));
+        }
+    }
+
+    public static async Task DeleteMessagesAfterDelayAsync(IMessage? sentMessage, IMessage? messageToDelete, int delaySeconds)
+    {
+        try
+        {
+            // Check if message deletion is enabled in settings
+            if (!Info.Hub.Config.Discord.MessageDeletionEnabled)
+                return;
+
+            // Use configured delay from settings
+            var configuredDelay = Info.Hub.Config.Discord.ErrorMessageDeleteDelaySeconds;
+            await Task.Delay(configuredDelay * 1000);
+
+            var tasks = new List<Task>();
+
+            // Check if sentMessage is a bot message or user message
+            // In some places, user messages are passed as the first parameter
+            if (sentMessage != null)
+            {
+                // If it's a user message and DeleteUserCommandMessages is false, skip it
+                if (sentMessage is IUserMessage userMsg && userMsg.Author.IsBot == false)
+                {
+                    if (Info.Hub.Config.Discord.DeleteUserCommandMessages)
+                        tasks.Add(TryDeleteMessageAsync(sentMessage));
+                }
+                else
+                {
+                    // It's a bot message, always delete it
+                    tasks.Add(TryDeleteMessageAsync(sentMessage));
+                }
+            }
+
+            // Only delete user message if setting is enabled
+            if (messageToDelete != null && Info.Hub.Config.Discord.DeleteUserCommandMessages)
+                tasks.Add(TryDeleteMessageAsync(messageToDelete));
+
+            await Task.WhenAll(tasks);
+        }
+        catch (Exception ex)
+        {
+            LogUtil.LogSafe(ex, nameof(TradeModule<T>));
+        }
+    }
+
+    private static async Task TryDeleteMessageAsync(IMessage message)
+    {
+        try
+        {
+            await message.DeleteAsync();
+        }
+        catch (HttpException ex) when (ex.DiscordCode == DiscordErrorCode.UnknownMessage)
+        {
+            // Ignore Unknown Message exception
+        }
+    }
+
+    public static Task<ProcessedPokemonResult<T>> ProcessShowdownSetAsync(string content, bool ignoreAutoOT = false)
+    {
+        content = ReusableActions.StripCodeBlock(content);
+        bool isEgg = TradeExtensions<T>.IsEggCheck(content);
+
+        // CRITICAL FIX: Extract language BEFORE parsing ShowdownSet
+        // If we let PKHeX see "Language: German", it includes it in the template
+        // and ALM fails to find encounters with that language
+        byte finalLanguage = LanguageHelper.GetFinalLanguage(
+            content, null,
+            (byte)Info.Hub.Config.Legality.GenerateLanguage,
+            TradeExtensions<T>.DetectShowdownLanguage
+        );
+
+        // Remove Language: line from content before parsing
+        // This prevents PKHeX from including it in the template
+        var contentLines = content.Split('\n');
+        var filteredLines = contentLines.Where(line =>
+            !line.TrimStart().StartsWith("Language:", StringComparison.OrdinalIgnoreCase)
+        ).ToArray();
+        var contentWithoutLanguage = string.Join('\n', filteredLines);
+
+        // Detect user-specified Tera Type (for SV non-native override fix)
+        MoveType? userSpecifiedTeraType = null;
+        var teraTypeLine = contentLines.FirstOrDefault(l => l.TrimStart().StartsWith("Tera Type:", StringComparison.OrdinalIgnoreCase));
+        if (teraTypeLine != null)
+        {
+            var teraValue = teraTypeLine.Split(':').ElementAtOrDefault(1)?.Trim();
+            if (!string.IsNullOrEmpty(teraValue))
+            {
+                if (teraValue.Equals("Stellar", StringComparison.OrdinalIgnoreCase))
+                    userSpecifiedTeraType = (MoveType)TeraTypeUtil.Stellar;
+                else if (Enum.TryParse<MoveType>(teraValue, true, out var parsedTera))
+                    userSpecifiedTeraType = parsedTera;
+            }
+        }
+
+        // Detect if user explicitly specified IVs (for 6IV default enforcement)
+        bool userSpecifiedIVs = contentLines.Any(l => l.TrimStart().StartsWith("IVs:", StringComparison.OrdinalIgnoreCase));
+
+        // Now parse the ShowdownSet without the Language line
+        if (!ShowdownParsing.TryParseAnyLanguage(contentWithoutLanguage, out ShowdownSet? set) || set == null || set.Species == 0)
+        {
+            return Task.FromResult(new ProcessedPokemonResult<T>
+            {
+                Error = AppLocalization.Get(LocalizationKeys.DiscordUnableParseSpecies),
+                ShowdownSet = set
+            });
+        }
+
+        var template = AutoLegalityWrapper.GetTemplate(set);
+
+        // Filter out batch commands (.) and filters (~) from invalid lines - these are handled by ALM
+        // Also filter out custom fields like Language: and Alpha: which are ALM-specific
+        var actualInvalidLines = set.InvalidLines.Where(line =>
+        {
+            var text = line.Value?.Trim();
+            if (string.IsNullOrEmpty(text))
+                return false;
+
+            // Skip batch commands and filters
+            if (text.StartsWith('.') || text.StartsWith('~'))
+                return false;
+
+            // Skip custom ALM fields
+            if (text.StartsWith("Language:", StringComparison.OrdinalIgnoreCase) ||
+                text.StartsWith("Alpha:", StringComparison.OrdinalIgnoreCase))
+                return false;
+
+            return true;
+        }).ToList();
+
+        if (actualInvalidLines.Count != 0)
+        {
+            return Task.FromResult(new ProcessedPokemonResult<T>
+            {
+                Error = AppLocalization.Format(LocalizationKeys.DiscordUnableParseShowdown, string.Join("\n", actualInvalidLines.Select(l => l.Value))),
+                ShowdownSet = set
+            });
+        }
+
+        // DON'T use language-specific trainer! It causes encounter errors.
+        // Generate with normal trainer (English), then set language after generation.
+        var sav = AutoLegalityWrapper.GetTrainerInfo<T>();
+
+        PKM pkm;
+        string result;
+
+        // Generate egg or normal pokemon based on isEgg flag
+        if (isEgg)
+        {
+            // Create a proper RegenTemplate from the ShowdownSet
+            var regenTemplate = new RegenTemplate(set);
+
+            // Generate egg using ALM
+            pkm = sav.GenerateEgg(regenTemplate, out var eggResult);
+            result = eggResult.ToString();
+        }
+        else
+        {
+            // Use normal template for regular Pokémon
+            pkm = sav.GetLegal(template, out result);
+        }
+
+        if (pkm == null)
+        {
+            return Task.FromResult(new ProcessedPokemonResult<T>
+            {
+                Error = AppLocalization.Get(LocalizationKeys.DiscordLegalizeTimeout),
+                ShowdownSet = set
+            });
+        }
+
+        // ============================================================================
+        // NON-FIXED-OT ENCOUNTER PREFERENCE
+        // ============================================================================
+        // If ALM chose a fixed-OT encounter (gift, static, NPC trade) when a wild or
+        // egg encounter also exists for this species, prefer the wild/egg encounter.
+        // This lets users request any language and receive their trade partner's OT.
+        // Falls back silently to the original result if no wild/egg alternative exists
+        // (e.g. Floette-Eternal, Zarude — species with no wild/egg encounter at all).
+        // ============================================================================
+        if (!isEgg)
+        {
+            var fixedOtCheck = new LegalityAnalysis(pkm);
+            if (fixedOtCheck.Valid && AutoLegalityWrapper.IsFixedOT(fixedOtCheck.EncounterOriginal, pkm))
+            {
+                var wildAlt = AutoLegalityWrapper.TryGetAsWildOrEgg(sav, template);
+                if (wildAlt != null)
+                {
+                    pkm = wildAlt;
+                    result = "Regenerated";
+                }
+            }
+        }
+        // ============================================================================
+        // END OF NON-FIXED-OT ENCOUNTER PREFERENCE
+        // ============================================================================
+
+        // ============================================================================
+        // FORM CORRECTION FOR COSMETIC AND REGIONAL FORMS (e.g., Vivillon patterns)
+        // ============================================================================
+        // ALM's GetLegal generates the Pokemon in its encounter-default form, which for
+        // species like Vivillon is always the same base form (e.g., Meadow) regardless of
+        // what form was requested in the ShowdownSet.  Apply the requested form here so
+        // the downstream legality check validates the correct form.
+        //
+        // Guard: if form correction makes the PKM illegal but the original was fine, revert.
+        // This handles encounters where the game locks a specific form (e.g. ZA Zygarde
+        // has only Form 2 / 10%, so correcting to Form 0 / 50% breaks legality).
+        // ============================================================================
+        if (!isEgg && pkm.Form != set.Form)
+        {
+            var formBackup = pkm.Clone();
+            pkm.Form = set.Form;
+            pkm.ResetPartyStats();
+            pkm.RefreshChecksum();
+
+            if (!new LegalityAnalysis(pkm).Valid)
+                pkm = formBackup;
+        }
+        // ============================================================================
+        // END OF FORM CORRECTION
+        // ============================================================================
+
+        // ============================================================================
+        // SCATTERBUG / SPEWPA FORM FIX
+        // ============================================================================
+        // ShowdownParsing does not expose named forms for Scatterbug or Spewpa, so
+        // set.Form is always 0 regardless of what the user typed (e.g. "Scatterbug-Sun").
+        // The general form correction above therefore never fires for these species.
+        // Parse the form suffix from the raw content line ourselves and match it against
+        // Vivillon's form name list — Scatterbug and Spewpa share the exact same 20
+        // regional patterns.
+        // ============================================================================
+        if (!isEgg && (pkm.Species == (ushort)Species.Scatterbug || pkm.Species == (ushort)Species.Spewpa))
+        {
+            var scatterLines = contentWithoutLanguage.Split('\n');
+            var scatterFirstLine = scatterLines.FirstOrDefault(l => !string.IsNullOrWhiteSpace(l))?.Trim() ?? string.Empty;
+            // Strip held item if present: "Scatterbug-Sun @ Oran Berry" → "Scatterbug-Sun"
+            var scatterSpeciesPart = scatterFirstLine.Split('@')[0].Trim();
+            var scatterDashIdx = scatterSpeciesPart.IndexOf('-');
+            if (scatterDashIdx >= 0)
+            {
+                var scatterFormSuffix = scatterSpeciesPart[(scatterDashIdx + 1)..].Trim();
+                var vivillonFormNames = FormConverter.GetFormList(
+                    (ushort)Species.Vivillon,
+                    GameInfo.Strings.Types,
+                    GameInfo.Strings.forms,
+                    GameInfo.GenderSymbolASCII,
+                    EntityContext.Gen9);
+                for (byte f = 0; f < vivillonFormNames.Length; f++)
+                {
+                    // Game strings use spaces ("Icy Snow"); user types dashes ("Icy-Snow")
+                    if (vivillonFormNames[f].Replace(" ", "-").Equals(scatterFormSuffix, StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (pkm.Form != f)
+                        {
+                            pkm.Form = f;
+                            pkm.ResetPartyStats();
+                            pkm.RefreshChecksum();
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+        // ============================================================================
+        // END OF SCATTERBUG / SPEWPA FORM FIX
+        // ============================================================================
+
+        // ============================================================================
+        // DITTO METLOCATION FIX
+        // ============================================================================
+        // Fix Ditto MetLocation for game version compatibility
+        // ALM may select encounters from different games (e.g., SV location for SWSH trade)
+        // This ensures Ditto has a valid MetLocation for the target game
+        // Only apply the fix if Ditto is currently invalid to avoid overriding correct locations
+        // ============================================================================
+        if (pkm.Species == 132) // Species 132 = Ditto
+        {
+            var initialDittoLA = new LegalityAnalysis(pkm);
+            if (!initialDittoLA.Valid)
+            {
+                // Ditto is invalid, try to fix MetLocation
+                pkm.MetLocation = pkm switch
+                {
+                    PB8 => 400,  // BDSP: Grand Underground
+                    PK9 => 28,   // SV: South Province (Area Three)
+                    _ => 162,    // PK8 (SWSH): Route 5 / Wild Area
+                };
+
+                // Revalidate after fixing MetLocation and apply trash bytes fix
+                var dittoLA = new LegalityAnalysis(pkm);
+                pkm = (T)TradeExtensions<T>.TrashBytes(pkm, dittoLA); // CRITICAL: Assign result back!
+            }
+            else
+            {
+                // Ditto is already valid, just apply trash bytes without changing MetLocation
+                pkm = (T)TradeExtensions<T>.TrashBytes(pkm, initialDittoLA);
+            }
+        }
+        // ============================================================================
+        // END OF DITTO METLOCATION FIX
+        // ============================================================================
+
+        var spec = GameInfo.Strings.Species[template.Species];
+
+        // Apply standard item logic only for non-eggs
+        if (!isEgg)
+        {
+            ApplyStandardItemLogic(pkm);
+        }
+
+        // Capture the language ALM assigned before we override it.
+        // Used later to revert if the user's language conflicts with a fixed-OT encounter.
+        byte almGeneratedLanguage = (byte)pkm.Language;
+
+        // Set language early so 6IV/Tera checks see the correct language.
+        // Also fix the OT length and nickname for Asian languages here, before the
+        // FIXED-OT FALLBACK runs its LegalityAnalysis. Without this, PKHeX April-15
+        // fails with "OT Name too long" (6-char limit for Asian) and "Nickname does
+        // not match species name" (ClearNickname stores "" instead of e.g. "イーブイ"),
+        // which incorrectly triggers the fallback and forces English on every request.
+        // Species name is set via GameInfo.GetStrings to avoid running LegalityAnalysis
+        // early, which would risk NPC-trade encounter matching via the returned LA.
+        if (pkm is T pkBeforeCheck)
+        {
+            pkBeforeCheck.Language = finalLanguage;
+
+            // Asian languages enforce a 6-char OT limit in PKHeX.
+            // Mirror what PrepareForTrade does at the end so the fallback LA sees a valid OT.
+            if ((finalLanguage == (byte)LanguageID.Japanese ||
+                 finalLanguage == (byte)LanguageID.Korean ||
+                 finalLanguage == (byte)LanguageID.ChineseS ||
+                 finalLanguage == (byte)LanguageID.ChineseT) &&
+                pkBeforeCheck.OriginalTrainerName.Length > 6)
+            {
+                const string asianOT = "王犬米";
+                pkBeforeCheck.OriginalTrainerName = asianOT;
+                // Simple property assignment leaves stale trash bytes from the previous
+                // longer OT ("FreeMons.Org"), which PKHeX's Trainer check flags as invalid.
+                // Clear them explicitly using the same pattern PrepareForTrade uses.
+                Span<byte> trashBuf = stackalloc byte[pkBeforeCheck.TrashCharCountTrainer * 2];
+                int trashLen = pkBeforeCheck.SetString(trashBuf, asianOT.AsSpan(), pkBeforeCheck.TrashCharCountTrainer, StringConverterOption.ClearZero);
+                pkBeforeCheck.OriginalTrainerTrash.Clear();
+                trashBuf[..trashLen].CopyTo(pkBeforeCheck.OriginalTrainerTrash);
+                pkBeforeCheck.RefreshChecksum();
+            }
+
+            if (string.IsNullOrEmpty(set.Nickname))
+            {
+                pkBeforeCheck.Nickname = SpeciesName.GetSpeciesNameGeneration(pkBeforeCheck.Species, pkBeforeCheck.Language, pkBeforeCheck.Format);
+                pkBeforeCheck.IsNicknamed = false;
+            }
+        }
+
+        // ============================================================================
+        // MAX LAIR POKEMON MOVE POPULATION BUG WORKAROUND
+        // ============================================================================
+        // PKHeX.Core.dll (as of 01-22-2026, commit fe32739) has a bug where Max Lair
+        // Pokemon from SWSH Crown Tundra do not get moves automatically populated
+        // during legalization, causing them to be marked as illegal.
+        //
+        // This workaround manually populates moves for Max Lair encounters after
+        // generation but before validation.
+        // ============================================================================
+        if (pkm is PK8 pk8 && !isEgg)
+        {
+            const int MaxLairLocationID = 244; // Max Lair in Crown Tundra
+            bool hasNoMoves = pk8.Move1 == 0 && pk8.Move2 == 0 && pk8.Move3 == 0 && pk8.Move4 == 0;
+            bool isFromMaxLair = pk8.MetLocation == MaxLairLocationID;
+
+            if (hasNoMoves && isFromMaxLair)
+            {
+                // Populate moves using PKHeX (not ALM)
+                pk8.SetSuggestedMoves();
+                pk8.HealPP();
+                pk8.RefreshChecksum();
+            }
+        }
+        // ============================================================================
+        // END OF MAX LAIR FIX
+        // ============================================================================
+
+        // Generate LGPE code if needed
+        List<Pictocodes>? lgcode = null;
+        if (pkm is PB7)
+        {
+            lgcode = GenerateRandomPictocodes(3);
+            if (pkm.Species == (int)Species.Mew && pkm.IsShiny)
+            {
+                return Task.FromResult(new ProcessedPokemonResult<T>
+                {
+                    Error = AppLocalization.Get(LocalizationKeys.DiscordMewLgpeShinyLocked),
+                    ShowdownSet = set
+                });
+            }
+        }
+
+        // ============================================================================
+        // SV TERA TYPE OVERRIDE FIX FOR NON-NATIVE POKEMON
+        // ============================================================================
+        // Non-native Pokemon (from other games) in SV require TeraTypeOverride to be
+        // explicitly set. PKHeX does not set this automatically, and ALM fails to
+        // legalize these Pokemon as a result. Apply the fix before the legality check
+        // so the analysis sees the corrected value.
+        // ============================================================================
+        if (pkm is PK9 pk9TeraFix && !isEgg)
+        {
+            bool isSVNative = pk9TeraFix.Version is GameVersion.SL or GameVersion.VL;
+            if (!isSVNative)
+            {
+                // Non-native Pokemon (HOME transfers from other games) need both
+                // TeraTypeOriginal and TeraTypeOverride explicitly set or PKHeX marks them illegal.
+                //
+                // ALM incorrectly assigns Type2 as TeraTypeOriginal for dual-type non-native
+                // Pokemon (e.g. Dialga → Dragon instead of Steel, Rayquaza → Flying instead of
+                // Dragon, Lugia → Flying instead of Psychic). The correct value is always Type1.
+                var correctOriginal = (MoveType)pk9TeraFix.PersonalInfo.Type1;
+                pk9TeraFix.TeraTypeOriginal = correctOriginal;
+
+                if (userSpecifiedTeraType.HasValue)
+                    pk9TeraFix.TeraTypeOverride = userSpecifiedTeraType.Value;
+                else
+                    pk9TeraFix.TeraTypeOverride = correctOriginal;
+            }
+            else if (userSpecifiedTeraType.HasValue)
+            {
+                // Native SV Pokemon: user requested a specific Tera Type, apply only to Override.
+                pk9TeraFix.TeraTypeOverride = userSpecifiedTeraType.Value;
+            }
+        }
+        // ============================================================================
+        // END OF SV TERA TYPE OVERRIDE FIX
+        // ============================================================================
+
+        // ============================================================================
+        // 6IV DEFAULT ENFORCEMENT (ALL GAMES EXCEPT ZA)
+        // ============================================================================
+        // If the user did not specify IVs in their Showdown set, attempt to set all
+        // IVs to 31. If this makes the Pokemon illegal (e.g. event with fixed IVs),
+        // the original PKHeX-generated IVs are restored.
+        // This block intentionally skips PA9 (Legends: Z-A) which has its own handling.
+        // ============================================================================
+        if (!userSpecifiedIVs && pkm is not PA9)
+        {
+            var pkBackup = pkm.Clone();
+            pkm.IVs = [31, 31, 31, 31, 31, 31];
+            if (pkm is IHyperTrain htFix)
+                htFix.HyperTrainClear();
+            pkm.RefreshChecksum();
+
+            if (!new LegalityAnalysis(pkm).Valid)
+            {
+                // 6IVs are not legal for this encounter — restore original values.
+                pkm = pkBackup;
+            }
+        }
+        // ============================================================================
+        // END OF 6IV DEFAULT ENFORCEMENT
+        // ============================================================================
+
+        // ============================================================================
+        // FIXED-OT ENCOUNTER LANGUAGE FALLBACK
+        // ============================================================================
+        // Some encounters (e.g. Floette-Eternal / AZ in Legends Z-A, or in-game trade
+        // Pokémon like Eevee in SV after PKHeX Apr-15 update) require a specific OT that
+        // is only valid for certain languages. If the user's requested language causes a
+        // legality failure that vanishes when we revert to the language ALM originally
+        // chose, silently use the encounter-compatible language instead.
+        // effectiveLanguage tracks the final language choice so PrepareForTrade does not
+        // re-apply finalLanguage and undo this fallback.
+        // ============================================================================
+        byte effectiveLanguage = finalLanguage;
+        if ((byte)pkm.Language != almGeneratedLanguage)
+        {
+            var langCheckLa = new LegalityAnalysis(pkm);
+            if (!langCheckLa.Valid)
+            {
+                pkm.Language = almGeneratedLanguage;
+                effectiveLanguage = almGeneratedLanguage;
+                if (string.IsNullOrEmpty(set.Nickname))
+                {
+                    pkm.SetDefaultNickname(new LegalityAnalysis(pkm));
+                    pkm.IsNicknamed = false;
+                }
+
+                if (!new LegalityAnalysis(pkm).Valid)
+                {
+                    // Reverting didn't help — restore the user's language so the
+                    // downstream error message reflects the real failure.
+                    pkm.Language = finalLanguage;
+                    effectiveLanguage = finalLanguage;
+                    if (string.IsNullOrEmpty(set.Nickname))
+                    {
+                        pkm.SetDefaultNickname(new LegalityAnalysis(pkm));
+                        pkm.IsNicknamed = false;
+                    }
+                }
+            }
+        }
+        // ============================================================================
+        // END OF FIXED-OT ENCOUNTER LANGUAGE FALLBACK
+        // ============================================================================
+
+        // Now that effectiveLanguage is resolved, set the default nickname once.
+        // The language is already correct on pkm; the FIXED-OT FALLBACK handles its own
+        // nickname updates internally when it reverts, so this covers the normal path.
+        if (string.IsNullOrEmpty(set.Nickname))
+        {
+            pkm.SetDefaultNickname(new LegalityAnalysis(pkm));
+            pkm.IsNicknamed = false;
+        }
+
+        var la = new LegalityAnalysis(pkm);
+
+        // Auto-fix language-related nickname mismatches for sets without a nickname
+        if (!la.Valid && string.IsNullOrEmpty(set.Nickname))
+        {
+            if (la.Results.Any(r => r.Identifier is CheckIdentifier.Nickname))
+            {
+                // Set the correct species name for the current language instead of clearing
+                // to "" — ClearNickname stores an empty string which fails the nickname check
+                // for Asian languages (PKHeX expects e.g. "イーブイ", not "").
+                pkm.Nickname = SpeciesName.GetSpeciesNameGeneration(pkm.Species, pkm.Language, pkm.Format);
+                pkm.IsNicknamed = false;
+                la = new LegalityAnalysis(pkm);
+            }
+        }
+
+        // Handle past gen file requests (PK8, PA8, PB8, PK9) - fix BEFORE returning error
+        if (!la.Valid && pkm is T && la.Results.Any(m => m.Identifier is CheckIdentifier.Memory))
+        {
+            var clone = (T)(object)pkm.Clone();
+            clone.HandlingTrainerName = pkm.OriginalTrainerName;
+            clone.HandlingTrainerGender = pkm.OriginalTrainerGender;
+            if (clone is PK8 or PA8 or PB8 or PK9)
+                ((dynamic)clone).HandlingTrainerLanguage = (byte)pkm.Language;
+            clone.CurrentHandler = 1;
+            var laClone = new LegalityAnalysis(clone);
+            if (laClone.Valid)
+            {
+                pkm = clone;
+                la = laClone;
+            }
+        }
+
+        // ============================================================================
+        // MAX LAIR SHINY FALLBACK
+        // ============================================================================
+        // If a shiny PK8 is still invalid and not already at Max Lair, retry with
+        // MetLocation=244. Many SWSH legendaries and Ultra Beasts are shiny-eligible
+        // only via Dynamax Adventures (Max Lair). ALM sometimes generates them at
+        // the correct location but without moves, or fails to set the shiny PID.
+        // ============================================================================
+        if (!la.Valid && pkm is PK8 pk8Retry && set.Shiny && pk8Retry.MetLocation != 244)
+        {
+            var pk8RetryClone = (PK8)pk8Retry.Clone();
+            pk8RetryClone.MetLocation = 244;
+            pk8RetryClone.SetSuggestedMoves();
+            pk8RetryClone.HealPP();
+            pk8RetryClone.RefreshChecksum();
+            var laRetry = new LegalityAnalysis(pk8RetryClone);
+            if (laRetry.Valid)
+            {
+                pkm = pk8RetryClone;
+                la = laRetry;
+            }
+        }
+        // Also retry if already at Max Lair but still invalid (wrong moves)
+        else if (!la.Valid && pkm is PK8 pk8RetryLair && set.Shiny && pk8RetryLair.MetLocation == 244)
+        {
+            pk8RetryLair.SetSuggestedMoves();
+            pk8RetryLair.HealPP();
+            pk8RetryLair.RefreshChecksum();
+            la = new LegalityAnalysis(pk8RetryLair);
+        }
+        // ============================================================================
+        // END OF MAX LAIR SHINY FALLBACK
+        // ============================================================================
+
+        // ============================================================================
+        // WC8 COMPETITION EVENT FIX — Direct WC8.ConvertToPKM
+        // ============================================================================
+        // For shiny PK8 from event MetLocations (>= 40000), ALM's generation fails
+        // because competition WC8 events have a specific EC/PID generation algorithm
+        // that our manual Xoroshiro fix can't reproduce correctly.
+        // Instead: load the matching WC8 file from the MGDB and call ConvertToPKM
+        // directly — this uses PKHeX's own verified generation logic.
+        // ============================================================================
+        if (!la.Valid && pkm is PK8 pk8WC && pk8WC.MetLocation >= 40000 && pk8WC.IsShiny)
+        {
+            var mgdbPath = Info.Hub.Config.Legality.MGDBPath;
+            if (Directory.Exists(mgdbPath))
+            {
+                var wc8Files = Directory.GetFiles(mgdbPath, "*.wc8", SearchOption.AllDirectories);
+                foreach (var wc8File in wc8Files)
+                {
+                    try
+                    {
+                        var wc8 = new WC8(File.ReadAllBytes(wc8File));
+                        if (wc8.Species != pk8WC.Species || wc8.Form != pk8WC.Form)
+                            continue;
+                        if (wc8.IsShiny == false)
+                            continue;
+
+                        var directPkm = wc8.ConvertToPKM(sav);
+                        if (directPkm is not T directT)
+                            continue;
+
+                        var laWC8 = new LegalityAnalysis(directPkm);
+                        LogUtil.LogInfo(
+                            AppLocalization.Format(LocalizationKeys.LogWc8ConvertToPkm, Path.GetFileName(wc8File), laWC8.Valid, directPkm.FatefulEncounter, directPkm.IsShiny),
+                            "Legality");
+                        if (laWC8.Valid)
+                        {
+                            pkm = directPkm;
+                            la = laWC8;
+                            break;
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        LogUtil.LogInfo(AppLocalization.Format(LocalizationKeys.LogWc8ConvertToPkmError, ex.Message), "Legality");
+                    }
+                }
+            }
+        }
+        // ============================================================================
+        // END OF WC8 EVENT FIX
+        // ============================================================================
+
+        // ============================================================================
+        // PA9 CROSS-GAME HOME FALLBACK
+        // ============================================================================
+        // When Z-A generation fails for any reason, try every PKM format HOME supports
+        // (newest first) and convert the first valid result to PA9. This covers shinies
+        // that are locked in Z-A, species with no Z-A encounter, natures/IVs that are
+        // only legal in another game, and anything else PKHeX/ALM can't satisfy with
+        // the Z-A encounter pool. The converted PA9 retains the origin Version (e.g.
+        // SW, SV) so no Z-A-specific logic fires on it downstream.
+        // ============================================================================
+        if (!la.Valid && pkm is PA9)
+        {
+            var fallback = TryGetAsHomePa9(template, spec);
+            if (fallback != null)
+            {
+                pkm = fallback;
+                la = new LegalityAnalysis(pkm);
+            }
+        }
+        // ============================================================================
+        // END OF PA9 CROSS-GAME HOME FALLBACK
+        // ============================================================================
+
+
+        if (pkm is not T pk || !la.Valid)
+        {
+            // Diagnostic: log specific legality failure reasons
+            if (pkm != null && !la.Valid)
+            {
+                var failReasons = string.Join(", ", la.Results
+                    .Where(r => !r.Valid)
+                    .Select(r => $"{r.Identifier}"));
+                LogUtil.LogInfo(
+                    AppLocalization.Format(LocalizationKeys.LogTradeModuleLegalityFail, pkm.Species, pkm.Form, pkm.MetLocation, pkm.OriginalTrainerName, pkm.IsShiny, pkm.ShinyXor, result, failReasons),
+                    "Legality");
+            }
+            var reason = GetFailureReason(result, spec);
+            var hint = result == "Failed" ? GetLegalizationHint(template, sav, pkm, spec) : null;
+            return Task.FromResult(new ProcessedPokemonResult<T>
+            {
+                Error = reason,
+                LegalizationHint = hint,
+                ShowdownSet = set
+            });
+        }
+
+        // ============================================================================
+        // ZA NATURE LEGALITY ENFORCEMENT
+        // ============================================================================
+        // For ZA (PA9) Pokemon, honor the user's requested nature if it passes legality.
+        // If the requested nature is illegal for the encounter (e.g. Zeraora must be Brave),
+        // keep PKHeX's legal nature as the actual Nature and apply the requested nature as
+        // StatNature only (mint effect).
+        //
+        // Example 1: Zeraora (ZA native, forced Brave) + user requests Adamant
+        //            → Nature=Brave, StatNature=Adamant
+        // Example 2: Charmander (SWSH via HOME fallback) + user requests Timid
+        //            → Nature=Timid, StatNature=Timid
+        // Example 3: No nature requested, only StatNature via batch (.StatNature=X)
+        //            → Nature=PKHeX default, StatNature=X (already set by ALM)
+        // Example 4: Nothing requested → ALM picks, no change.
+        // ============================================================================
+        if (pk is PA9)
+        {
+            // Nature.Random (25) means the user did not specify a nature in the set.
+            Nature requestedNature = set.Nature;
+            bool userRequestedNature = requestedNature != Nature.Random;
+
+            // Detect if the user explicitly set a StatNature via .StatNature= batch command.
+            // IMPORTANT: We parse the content string directly rather than comparing pk.StatNature != pk.Nature.
+            // After ALM generation and/or HOME conversion the StatNature byte can differ from Nature as
+            // a format-conversion artifact — checking PKM fields would misidentify that as a user request.
+            Nature? userExplicitStatNature = null;
+            foreach (var line in contentLines)
+            {
+                var trimmed = line.Trim();
+                if (trimmed.StartsWith(".StatNature=", StringComparison.OrdinalIgnoreCase))
+                {
+                    var value = trimmed[".StatNature=".Length..].Trim();
+                    if (Enum.TryParse<Nature>(value, ignoreCase: true, out var parsedSN))
+                    {
+                        userExplicitStatNature = parsedSN;
+                        break;
+                    }
+                }
+            }
+
+            bool hasExplicitStatNature = userExplicitStatNature.HasValue;
+            Nature userStatNature = userExplicitStatNature ?? Nature.Random;
+
+            if (userRequestedNature && requestedNature != pk.Nature)
+            {
+                // The encounter forced a different nature than what the user requested.
+                // Test whether the user's requested nature is legal for this encounter.
+                var clone = (PA9)pk.Clone();
+                clone.Nature = requestedNature;
+                clone.StatNature = hasExplicitStatNature ? userStatNature : requestedNature;
+                clone.RefreshChecksum();
+
+                if (new LegalityAnalysis(clone).Valid)
+                {
+                    // Legal — apply the requested nature to both Nature and StatNature.
+                    pk.Nature = clone.Nature;
+                    pk.StatNature = clone.StatNature;
+                    pk.RefreshChecksum();
+                    LogUtil.LogInfo(
+                        AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedLegalApplied, (Species)pk.Species, requestedNature),
+                        "ZANature");
+                }
+                else
+                {
+                    // Requested nature is illegal for this encounter.
+                    // Try minting: keep the forced Nature but apply requested nature as StatNature.
+                    // Verify the mint itself is legal before applying — some encounters (e.g. certain
+                    // HOME-converted WC8 events) restrict StatNature via shiny/nature correlation checks
+                    // and will also reject a mismatched StatNature.
+                    var wantedStatNature = hasExplicitStatNature ? userStatNature : requestedNature;
+                    var cloneMint = (PA9)pk.Clone();
+                    cloneMint.StatNature = wantedStatNature;
+                    cloneMint.RefreshChecksum();
+
+                    if (new LegalityAnalysis(cloneMint).Valid)
+                    {
+                        // Mint is legal — apply it.
+                        pk.StatNature = wantedStatNature;
+                        pk.RefreshChecksum();
+                        LogUtil.LogInfo(
+                            AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedIllegalMintApplied, (Species)pk.Species, requestedNature, pk.Nature, pk.StatNature),
+                            "ZANature");
+                    }
+                    else
+                    {
+                        // Minting is also restricted (e.g. shiny-correlation check ties StatNature to Nature).
+                        // Leave Nature and StatNature exactly as PKHeX produced them — both forced.
+                        LogUtil.LogInfo(
+                            AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedIllegalMintRestricted, (Species)pk.Species, requestedNature, pk.Nature, pk.StatNature),
+                            "ZANature");
+                    }
+                }
+            }
+            else if (userRequestedNature && requestedNature == pk.Nature)
+            {
+                // User's requested nature matches what was generated — mirror to StatNature
+                // unless the user already set a different StatNature via batch command.
+                if (!hasExplicitStatNature)
+                {
+                    pk.StatNature = pk.Nature;
+                    pk.RefreshChecksum();
+                }
+            }
+            // Else: no nature was requested — leave Nature and StatNature exactly as ALM set them.
+        }
+        // ============================================================================
+        // END OF ZA NATURE LEGALITY ENFORCEMENT
+        // ============================================================================
+
+        // ============================================================================
+        // USER-SPECIFIED IV RE-APPLICATION (POST-GENERATION)
+        // ============================================================================
+        // The "IVs:" line in a Showdown set is used by ALM as an encounter-search
+        // constraint, but the encounter selected may override those values during
+        // generation. Re-applying the user's IVs directly after generation mirrors
+        // how .IV_HP=X batch commands work, giving the Showdown-format IVs line the
+        // same reliability as the direct batch command approach.
+        // Only reverts if the user's IV spread is genuinely illegal for this encounter
+        // ============================================================================
+        if (userSpecifiedIVs)
+        {
+            int[] requestedIVs = ParseShowdownIVLine(contentLines);
+            if (requestedIVs.Any(v => v >= 0))
+            {
+                var ivBackup = pk.Clone();
+                if (requestedIVs[0] >= 0) pk.IV_HP  = requestedIVs[0];
+                if (requestedIVs[1] >= 0) pk.IV_ATK = requestedIVs[1];
+                if (requestedIVs[2] >= 0) pk.IV_DEF = requestedIVs[2];
+                if (requestedIVs[3] >= 0) pk.IV_SPA = requestedIVs[3];
+                if (requestedIVs[4] >= 0) pk.IV_SPD = requestedIVs[4];
+                if (requestedIVs[5] >= 0) pk.IV_SPE = requestedIVs[5];
+                pk.RefreshChecksum();
+
+                if (!new LegalityAnalysis(pk).Valid)
+                    pk = (T)ivBackup;
+            }
+        }
+        // ============================================================================
+        // END OF USER-SPECIFIED IV RE-APPLICATION
+        // ============================================================================
+
+        // Final preparation — use effectiveLanguage so the FIXED-OT FALLBACK's language
+        // choice is not overwritten by finalLanguage here.
+        PrepareForTrade(pk, set, effectiveLanguage);
+
+        // Check for spam names
+        if (Info.Hub.Config.Trade.TradeConfiguration.EnableSpamCheck)
+        {
+            if (TradeExtensions<T>.HasAdName(pk, out string ad))
+            {
+                return Task.FromResult(new ProcessedPokemonResult<T>
+                {
+                    Error = AppLocalization.Get(LocalizationKeys.DiscordAdNameDetected),
+                    ShowdownSet = set
+                });
+            }
+        }
+    
+        // For SWSH (PK8), GO Pokemon can have AutoOT applied, so don't mark them as non-native
+        la = new LegalityAnalysis(pk);
+        var isNonNative = la.EncounterOriginal.Context != pk.Context || (pk.GO && pk is not PK8);
+
+        return Task.FromResult(new ProcessedPokemonResult<T>
+        {
+            Pokemon = pk,
+            ShowdownSet = set,
+            LgCode = lgcode,
+            IsNonNative = isNonNative
+        });
+    }
+
+    public static void ApplyStandardItemLogic(PKM pkm)
+    {
+        pkm.HeldItem = pkm switch
+        {
+            PA8 => (int)HeldItem.None,
+            _ when pkm.HeldItem == 0 && !pkm.IsEgg => (int)SysCord<T>.Runner.Config.Trade.TradeConfiguration.DefaultHeldItem,
+            _ => pkm.HeldItem
+        };
+    }
+
+    public static void PrepareForTrade(T pk, ShowdownSet set, byte finalLanguage)
+    {
+        // Only set EggMetDate for hatched Pokemon, not for unhatched eggs
+        if (pk.WasEgg && !pk.IsEgg)
+            pk.EggMetDate = pk.MetDate;
+
+        // Validate language is supported for this game version
+        // SpanishL (11) isn't supported in some games, fall back to Spanish (7)
+        var validatedLanguage = ValidateLanguageForGame(pk, finalLanguage);
+        pk.Language = validatedLanguage;
+
+        // CRITICAL: Asian languages only support 6-character OT names
+        // Replace English OT with Asian characters for Asian languages
+        if (validatedLanguage == (int)LanguageID.Japanese ||
+            validatedLanguage == (int)LanguageID.Korean ||
+            validatedLanguage == (int)LanguageID.ChineseS ||
+            validatedLanguage == (int)LanguageID.ChineseT)
+        {
+            if (pk.OriginalTrainerName.Length > 6)
+            {
+                // Use proper Asian characters instead of truncating English text
+                var asianOT = "王犬米";
+
+                // Properly set OT and clear trash bytes
+                pk.OriginalTrainerName = asianOT;
+
+                // Clear OT trash bytes to ensure legality
+                // Get the OT as bytes, properly sized for the format
+                Span<byte> trash = stackalloc byte[pk.TrashCharCountTrainer * 2];
+                int length = pk.SetString(trash, asianOT.AsSpan(), pk.TrashCharCountTrainer, StringConverterOption.ClearZero);
+                pk.OriginalTrainerTrash.Clear();
+                trash[..length].CopyTo(pk.OriginalTrainerTrash);
+
+                // Refresh checksum after modifying OT
+                pk.RefreshChecksum();
+            }
+        }
+
+        if (!set.Nickname.Equals(pk.Nickname) && string.IsNullOrEmpty(set.Nickname))
+        {
+            // Use the correct species name for the stored language instead of "" (ClearNickname).
+            // Asian languages require the actual species name in the nickname field; "" fails
+            // PKHeX's "Nickname does not match species name" legality check.
+            pk.Nickname = SpeciesName.GetSpeciesNameGeneration(pk.Species, pk.Language, pk.Format);
+            pk.IsNicknamed = false;
+        }
+
+        pk.ResetPartyStats();
+    }
+
+    private static int ValidateLanguageForGame(PKM pk, byte requestedLanguage)
+    {
+        // SpanishL (11) support varies by game
+        if (requestedLanguage == (byte)LanguageID.SpanishL)
+        {
+            // Check if this game supports SpanishL
+            bool supportsSpanishL = pk switch
+            {
+                PB7 => false,  // Let's Go - does not support SpanishL properly
+                PK8 => false,  // Sword/Shield - does not support SpanishL properly
+                PB8 => false, // BDSP - does not support SpanishL properly
+                PA8 => false, // Legends Arceus - does not support SpanishL properly
+                PK9 => false,  // Scarlet/Violet - does not support SpanishL properly
+                PA9 => true,  // Legends Z-A - Supports SpanishL
+                _ => false
+            };
+
+            if (!supportsSpanishL)
+            {
+                // Fall back to Spanish (7) if SpanishL is used in any game other than Legends Z-A
+                return (int)LanguageID.Spanish;
+            }
+        }
+
+        return requestedLanguage;
+    }
+
+    public static string GetFailureReason(string result, string speciesName)
+    {
+        return result switch
+        {
+            "Timeout" => AppLocalization.Format(LocalizationKeys.DiscordSpeciesSetTimeout, speciesName),
+            "VersionMismatch" => AppLocalization.Get(LocalizationKeys.DiscordVersionMismatch),
+            _ => AppLocalization.Format(LocalizationKeys.DiscordCreateSpeciesFailed, speciesName)
+        };
+    }
+
+    public static string GetLegalizationHint(IBattleTemplate template, ITrainerInfo sav, PKM pkm, string speciesName)
+    {
+        var hint = AutoLegalityWrapper.GetLegalizationHint(template, sav, pkm);
+        if (hint.Contains("Requested shiny value (ShinyType."))
+        {
+            hint = AppLocalization.Format(LocalizationKeys.DiscordCannotBeShiny, speciesName);
+        }
+        return hint;
+    }
+
+    public static async Task SendTradeErrorEmbedAsync(SocketCommandContext context, ProcessedPokemonResult<T> result)
+    {
+        var spec = result.ShowdownSet != null && result.ShowdownSet.Species > 0
+            ? GameInfo.Strings.Species[result.ShowdownSet.Species]
+            : AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies);
+
+        var rawError = result.Error ?? AppLocalization.Get(LocalizationKeys.BotStatusUnknown);
+        var (friendlyError, solution) = GetFriendlyTradeError(spec, rawError, result.LegalizationHint);
+        var displaySpec = GetDisplaySpeciesName(spec);
+
+        var embedBuilder = new EmbedBuilder()
+            .WithColor(Color.Red)
+            .WithImageUrl(ErrorImageUrl)
+            .WithThumbnailUrl(ErrorThumbnailUrl)
+            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle), WarningIconUrl)
+            .WithDescription(AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, displaySpec))
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordErrorLabel), TrimEmbedField(friendlyError), inline: false)
+            .WithFooter(f =>
+            {
+                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
+                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
+            });
+
+        if (!string.IsNullOrWhiteSpace(solution))
+        {
+            _ = embedBuilder.AddField("\u200B", FormatSolutionsBox(solution), inline: false);
+        }
+
+        if (result.ShowdownSet is { InvalidLines.Count: > 0 })
+        {
+            var invalidLines = string.Join("\n", result.ShowdownSet.InvalidLines.Select(x => x.ToString().Trim()));
+            _ = embedBuilder.AddField(AppLocalization.Get(LocalizationKeys.DiscordBatchInvalidLines), TrimEmbedField($"```\n{invalidLines}\n```"), inline: false);
+        }
+
+        string userMention = context.User.Mention;
+        string messageContent = AppLocalization.Format(LocalizationKeys.DiscordReportForRequest, userMention);
+        var message = await context.Channel.SendMessageAsync(text: messageContent, embed: embedBuilder.Build()).ConfigureAwait(false);
+        _ = DeleteMessagesAfterDelayAsync(message, context.Message, 30);
+    }
+
+    private static (string Error, string? Solution) GetFriendlyTradeError(string speciesName, string rawError, string? legalizationHint)
+    {
+        var source = string.IsNullOrWhiteSpace(legalizationHint) ? rawError : legalizationHint;
+        var isSpanish = AppLocalization.Language == AppLanguage.Spanish;
+
+        if (source.Contains(AppLocalization.Get(LocalizationKeys.DiscordUnableParseSpecies), StringComparison.OrdinalIgnoreCase) ||
+            source.Contains("Could not identify the Pokemon species", StringComparison.OrdinalIgnoreCase) ||
+            source.Contains("No pude identificar la especie", StringComparison.OrdinalIgnoreCase) ||
+            source.Contains("nombre introducido no fue reconocido", StringComparison.OrdinalIgnoreCase) ||
+            source.Contains("not recognized as a valid", StringComparison.OrdinalIgnoreCase) ||
+            source.Contains("species", StringComparison.OrdinalIgnoreCase) && source.Contains("not", StringComparison.OrdinalIgnoreCase) && source.Contains("valid", StringComparison.OrdinalIgnoreCase))
+        {
+            var unknown = speciesName == AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies);
+            var error = isSpanish
+                ? unknown
+                    ? "- El nombre introducido no fue reconocido como un Pokemon valido."
+                    : $"- {speciesName} no esta disponible en el juego."
+                : unknown
+                    ? "- The entered name was not recognized as a valid Pokemon."
+                    : $"- {speciesName} is not available in this game.";
+
+            var solution = isSpanish
+                ? "- Comprueba que el nombre del Pokemon este escrito correctamente y en ingles.\n\n- Utiliza el nombre oficial del Pokemon en el juego."
+                : "- Check that the Pokemon name is spelled correctly and in English.\n\n- Use the official Pokemon name from the game.";
+
+            return (error, solution);
+        }
+
+        if (source.Contains("Shiny lock", StringComparison.OrdinalIgnoreCase) ||
+            source.Contains("Shiny-locked", StringComparison.OrdinalIgnoreCase) ||
+            source.Contains("cannot be shiny", StringComparison.OrdinalIgnoreCase))
+        {
+            return isSpanish
+                ? ($"- {speciesName} no puede ser shiny.", "- Quita `Shiny: Yes` del set o solicita otro Pokemon.")
+                : ($"- {speciesName} cannot be shiny.", "- Remove `Shiny: Yes` from the set or request a different Pokemon.");
+        }
+
+        var cleaned = CleanTradeErrorText(source);
+        if (!string.IsNullOrWhiteSpace(cleaned))
+            return (cleaned, null);
+
+        return ($"- {rawError}", null);
+    }
+
+    private static string CleanTradeErrorText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return string.Empty;
+
+        var lines = value.Replace("\r", string.Empty)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .Select(x => x.Trim())
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Where(x => !x.StartsWith("###", StringComparison.Ordinal))
+            .Where(x => !x.Contains("Soluciones", StringComparison.OrdinalIgnoreCase))
+            .Where(x => !x.Contains("Solutions", StringComparison.OrdinalIgnoreCase))
+            .Select(x => x.TrimStart('*', '•', '-', ' '))
+            .Where(x => !string.IsNullOrWhiteSpace(x))
+            .Select(x => $"- {x}");
+
+        return string.Join("\n", lines);
+    }
+
+    private static string GetSolutionsLabel() =>
+        AppLocalization.Language == AppLanguage.Spanish ? "📝Soluciones:" : "📝Solutions:";
+
+    private static string FormatSolutionsBox(string solution)
+    {
+        var boxed = $"{GetSolutionsLabel()}\n{solution}";
+        return $"```{TrimEmbedField(boxed, 1018)}```";
+    }
+
+    private static string GetDisplaySpeciesName(string speciesName)
+    {
+        if (speciesName == AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies))
+        {
+            return AppLocalization.Language == AppLanguage.Spanish
+                ? "el Pokemon solicitado"
+                : "the requested Pokemon";
+        }
+
+        return speciesName;
+    }
+
+    private static EmbedBuilder CreateTradeErrorEmbed(SocketCommandContext context, string title, string description)
+    {
+        return new EmbedBuilder()
+            .WithTitle(title)
+            .WithColor(Color.Red)
+            .WithDescription(description)
+            .WithImageUrl(ErrorImageUrl)
+            .WithThumbnailUrl(ErrorThumbnailUrl)
+            .WithAuthor(title, WarningIconUrl)
+            .WithFooter(f =>
+            {
+                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
+                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
+            });
+    }
+
+    private static async Task<IUserMessage> SendTradeErrorNoticeAsync(SocketCommandContext context, string description, string? title = null)
+    {
+        var embed = CreateTradeErrorEmbed(context, title ?? AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle), description);
+        return await context.Channel
+            .SendMessageAsync(text: context.User.Mention, embed: embed.Build())
+            .ConfigureAwait(false);
+    }
+
+    private static async Task<IUserMessage> SendInvalidEggSetEmbedAsync(SocketCommandContext context, string speciesName, LegalityAnalysis legality)
+    {
+        var localizedReport = SimpleLegalityFeedback.GetLocalizedLegalityReport(legality);
+        var embed = new EmbedBuilder()
+            .WithColor(Color.Red)
+            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordInvalidShowdownSetTitle), WarningIconUrl)
+            .WithThumbnailUrl(ErrorThumbnailUrl)
+            .WithDescription(AppLocalization.Format(LocalizationKeys.DiscordInvalidEggSetSummary, context.User.Mention, speciesName))
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordErrorLabel),
+                AppLocalization.Format(LocalizationKeys.DiscordInvalidEggSetError, speciesName), inline: true)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordSolutionLabel),
+                AppLocalization.Get(LocalizationKeys.DiscordInvalidEggSetSolution), inline: true)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordReportLabel),
+                $"```\n{TrimEmbedField(localizedReport, 1016)}\n```", inline: false)
+            .WithImageUrl(InvalidSetImageUrl)
+            .WithFooter(f =>
+            {
+                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
+                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
+            });
+
+        return await context.Channel.SendMessageAsync(text: context.User.Mention, embed: embed.Build()).ConfigureAwait(false);
+    }
+
+    private static async Task<IUserMessage> SendInvalidAttachmentEmbedAsync(SocketCommandContext context, string speciesName, LegalityAnalysis legality)
+    {
+        var localizedReport = SimpleLegalityFeedback.GetLocalizedLegalityReport(legality);
+        var embed = new EmbedBuilder()
+            .WithColor(Color.Red)
+            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentTitle), WarningIconUrl)
+            .WithThumbnailUrl(ErrorThumbnailUrl)
+            .WithDescription(AppLocalization.Format(LocalizationKeys.DiscordInvalidAttachmentSummary, context.User.Mention, $"**{speciesName}**"))
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentReasonIntro),
+                $"```\n{TrimEmbedField(localizedReport, 1016)}\n```", inline: false)
+            .AddField("\u200B",
+                $"```\n{TrimEmbedField(AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentAdvice), 1016)}\n```", inline: false)
+            .WithImageUrl(InvalidSetImageUrl)
+            .WithFooter(f =>
+            {
+                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
+                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
+            });
+
+        return await context.Channel.SendMessageAsync(text: context.User.Mention, embed: embed.Build()).ConfigureAwait(false);
+    }
+
+    private static string TrimEmbedField(string value, int maxLength = 1024)
+    {
+        if (value.Length <= maxLength)
+            return value;
+
+        return value[..(maxLength - 3)] + "...";
+    }
+
+    /// <summary>
+    /// Sends a detailed trade error log to configured Full Trade Error Log channels.
+    /// </summary>
+    public static async Task SendFullTradeErrorLogAsync(SocketCommandContext context, string errorReason, string userRequest, int tradeCode, string? legalizationHint = null)
+    {
+        var cfg = SysCordSettings.Settings.FullTradeErrorLogChannels;
+        if (cfg.List.Count == 0)
+            return;
+
+        var user = context.User;
+        var guild = (context.Channel as IGuildChannel)?.Guild;
+        var channel = context.Channel;
+
+        string serverName = guild?.Name ?? AppLocalization.Get(LocalizationKeys.DiscordDirectMessage);
+        string channelName = channel is IGuildChannel guildChannel ? $"#{guildChannel.Name}" : AppLocalization.Get(LocalizationKeys.DiscordDirectMessage);
+        string channelId = channel.Id.ToString();
+
+        // Get game version from PKM type
+        string gameVersion = typeof(T).Name switch
+        {
+            "PA9" => "ZA",
+            "PK9" => "SV",
+            "PA8" => "LA",
+            "PB8" => "BDSP",
+            "PK8" => "SWSH",
+            "PB7" => "LGPE",
+            _ => AppLocalization.Get(LocalizationKeys.BotStatusUnknown)
+        };
+
+        // Truncate user request if it's too long for embed field (Discord limit is 1024 characters per field)
+        string truncatedRequest = userRequest.Length > 950
+            ? userRequest.Substring(0, 947) + "..."
+            : userRequest;
+
+        var embedBuilder = new EmbedBuilder()
+            .WithTitle(AppLocalization.Get(LocalizationKeys.DiscordDetailedTradeErrorLogTitle))
+            .WithColor(Color.Gold)
+            .WithCurrentTimestamp()
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordConnectedUserLabel), $"{user.Username} ({user.Id})", inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordLinkTradeCodeLabel), tradeCode.ToString("0000 0000"), inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordServerOfRequestLabel), serverName, inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordChannelOfRequestLabel), $"{channelName} ({channelId})", inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordGameVersionOfBotLabel), gameVersion, inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordReasonForErrorLabel), errorReason, inline: false);
+
+        // Add legalization hint if available
+        if (!string.IsNullOrEmpty(legalizationHint))
+        {
+            embedBuilder.AddField($"**{AppLocalization.Get(LocalizationKeys.DiscordHintLabel)}**", legalizationHint, inline: false);
+        }
+
+        // Check if we should include Known Trainer Details
+        var hub = SysCord<T>.Runner.Hub;
+        bool storeTradeCodesEnabled = hub.Config.Trade.TradeConfiguration.StoreTradeCodes;
+
+        if (storeTradeCodesEnabled)
+        {
+            var tradeCodeStorage = new TradeCodeStorage();
+            var tradeDetails = tradeCodeStorage.GetTradeDetails(user.Id);
+
+            if (tradeDetails != null && !string.IsNullOrEmpty(tradeDetails.OT))
+            {
+                string trainerDetails = $"**OT:** {tradeDetails.OT}\n**TID:** {tradeDetails.TID}\n**SID:** {tradeDetails.SID}";
+                embedBuilder.AddField(AppLocalization.Get(LocalizationKeys.DiscordKnownTrainerDetailsLabel), trainerDetails, inline: false);
+            }
+        }
+
+        embedBuilder.AddField(AppLocalization.Get(LocalizationKeys.DiscordUserRequestLabel), $"```\n{truncatedRequest}\n```", inline: false);
+
+        var embed = embedBuilder.Build();
+
+        // Send to all configured Full Trade Error Log channels
+        foreach (var logChannel in cfg)
+        {
+            try
+            {
+                if (context.Client.GetChannel(logChannel.ID) is ISocketMessageChannel msgChannel)
+                {
+                    await msgChannel.SendMessageAsync(embed: embed).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogUtil.LogError(AppLocalization.Format(LocalizationKeys.LogFullTradeErrorLogFailed, logChannel.ID, ex.Message), nameof(Helpers<T>));
+            }
+        }
+    }
+
+    /// <summary>
+    /// Sends a detailed batch trade error log to configured Full Trade Error Log channels.
+    /// </summary>
+    public static async Task SendFullBatchTradeErrorLogAsync(SocketCommandContext context, List<BatchTradeError> errors, int tradeCode, int totalTrades)
+    {
+        var cfg = SysCordSettings.Settings.FullTradeErrorLogChannels;
+        if (cfg.List.Count == 0)
+            return;
+
+        var user = context.User;
+        var guild = (context.Channel as IGuildChannel)?.Guild;
+        var channel = context.Channel;
+
+        string serverName = guild?.Name ?? AppLocalization.Get(LocalizationKeys.DiscordDirectMessage);
+        string channelName = channel is IGuildChannel guildChannel ? $"#{guildChannel.Name}" : AppLocalization.Get(LocalizationKeys.DiscordDirectMessage);
+        string channelId = channel.Id.ToString();
+
+        // Get game version from PKM type
+        string gameVersion = typeof(T).Name switch
+        {
+            "PA9" => "ZA",
+            "PK9" => "SV",
+            "PA8" => "LA",
+            "PB8" => "BDSP",
+            "PK8" => "SWSH",
+            "PB7" => "LGPE",
+            _ => AppLocalization.Get(LocalizationKeys.BotStatusUnknown)
+        };
+
+        // Build error summary
+        var errorSummary = new System.Text.StringBuilder();
+        errorSummary.AppendLine(AppLocalization.Format(LocalizationKeys.DiscordBatchTradeFailedSummary, errors.Count, totalTrades));
+
+        foreach (var error in errors.Take(5)) // Limit to first 5 errors to avoid embed size limits
+        {
+            errorSummary.AppendLine(AppLocalization.Format(LocalizationKeys.DiscordTradeNumberSummary, error.TradeNumber, error.SpeciesName));
+            errorSummary.AppendLine($"{AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}: {error.ErrorMessage}");
+            if (!string.IsNullOrEmpty(error.LegalizationHint))
+            {
+                errorSummary.AppendLine($"{AppLocalization.Get(LocalizationKeys.DiscordHintLabel)}: {error.LegalizationHint}");
+            }
+            errorSummary.AppendLine();
+        }
+
+        if (errors.Count > 5)
+        {
+            errorSummary.AppendLine(AppLocalization.Format(LocalizationKeys.DiscordAdditionalErrorsSummary, errors.Count - 5));
+        }
+
+        var embedBuilder = new EmbedBuilder()
+            .WithTitle(AppLocalization.Get(LocalizationKeys.DiscordDetailedBatchTradeErrorLogTitle))
+            .WithColor(Color.Gold)
+            .WithCurrentTimestamp()
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordConnectedUserLabel), $"{user.Username} ({user.Id})", inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordLinkTradeCodeLabel), tradeCode.ToString("0000 0000"), inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordServerOfRequestLabel), serverName, inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordChannelOfRequestLabel), $"{channelName} ({channelId})", inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordGameVersionOfBotLabel), gameVersion, inline: false)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordReasonForErrorLabel), AppLocalization.Format(LocalizationKeys.DiscordBatchTradeValidationFailedReason, errors.Count, totalTrades), inline: false);
+
+        // Check if we should include Known Trainer Details
+        var hub = SysCord<T>.Runner.Hub;
+        bool storeTradeCodesEnabled = hub.Config.Trade.TradeConfiguration.StoreTradeCodes;
+
+        if (storeTradeCodesEnabled)
+        {
+            var tradeCodeStorage = new TradeCodeStorage();
+            var tradeDetails = tradeCodeStorage.GetTradeDetails(user.Id);
+
+            if (tradeDetails != null && !string.IsNullOrEmpty(tradeDetails.OT))
+            {
+                string trainerDetails = $"**OT:** {tradeDetails.OT}\n**TID:** {tradeDetails.TID}\n**SID:** {tradeDetails.SID}";
+                embedBuilder.AddField(AppLocalization.Get(LocalizationKeys.DiscordKnownTrainerDetailsLabel), trainerDetails, inline: false);
+            }
+        }
+
+        embedBuilder.AddField(AppLocalization.Get(LocalizationKeys.DiscordErrorDetailsLabel), errorSummary.ToString(), inline: false);
+
+        var embed = embedBuilder.Build();
+
+        // Send to all configured Full Trade Error Log channels
+        foreach (var logChannel in cfg)
+        {
+            try
+            {
+                if (context.Client.GetChannel(logChannel.ID) is ISocketMessageChannel msgChannel)
+                {
+                    await msgChannel.SendMessageAsync(embed: embed).ConfigureAwait(false);
+                }
+            }
+            catch (Exception ex)
+            {
+                LogUtil.LogError(AppLocalization.Format(LocalizationKeys.LogFullBatchTradeErrorLogFailed, logChannel.ID, ex.Message), nameof(Helpers<T>));
+            }
+        }
+    }
+
+    public static T? GetRequest(Download<PKM> dl)
+    {
+        if (!dl.Success)
+            return null;
+        return dl.Data switch
+        {
+            null => null,
+            T pk => pk,
+            _ => EntityConverter.ConvertToType(dl.Data, typeof(T), out _) as T,
+        };
+    }
+
+    public static List<Pictocodes> GenerateRandomPictocodes(int count)
+    {
+        Random rnd = new();
+        List<Pictocodes> randomPictocodes = [];
+        Array pictocodeValues = Enum.GetValues<Pictocodes>();
+
+        for (int i = 0; i < count; i++)
+        {
+            Pictocodes randomPictocode = (Pictocodes)pictocodeValues.GetValue(rnd.Next(pictocodeValues.Length))!;
+            randomPictocodes.Add(randomPictocode);
+        }
+
+        return randomPictocodes;
+    }
+
+    // ============================================================================
+    // PA9 CROSS-GAME HOME FALLBACK HELPERS
+    // ============================================================================
+
+    /// <summary>
+    /// Tries every PKM format HOME supports (newest first) and returns the first result
+    /// that converts to a legally valid PA9. Used when Z-A generation fails for any reason.
+    /// </summary>
+    private static PA9? TryGetAsHomePa9(IBattleTemplate template, string speciesName)
+    {
+        // Lazy delegates — GetTrainerInfo is called inside the try-catch so a
+        // failure for one game type is silently skipped without aborting the loop.
+        (Func<ITrainerInfo> GetTrainer, string Name)[] sources =
+        [
+            (() => AutoLegalityWrapper.GetTrainerInfo<PK9>(),  "SV"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PK8>(),  "SWSH"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PA8>(),  "PLA"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PB8>(),  "BDSP"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PK7>(),  "USUM/SM"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PB7>(),  "LGPE"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PK6>(),  "ORAS/XY"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PK5>(),  "BW/B2W2"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PK4>(),  "DPPt/HGSS"),
+            (() => AutoLegalityWrapper.GetTrainerInfo<PK3>(),  "RSE/FRLG"),
+        ];
+
+        foreach (var (getTrainer, name) in sources)
+        {
+            try
+            {
+                var trainerInfo = getTrainer(); // invoked here so any throw is caught below
+                var generated = trainerInfo.GetLegal(template, out _);
+                if (generated == null)
+                    continue;
+
+                var converted = EntityConverter.ConvertToType(generated, typeof(PA9), out _);
+                if (converted is not PA9 pa9)
+                    continue;
+
+                if (!new LegalityAnalysis(pa9).Valid)
+                    continue;
+
+                LogUtil.LogInfo(
+                    AppLocalization.Format(LocalizationKeys.LogHomeFallbackSucceeded, speciesName, name, pa9.Version),
+                    "PA9HomeFallback");
+                return pa9;
+            }
+            catch { }
+        }
+
+        return null;
+    }
+
+    // ============================================================================
+    // END OF PA9 SHINY FALLBACK HELPERS
+    // ============================================================================
+
+    public static async Task<T?> ProcessTradeAttachmentAsync(SocketCommandContext context)
+    {
+        var attachment = context.Message.Attachments.FirstOrDefault();
+        if (attachment == default)
+        {
+            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Get(LocalizationKeys.DiscordNoAttachmentProvided)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            return null;
+        }
+
+        var att = await NetUtil.DownloadPKMAsync(attachment).ConfigureAwait(false);
+        var pk = GetRequest(att);
+
+        if (pk == null)
+        {
+            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Get(LocalizationKeys.DiscordAttachmentIncompatible)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            return null;
+        }
+
+        return pk;
+    }
+
+    public static (string filter, int page) ParseListArguments(string args)
+    {
+        string filter = "";
+        int page = 1;
+        var parts = args.Split([' '], StringSplitOptions.RemoveEmptyEntries);
+
+        if (parts.Length > 0)
+        {
+            if (int.TryParse(parts.Last(), out int parsedPage))
+            {
+                page = parsedPage;
+                filter = string.Join(" ", parts.Take(parts.Length - 1));
+            }
+            else
+            {
+                filter = string.Join(" ", parts);
+            }
+        }
+
+        return (filter, page);
+    }
+
+    public static async Task AddTradeToQueueAsync(
+        SocketCommandContext context,
+        int code,
+        string trainerName,
+        T? pk,
+        RequestSignificance sig,
+        SocketUser usr,
+        bool isBatchTrade = false,
+        int batchTradeNumber = 1,
+        int totalBatchTrades = 1,
+        bool isHiddenTrade = false,
+        bool isMysteryEgg = false,
+        List<Pictocodes>? lgcode = null,
+        PokeTradeType tradeType = PokeTradeType.Specific,
+        bool ignoreAutoOT = false, bool setEdited = false,
+        bool isNonNative = false)
+    {
+        lgcode ??= GenerateRandomPictocodes(3);
+
+        if (pk is not null && !pk.CanBeTraded())
+        {
+            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Get(LocalizationKeys.DiscordBlockedPokemon)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            return;
+        }
+
+        // Block non-tradable items using PKHeX's ItemRestrictions
+        if (pk is not null && TradeExtensions<T>.IsItemBlocked(pk))
+        {
+            var itemName = pk.HeldItem > 0 ? GameInfo.GetStrings("en").Item[pk.HeldItem] : AppLocalization.Get(LocalizationKeys.DiscordNoHeldItem);
+            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Format(LocalizationKeys.DiscordBlockedHeldItem, itemName)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            return;
+        }
+
+
+        var la = new LegalityAnalysis(pk!);
+
+        // Auto-fix nickname-only issues on attachments by clearing nickname and re-validating
+        if (!la.Valid && la.Results.Any(r => r.Identifier is CheckIdentifier.Nickname))
+        {
+            var clone = (T)pk!.Clone();
+            _ = clone.ClearNickname();
+            var laNick = new LegalityAnalysis(clone);
+            if (laNick.Valid)
+            {
+                pk = clone;
+                la = laNick;
+            }
+        }
+
+        if (!la.Valid)
+        {
+            if (pk?.IsEgg == true)
+            {
+                string speciesName = SpeciesName.GetSpeciesName(pk.Species, (int)LanguageID.English);
+                var invalidEggReply = await SendInvalidEggSetEmbedAsync(context, speciesName, la).ConfigureAwait(false);
+                _ = DeleteMessagesAfterDelayAsync(invalidEggReply, context.Message, 30);
+                return;
+            }
+            else
+            {
+                string speciesName = SpeciesName.GetSpeciesName(pk!.Species, (int)LanguageID.English);
+                var invalidAttachmentReply = await SendInvalidAttachmentEmbedAsync(context, speciesName, la).ConfigureAwait(false);
+                _ = DeleteMessagesAfterDelayAsync(invalidAttachmentReply, context.Message, 30);
+                return;
+            }
+        }
+
+        if (Info.Hub.Config.Legality.DisallowNonNatives && isNonNative)
+        {
+            string speciesName = SpeciesName.GetSpeciesName(pk!.Species, (int)LanguageID.English);
+            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Format(LocalizationKeys.DiscordNonNativeBlocked, speciesName)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            return;
+        }
+
+        if (Info.Hub.Config.Legality.DisallowTracked && pk is IHomeTrack { HasTracker: true })
+        {
+            string speciesName = SpeciesName.GetSpeciesName(pk.Species, (int)LanguageID.English);
+            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Format(LocalizationKeys.DiscordHomeTrackedBlocked, speciesName)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            return;
+        }
+
+        // Past gen file fix is now handled in ProcessShowdownSetAsync before this point
+
+        await QueueHelper<T>.AddToQueueAsync(context, code, trainerName, sig, pk!, PokeRoutineType.LinkTrade,
+            tradeType, usr, isBatchTrade, batchTradeNumber, totalBatchTrades, isHiddenTrade, isMysteryEgg,
+            lgcode: lgcode, ignoreAutoOT: ignoreAutoOT, setEdited: setEdited, isNonNative: isNonNative).ConfigureAwait(false);
+    }
+
+    /// <summary>Parses the "IVs:" Showdown line; returns -1 for any stat not explicitly specified.</summary>
+    /// <remarks>Index order: 0=HP, 1=Atk, 2=Def, 3=SpA, 4=SpD, 5=Spe</remarks>
+    private static int[] ParseShowdownIVLine(string[] lines)
+    {
+        int[] result = [-1, -1, -1, -1, -1, -1];
+        var ivsLine = lines.FirstOrDefault(l => l.TrimStart().StartsWith("IVs:", StringComparison.OrdinalIgnoreCase));
+        if (ivsLine == null)
+            return result;
+
+        var value = ivsLine[(ivsLine.IndexOf(':') + 1)..];
+        foreach (var part in value.Split('/'))
+        {
+            var tokens = part.Trim().Split(' ', StringSplitOptions.RemoveEmptyEntries);
+            if (tokens.Length < 2 || !int.TryParse(tokens[0], out int val))
+                continue;
+            val = Math.Clamp(val, 0, 31);
+            int idx = tokens[1].ToUpperInvariant() switch
+            {
+                "HP"  => 0,
+                "ATK" => 1,
+                "DEF" => 2,
+                "SPA" => 3,
+                "SPD" => 4,
+                "SPE" => 5,
+                _     => -1
+            };
+            if (idx >= 0)
+                result[idx] = val;
+        }
+        return result;
+    }
+
+}

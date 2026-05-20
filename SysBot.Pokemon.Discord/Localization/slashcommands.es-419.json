@@ -1,0 +1,170 @@
+{
+  "create-bdsp": {
+    "description": "Crea un Pokemon de Brilliant Diamond/Shining Pearl",
+    "pokemon": {
+      "description": "Especie del Pokemon"
+    },
+    "shiny": {
+      "description": "Debe ser shiny el Pokemon?"
+    },
+    "item": {
+      "description": "Objeto equipado (opcional)"
+    },
+    "ball": {
+      "description": "Poke Ball (opcional)"
+    },
+    "level": {
+      "description": "Nivel del Pokemon (1-100)"
+    },
+    "nature": {
+      "description": "Naturaleza del Pokemon (opcional)"
+    },
+    "ivs": {
+      "description": "IVs personalizados (opcional) - Formato: 31/31/31/31/31/31 (HP/Atk/Def/SpA/SpD/Spe)"
+    },
+    "evs": {
+      "description": "EVs personalizados (opcional) - Formato: 252/252/4/0/0/0 (HP/Atk/Def/SpA/SpD/Spe)"
+    }
+  },
+  "create-lgpe": {
+    "description": "Crea un Pokemon de Let's Go Pikachu/Eevee",
+    "pokemon": {
+      "description": "Especie del Pokemon"
+    },
+    "shiny": {
+      "description": "Debe ser shiny el Pokemon?"
+    },
+    "ball": {
+      "description": "Poke Ball (opcional)"
+    },
+    "level": {
+      "description": "Nivel del Pokemon (1-100)"
+    },
+    "nature": {
+      "description": "Naturaleza del Pokemon (opcional)"
+    },
+    "ivs": {
+      "description": "IVs personalizados (opcional) - Formato: 31/31/31/31/31/31 (HP/Atk/Def/SpA/SpD/Spe)"
+    },
+    "evs": {
+      "description": "EVs personalizados (opcional) - Formato: 252/252/4/0/0/0 (HP/Atk/Def/SpA/SpD/Spe)"
+    }
+  },
+  "create-pla": {
+    "description": "Crea un Pokemon de Legends: Arceus con soporte Alpha",
+    "pokemon": {
+      "description": "Especie del Pokemon"
+    },
+    "shiny": {
+      "description": "Debe ser shiny el Pokemon?"
+    },
+    "ball": {
+      "description": "Poke Ball (opcional)"
+    },
+    "alpha": {
+      "description": "Debe ser Alpha el Pokemon?"
+    },
+    "level": {
+      "description": "Nivel del Pokemon (1-100)"
+    },
+    "nature": {
+      "description": "Naturaleza del Pokemon (opcional)"
+    },
+    "ivs": {
+      "description": "IVs personalizados (opcional) - Formato: 31/31/31/31/31/31 (HP/Atk/Def/SpA/SpD/Spe)"
+    },
+    "evs": {
+      "description": "EVs personalizados (opcional) - Formato: 252/252/4/0/0/0 (HP/Atk/Def/SpA/SpD/Spe)"
+    }
+  },
+  "create-plza": {
+    "description": "Crea un Pokemon de Legends: Z-A con soporte Alpha",
+    "pokemon": {
+      "description": "Especie del Pokemon"
+    },
+    "shiny": {
+      "description": "Debe ser shiny el Pokemon?"
+    },
+    "item": {
+      "description": "Objeto equipado (opcional)"
+    },
+    "ball": {
+      "description": "Poke Ball (opcional)"
+    },
+    "alpha": {
+      "description": "Debe ser Alpha el Pokemon?"
+    },
+    "level": {
+      "description": "Nivel del Pokemon (1-100)"
+    },
+    "nature": {
+      "description": "Naturaleza del Pokemon (opcional)"
+    },
+    "ivs": {
+      "description": "IVs personalizados (opcional) - Formato: 31/31/31/31/31/31 (HP/Atk/Def/SpA/SpD/Spe)"
+    },
+    "evs": {
+      "description": "EVs personalizados (opcional) - Formato: 252/252/4/0/0/0 (HP/Atk/Def/SpA/SpD/Spe)"
+    }
+  },
+  "create-sv": {
+    "description": "Crea un Pokemon de Scarlet/Violet con Tipo Tera",
+    "pokemon": {
+      "description": "Especie del Pokemon"
+    },
+    "shiny": {
+      "description": "Debe ser shiny el Pokemon?"
+    },
+    "item": {
+      "description": "Objeto equipado (opcional)"
+    },
+    "ball": {
+      "description": "Poke Ball (opcional)"
+    },
+    "teratype": {
+      "description": "Tipo Tera (opcional)"
+    },
+    "level": {
+      "description": "Nivel del Pokemon (1-100)"
+    },
+    "nature": {
+      "description": "Naturaleza del Pokemon (opcional)"
+    },
+    "ivs": {
+      "description": "IVs personalizados (opcional) - Formato: 31/31/31/31/31/31 (HP/Atk/Def/SpA/SpD/Spe)"
+    },
+    "evs": {
+      "description": "EVs personalizados (opcional) - Formato: 252/252/4/0/0/0 (HP/Atk/Def/SpA/SpD/Spe)"
+    }
+  },
+  "create-swsh": {
+    "description": "Crea un Pokemon de Sword/Shield con soporte Gigantamax",
+    "pokemon": {
+      "description": "Especie del Pokemon"
+    },
+    "shiny": {
+      "description": "Debe ser shiny el Pokemon?"
+    },
+    "item": {
+      "description": "Objeto equipado (opcional)"
+    },
+    "ball": {
+      "description": "Poke Ball (opcional)"
+    },
+    "gigantamax": {
+      "description": "Puede Gigantamax?"
+    },
+    "level": {
+      "description": "Nivel del Pokemon (1-100)"
+    },
+    "nature": {
+      "description": "Naturaleza del Pokemon (opcional)"
+    },
+    "ivs": {
+      "description": "IVs personalizados (opcional) - Formato: 31/31/31/31/31/31 (HP/Atk/Def/SpA/SpD/Spe)"
+    },
+    "evs": {
+      "description": "EVs personalizados (opcional) - Formato: 252/252/4/0/0/0 (HP/Atk/Def/SpA/SpD/Spe)"
+    }
+  }
+}

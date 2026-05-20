@@ -10,6 +10,7 @@ public class ProcessedPokemonResult<T> where T : PKM, new()
     public string? Error { get; set; }
     public ShowdownSet? ShowdownSet { get; set; }
     public string? LegalizationHint { get; set; }
+    public string? RequestedSpeciesName { get; set; }
     public List<Pictocodes>? LgCode { get; set; }
     public bool IsNonNative { get; set; }
 }

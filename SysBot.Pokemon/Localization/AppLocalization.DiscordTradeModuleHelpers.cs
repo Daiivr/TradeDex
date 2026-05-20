@@ -18,7 +18,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordCannotBeShiny] = "{0} **cannot** be shiny. Please try again.";
                 target[LocalizationKeys.DiscordTradeCreationFailedTitle] = "Pokemon Generation Error";
                 target[LocalizationKeys.DiscordStatusLabel] = "Status";
-                target[LocalizationKeys.DiscordFailedToCreateSpecies] = "Failed to create {0}.";
+                target[LocalizationKeys.DiscordFailedToCreateSpecies] = "Failed to create a **{0}**.";
                 target[LocalizationKeys.DiscordDetailedTradeErrorLogTitle] = "**DETAILED TRADE ERROR LOGS**";
                 target[LocalizationKeys.DiscordDetailedBatchTradeErrorLogTitle] = "**DETAILED BATCH TRADE ERROR LOGS**";
                 target[LocalizationKeys.DiscordConnectedUserLabel] = "**Connected User**";
@@ -121,7 +121,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordCannotBeShiny] = "{0} **no puede** ser shiny. Intentalo de nuevo.";
                 target[LocalizationKeys.DiscordTradeCreationFailedTitle] = "Error al generar el Pokemon";
                 target[LocalizationKeys.DiscordStatusLabel] = "Estado";
-                target[LocalizationKeys.DiscordFailedToCreateSpecies] = "No se pudo crear {0}.";
+                target[LocalizationKeys.DiscordFailedToCreateSpecies] = "No se pudo crear un **{0}**.";
                 target[LocalizationKeys.DiscordDetailedTradeErrorLogTitle] = "**LOGS DETALLADOS DE ERROR DE TRADE**";
                 target[LocalizationKeys.DiscordDetailedBatchTradeErrorLogTitle] = "**LOGS DETALLADOS DE ERROR DE BATCH TRADE**";
                 target[LocalizationKeys.DiscordConnectedUserLabel] = "**Usuario conectado**";

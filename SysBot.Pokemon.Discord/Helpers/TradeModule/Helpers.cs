@@ -10,8 +10,17 @@ using SysBot.Pokemon.Helpers;
 using SysBot.Pokemon.Localization;
 using System;
 using System.Collections.Generic;
+using DrawingBitmap = System.Drawing.Bitmap;
+using DrawingColor = System.Drawing.Color;
+using DrawingGraphics = System.Drawing.Graphics;
+using DrawingImageFormat = System.Drawing.Imaging.ImageFormat;
+using DrawingPen = System.Drawing.Pen;
+using DrawingPixelFormat = System.Drawing.Imaging.PixelFormat;
+using DrawingRectangle = System.Drawing.Rectangle;
+using System.Drawing.Drawing2D;
 using System.IO;
 using System.Linq;
+using System.Net.Http;
 using System.Threading.Tasks;
 using static SysBot.Pokemon.TradeSettings.TradeSettingsCategory;
 
@@ -22,8 +31,10 @@ public static class Helpers<T> where T : PKM, new()
     private static TradeQueueInfo<T> Info => SysCord<T>.Runner.Hub.Queues.Info;
     private const string ErrorImageUrl = "https://i.imgur.com/Y64hLzW.gif";
     private const string ErrorThumbnailUrl = "https://i.imgur.com/DWLEXyu.png";
+    private const string PokemonErrorOverlayUrl = "https://i.imgur.com/4kH5NYX.png";
     private const string WarningIconUrl = "https://img.freepik.com/free-icon/warning_318-478601.jpg";
     private const string InvalidSetImageUrl = "https://usagif.com/wp-content/uploads/gify/37-pikachu-usagif.gif";
+    private static readonly HttpClient ErrorThumbnailHttp = new();
 
     public static Task<bool> EnsureUserNotInQueueAsync(ulong userID, int deleteDelay = 2)
     {
@@ -175,14 +186,16 @@ public static class Helpers<T> where T : PKM, new()
 
         // Detect if user explicitly specified IVs (for 6IV default enforcement)
         bool userSpecifiedIVs = contentLines.Any(l => l.TrimStart().StartsWith("IVs:", StringComparison.OrdinalIgnoreCase));
+        var requestedSpeciesName = GetRequestedSpeciesName(contentWithoutLanguage);
 
         // Now parse the ShowdownSet without the Language line
         if (!ShowdownParsing.TryParseAnyLanguage(contentWithoutLanguage, out ShowdownSet? set) || set == null || set.Species == 0)
         {
             return Task.FromResult(new ProcessedPokemonResult<T>
             {
-                Error = AppLocalization.Get(LocalizationKeys.DiscordUnableParseSpecies),
-                ShowdownSet = set
+                Error = BuildUnableParseSpeciesReport(),
+                ShowdownSet = set,
+                RequestedSpeciesName = requestedSpeciesName
             });
         }
 
@@ -1024,14 +1037,41 @@ public static class Helpers<T> where T : PKM, new()
         };
     }
 
+    private static string GetRequestedSpeciesName(string content)
+    {
+        var firstLine = content.Replace("\r", string.Empty)
+            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+            .FirstOrDefault()?.Trim() ?? string.Empty;
+
+        if (string.IsNullOrWhiteSpace(firstLine))
+            return AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies);
+
+        var speciesPart = firstLine.Split('@')[0].Trim();
+        var nicknameIndex = speciesPart.IndexOf("(", StringComparison.Ordinal);
+        if (nicknameIndex >= 0)
+        {
+            var closeIndex = speciesPart.IndexOf(")", nicknameIndex, StringComparison.Ordinal);
+            if (closeIndex > nicknameIndex)
+                speciesPart = speciesPart[(nicknameIndex + 1)..closeIndex].Trim();
+        }
+
+        return string.IsNullOrWhiteSpace(speciesPart)
+            ? AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies)
+            : speciesPart;
+    }
+
+    private static string BuildUnableParseSpeciesReport()
+    {
+        var message = AppLocalization.Language == AppLanguage.Spanish
+            ? "El nombre introducido no fue reconocido como un Pokemon válido."
+            : "The entered name was not recognized as a valid Pokemon.";
+
+        return $"### Error\n• {message}";
+    }
+
     public static string GetLegalizationHint(IBattleTemplate template, ITrainerInfo sav, PKM pkm, string speciesName)
     {
-        var hint = AutoLegalityWrapper.GetLegalizationHint(template, sav, pkm);
-        if (hint.Contains("Requested shiny value (ShinyType."))
-        {
-            hint = AppLocalization.Format(LocalizationKeys.DiscordCannotBeShiny, speciesName);
-        }
-        return hint;
+        return AutoLegalityWrapper.GetLegalizationHint(template, sav, pkm);
     }
 
     public static async Task SendTradeErrorEmbedAsync(SocketCommandContext context, ProcessedPokemonResult<T> result)
@@ -1041,25 +1081,31 @@ public static class Helpers<T> where T : PKM, new()
             : AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies);
 
         var rawError = result.Error ?? AppLocalization.Get(LocalizationKeys.BotStatusUnknown);
-        var (friendlyError, solution) = GetFriendlyTradeError(spec, rawError, result.LegalizationHint);
-        var displaySpec = GetDisplaySpeciesName(spec);
+        var errorText = GetTradeErrorText(rawError, result.LegalizationHint);
+        var displaySpec = !string.IsNullOrWhiteSpace(result.RequestedSpeciesName)
+            ? result.RequestedSpeciesName
+            : GetDisplaySpeciesName(spec);
 
         var embedBuilder = new EmbedBuilder()
             .WithColor(Color.Red)
             .WithImageUrl(ErrorImageUrl)
-            .WithThumbnailUrl(ErrorThumbnailUrl)
             .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle), WarningIconUrl)
-            .WithDescription(AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, displaySpec))
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordErrorLabel), TrimEmbedField(friendlyError), inline: false)
+            .WithDescription(TrimEmbedDescription($"{AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, displaySpec)}\n\n{errorText}"))
             .WithFooter(f =>
             {
                 f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
                 f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
             });
 
-        if (!string.IsNullOrWhiteSpace(solution))
+        var errorThumbnail = await CreatePokemonErrorThumbnailAsync(result).ConfigureAwait(false);
+        if (errorThumbnail is null)
+            embedBuilder.WithThumbnailUrl(ErrorThumbnailUrl);
+        else
+            embedBuilder.WithThumbnailUrl($"attachment://{errorThumbnail.Value.FileName}");
+
+        if (IsUnableParseSpeciesError(rawError))
         {
-            _ = embedBuilder.AddField("\u200B", FormatSolutionsBox(solution), inline: false);
+            _ = embedBuilder.AddField("\u200B", TrimEmbedField($"```{GetUnableParseSpeciesSolutions()}```"), inline: false);
         }
 
         if (result.ShowdownSet is { InvalidLines.Count: > 0 })
@@ -1070,80 +1116,207 @@ public static class Helpers<T> where T : PKM, new()
 
         string userMention = context.User.Mention;
         string messageContent = AppLocalization.Format(LocalizationKeys.DiscordReportForRequest, userMention);
-        var message = await context.Channel.SendMessageAsync(text: messageContent, embed: embedBuilder.Build()).ConfigureAwait(false);
+        IUserMessage message;
+        if (errorThumbnail is null)
+        {
+            message = await context.Channel.SendMessageAsync(text: messageContent, embed: embedBuilder.Build()).ConfigureAwait(false);
+        }
+        else
+        {
+            await using var stream = errorThumbnail.Value.Stream;
+            message = await context.Channel.SendFileAsync(stream, errorThumbnail.Value.FileName, text: messageContent, embed: embedBuilder.Build()).ConfigureAwait(false);
+        }
+
         _ = DeleteMessagesAfterDelayAsync(message, context.Message, 30);
     }
 
-    private static (string Error, string? Solution) GetFriendlyTradeError(string speciesName, string rawError, string? legalizationHint)
+    private static async Task<(MemoryStream Stream, string FileName)?> CreatePokemonErrorThumbnailAsync(ProcessedPokemonResult<T> result)
     {
-        var source = string.IsNullOrWhiteSpace(legalizationHint) ? rawError : legalizationHint;
-        var isSpanish = AppLocalization.Language == AppLanguage.Spanish;
+        var imageUrl = GetFailedPokemonImageUrl(result);
+        if (string.IsNullOrWhiteSpace(imageUrl))
+            return null;
 
-        if (source.Contains(AppLocalization.Get(LocalizationKeys.DiscordUnableParseSpecies), StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("Could not identify the Pokemon species", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("No pude identificar la especie", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("nombre introducido no fue reconocido", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("not recognized as a valid", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("species", StringComparison.OrdinalIgnoreCase) && source.Contains("not", StringComparison.OrdinalIgnoreCase) && source.Contains("valid", StringComparison.OrdinalIgnoreCase))
+        try
         {
-            var unknown = speciesName == AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies);
-            var error = isSpanish
-                ? unknown
-                    ? "- El nombre introducido no fue reconocido como un Pokemon valido."
-                    : $"- {speciesName} no esta disponible en el juego."
-                : unknown
-                    ? "- The entered name was not recognized as a valid Pokemon."
-                    : $"- {speciesName} is not available in this game.";
+            await using var sourceStream = await ErrorThumbnailHttp.GetStreamAsync(imageUrl).ConfigureAwait(false);
+            using var source = new DrawingBitmap(sourceStream);
+            using var canvas = new DrawingBitmap(128, 128, DrawingPixelFormat.Format32bppArgb);
+            using (var graphics = DrawingGraphics.FromImage(canvas))
+            {
+                graphics.Clear(DrawingColor.Transparent);
+                graphics.SmoothingMode = SmoothingMode.AntiAlias;
+                graphics.InterpolationMode = InterpolationMode.HighQualityBicubic;
+                graphics.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-            var solution = isSpanish
-                ? "- Comprueba que el nombre del Pokemon este escrito correctamente y en ingles.\n\n- Utiliza el nombre oficial del Pokemon en el juego."
-                : "- Check that the Pokemon name is spelled correctly and in English.\n\n- Use the official Pokemon name from the game.";
+                var destination = GetContainedRectangle(source.Width, source.Height, 128, 128);
+                graphics.DrawImage(source, destination);
 
-            return (error, solution);
+                if (!await TryDrawErrorOverlayAsync(graphics).ConfigureAwait(false))
+                    DrawRedXOverlay(graphics);
+            }
+
+            var output = new MemoryStream();
+            canvas.Save(output, DrawingImageFormat.Png);
+            output.Position = 0;
+            return (output, "pokemon-error.png");
         }
-
-        if (source.Contains("Shiny lock", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("Shiny-locked", StringComparison.OrdinalIgnoreCase) ||
-            source.Contains("cannot be shiny", StringComparison.OrdinalIgnoreCase))
+        catch (Exception ex)
         {
-            return isSpanish
-                ? ($"- {speciesName} no puede ser shiny.", "- Quita `Shiny: Yes` del set o solicita otro Pokemon.")
-                : ($"- {speciesName} cannot be shiny.", "- Remove `Shiny: Yes` from the set or request a different Pokemon.");
+            LogUtil.LogSafe(ex, "Pokemon Error Thumbnail");
+            return null;
         }
-
-        var cleaned = CleanTradeErrorText(source);
-        if (!string.IsNullOrWhiteSpace(cleaned))
-            return (cleaned, null);
-
-        return ($"- {rawError}", null);
     }
 
-    private static string CleanTradeErrorText(string value)
+    private static async Task<bool> TryDrawErrorOverlayAsync(DrawingGraphics graphics)
     {
-        if (string.IsNullOrWhiteSpace(value))
-            return string.Empty;
-
-        var lines = value.Replace("\r", string.Empty)
-            .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(x => x.Trim())
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Where(x => !x.StartsWith("###", StringComparison.Ordinal))
-            .Where(x => !x.Contains("Soluciones", StringComparison.OrdinalIgnoreCase))
-            .Where(x => !x.Contains("Solutions", StringComparison.OrdinalIgnoreCase))
-            .Select(x => x.TrimStart('*', '•', '-', ' '))
-            .Where(x => !string.IsNullOrWhiteSpace(x))
-            .Select(x => $"- {x}");
-
-        return string.Join("\n", lines);
+        try
+        {
+            await using var overlayStream = await ErrorThumbnailHttp.GetStreamAsync(PokemonErrorOverlayUrl).ConfigureAwait(false);
+            using var overlay = new DrawingBitmap(overlayStream);
+            var destination = GetContainedRectangle(overlay.Width, overlay.Height, 128, 128);
+            graphics.DrawImage(overlay, destination);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            LogUtil.LogSafe(ex, "Pokemon Error Overlay");
+            return false;
+        }
     }
 
-    private static string GetSolutionsLabel() =>
-        AppLocalization.Language == AppLanguage.Spanish ? "📝Soluciones:" : "📝Solutions:";
-
-    private static string FormatSolutionsBox(string solution)
+    private static void DrawRedXOverlay(DrawingGraphics graphics)
     {
-        var boxed = $"{GetSolutionsLabel()}\n{solution}";
-        return $"```{TrimEmbedField(boxed, 1018)}```";
+        using var shadowPen = new DrawingPen(DrawingColor.FromArgb(210, 40, 0, 0), 15)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round,
+            LineJoin = LineJoin.Round
+        };
+        using var redPen = new DrawingPen(DrawingColor.FromArgb(245, 230, 0, 35), 10)
+        {
+            StartCap = LineCap.Round,
+            EndCap = LineCap.Round,
+            LineJoin = LineJoin.Round
+        };
+
+        graphics.DrawLine(shadowPen, 31, 31, 97, 97);
+        graphics.DrawLine(shadowPen, 97, 31, 31, 97);
+        graphics.DrawLine(redPen, 31, 31, 97, 97);
+        graphics.DrawLine(redPen, 97, 31, 31, 97);
+    }
+
+    private static DrawingRectangle GetContainedRectangle(int sourceWidth, int sourceHeight, int maxWidth, int maxHeight)
+    {
+        var ratio = Math.Min(maxWidth / (double)sourceWidth, maxHeight / (double)sourceHeight);
+        var width = (int)Math.Round(sourceWidth * ratio);
+        var height = (int)Math.Round(sourceHeight * ratio);
+        return new DrawingRectangle((maxWidth - width) / 2, (maxHeight - height) / 2, width, height);
+    }
+
+    private static string? GetFailedPokemonImageUrl(ProcessedPokemonResult<T> result)
+    {
+        var species = result.ShowdownSet is { Species: > 0 }
+            ? result.ShowdownSet.Species
+            : ResolveSpeciesFromName(result.RequestedSpeciesName);
+        if (species <= 0)
+            return null;
+
+        var pk = new T
+        {
+            Species = (ushort)species,
+            Form = result.ShowdownSet?.Form ?? 0,
+            Gender = 2,
+            IsNicknamed = false,
+        };
+        pk.RefreshChecksum();
+        return TradeExtensions<T>.PokeImg(pk, false, false, TradeSettings.ImageSize.Size128x128);
+    }
+
+    private static ushort ResolveSpeciesFromName(string? requestedSpeciesName)
+    {
+        if (string.IsNullOrWhiteSpace(requestedSpeciesName))
+            return 0;
+
+        var requested = NormalizeSpeciesLookupText(requestedSpeciesName);
+        if (string.IsNullOrWhiteSpace(requested))
+            return 0;
+
+        var speciesNames = GameInfo.Strings.Species;
+        var bestSpecies = (ushort)0;
+        var bestDistance = int.MaxValue;
+        for (ushort i = 1; i < speciesNames.Count; i++)
+        {
+            var candidate = NormalizeSpeciesLookupText(speciesNames[i]);
+            if (string.IsNullOrWhiteSpace(candidate))
+                continue;
+
+            if (candidate == requested)
+                return i;
+
+            var distance = GetEditDistance(requested, candidate);
+            if (distance < bestDistance)
+            {
+                bestDistance = distance;
+                bestSpecies = i;
+            }
+        }
+
+        var maxDistance = requested.Length <= 6 ? 1 : 2;
+        return bestDistance <= maxDistance ? bestSpecies : (ushort)0;
+    }
+
+    private static string NormalizeSpeciesLookupText(string value)
+    {
+        var chars = value
+            .Trim()
+            .Where(char.IsLetterOrDigit)
+            .Select(char.ToUpperInvariant)
+            .ToArray();
+        return new string(chars);
+    }
+
+    private static int GetEditDistance(string source, string target)
+    {
+        Span<int> previous = stackalloc int[target.Length + 1];
+        Span<int> current = stackalloc int[target.Length + 1];
+        for (var j = 0; j <= target.Length; j++)
+            previous[j] = j;
+
+        for (var i = 1; i <= source.Length; i++)
+        {
+            current[0] = i;
+            for (var j = 1; j <= target.Length; j++)
+            {
+                var cost = source[i - 1] == target[j - 1] ? 0 : 1;
+                current[j] = Math.Min(
+                    Math.Min(current[j - 1] + 1, previous[j] + 1),
+                    previous[j - 1] + cost);
+            }
+            current.CopyTo(previous);
+        }
+
+        return previous[target.Length];
+    }
+
+    private static string GetTradeErrorText(string rawError, string? legalizationHint)
+    {
+        if (!string.IsNullOrWhiteSpace(legalizationHint))
+            return legalizationHint.Trim();
+
+        return rawError;
+    }
+
+    private static bool IsUnableParseSpeciesError(string rawError)
+    {
+        return rawError.Contains("nombre introducido no fue reconocido", StringComparison.OrdinalIgnoreCase) ||
+            rawError.Contains("not recognized as a valid Pokemon", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static string GetUnableParseSpeciesSolutions()
+    {
+        return AppLocalization.Language == AppLanguage.Spanish
+            ? "📝Soluciones:\n• Comprueba que el nombre del Pokémon esté escrito correctamente y en inglés.\n\n• Utiliza el nombre oficial del Pokémon en el juego."
+            : "📝Solutions:\n• Check that the Pokémon name is spelled correctly and in English.\n\n• Use the official Pokémon name from the game.";
     }
 
     private static string GetDisplaySpeciesName(string speciesName)
@@ -1229,6 +1402,14 @@ public static class Helpers<T> where T : PKM, new()
     }
 
     private static string TrimEmbedField(string value, int maxLength = 1024)
+    {
+        if (value.Length <= maxLength)
+            return value;
+
+        return value[..(maxLength - 3)] + "...";
+    }
+
+    private static string TrimEmbedDescription(string value, int maxLength = 4096)
     {
         if (value.Length <= maxLength)
             return value;

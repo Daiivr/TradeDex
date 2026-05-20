@@ -71,15 +71,13 @@ public static class BatchHelpers<T> where T : PKM, new()
                 ? AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies)
                 : error.SpeciesName;
 
-            var fieldValue = $"__**{AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}**__: {error.ErrorMessage}".Trim();
-            if (!string.IsNullOrWhiteSpace(error.LegalizationHint))
-            {
-                var hint = error.LegalizationHint.Trim();
-                if (hint.Length > 700)
-                    hint = hint[..700] + "...";
+            var errorText = string.IsNullOrWhiteSpace(error.LegalizationHint)
+                ? error.ErrorMessage
+                : error.LegalizationHint.Trim();
+            if (errorText.Length > 700)
+                errorText = errorText[..700] + "...";
 
-                fieldValue += $"\n__{AppLocalization.Get(LocalizationKeys.DiscordHintLabel)}__: {hint}";
-            }
+            var fieldValue = $"__**{AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}**__: {errorText}".Trim();
 
             if (!string.IsNullOrWhiteSpace(error.ShowdownSet))
             {
@@ -134,12 +132,8 @@ public static class BatchHelpers<T> where T : PKM, new()
         foreach (var error in errors)
         {
             sb.AppendLine($"**{AppLocalization.Format(LocalizationKeys.DiscordBatchTradeField, error.TradeNumber, error.SpeciesName)}**");
-            sb.AppendLine($"{AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}: {error.ErrorMessage}");
-
-            if (!string.IsNullOrEmpty(error.LegalizationHint))
-            {
-                sb.AppendLine($"💡 {AppLocalization.Get(LocalizationKeys.DiscordHintLabel)}: {error.LegalizationHint}");
-            }
+            var errorText = string.IsNullOrWhiteSpace(error.LegalizationHint) ? error.ErrorMessage : error.LegalizationHint;
+            sb.AppendLine($"{AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}: {errorText}");
 
             if (!string.IsNullOrEmpty(error.ShowdownSet))
             {

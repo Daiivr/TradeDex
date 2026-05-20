@@ -880,11 +880,11 @@ internal static class LocalizedPropertyGrid
     {
         var result = new Dictionary<string, string>(StringComparer.Ordinal)
         {
-            ["Bot Trade"] = "Trade del bot",
-            ["Bot Encounter"] = "Encuentro del bot",
-            ["Integration"] = "Integración",
-            ["Operation"] = "Operación",
-            ["Feature Toggle"] = "Funciones",
+            ["Bot Trade"] = "Bot Trade",
+            ["Bot Encounter"] = "Bot Encounter",
+            ["Integration"] = "Integration",
+            ["Operation"] = "Operation",
+            ["Feature Toggle"] = "Feature Toggle",
             ["Debug"] = "Depuración",
             ["Channels"] = "Canales",
             ["Roles"] = "Roles",

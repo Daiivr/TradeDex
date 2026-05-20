@@ -24,9 +24,9 @@ public static class Program
             WriteIndented = true
         });
         File.WriteAllText(ConfigPath, created);
-        LogUtil.LogInfo("SysBot", "Se creó un nuevo archivo de configuración porque no se encontró ninguno en la ruta del programa. Por favor configúralo y reinicia el programa.");
-        LogUtil.LogInfo("SysBot", "Se recomienda configurar este archivo usando el proyecto GUI si es posible, ya que te ayudará a asignar los valores correctamente.");
-        LogUtil.LogInfo("SysBot", "Presiona cualquier tecla para salir.");
+        LogUtil.LogInfo("SysBot", L("A new configuration file was created because none was found in the program path. Please configure it and restart the program."));
+        LogUtil.LogInfo("SysBot", L("It is recommended to configure this file using the GUI project if possible, as it will help you assign the values correctly."));
+        LogUtil.LogInfo("SysBot", L("Press any key to exit."));
         Console.ReadKey();
     }
 
@@ -34,9 +34,9 @@ public static class Program
     {
         _ = AppLocalization.Language;
 
-        LogUtil.LogInfo("SysBot", "Iniciando...");
+        LogUtil.LogInfo("SysBot", L("Starting..."));
         if (args.Length > 1)
-            LogUtil.LogInfo("SysBot", "Este programa no admite argumentos por línea de comandos.");
+            LogUtil.LogInfo("SysBot", L("This program does not support command line arguments."));
 
         if (!File.Exists(ConfigPath))
         {
@@ -55,10 +55,12 @@ public static class Program
         }
         catch (Exception)
         {
-            LogUtil.LogInfo("SysBot", "No se pudieron iniciar los bots con el archivo de configuración guardado. Copia tu configuración desde el proyecto WinForms o elimínala y vuelve a configurarla.");
+            LogUtil.LogInfo("SysBot", L("Could not start bots with the saved configuration file. Copy your configuration from the WinForms project or delete it and configure it again."));
             Console.ReadKey();
         }
     }
+
+    private static string L(string message) => AppLocalization.LocalizeRuntimeMessage(message);
 }
 
 public static class BotContainer
@@ -73,13 +75,13 @@ public static class BotContainer
         {
             bot.Initialize();
             if (!AddBot(env, bot, prog.Mode))
-                LogUtil.LogInfo("SysBot", $"No se pudo agregar el bot: {bot}");
+                LogUtil.LogInfo("SysBot", L($"Could not add bot: {bot}"));
         }
 
         LogUtil.Forwarders.Add(ConsoleForwarder.Instance);
         env.StartAll();
-        LogUtil.LogInfo("SysBot", $"Todos los bots iniciados (Cantidad: {prog.Bots.Length}).");
-        LogUtil.LogInfo("SysBot", "Presiona cualquier tecla para detener la ejecución y salir. ¡Puedes minimizar esta ventana si quieres!");
+        LogUtil.LogInfo("SysBot", L($"All bots started (Count: {prog.Bots.Length})."));
+        LogUtil.LogInfo("SysBot", L("Press any key to stop running and exit. You can minimize this window if you want!"));
         Console.ReadKey();
         env.StopAll();
     }
@@ -88,7 +90,7 @@ public static class BotContainer
     {
         if (!cfg.IsValid())
         {
-            LogUtil.LogInfo("SysBot", $"La configuración de {cfg} no es válida.");
+            LogUtil.LogInfo("SysBot", L($"The configuration for {cfg} is not valid."));
             return false;
         }
 
@@ -99,7 +101,7 @@ public static class BotContainer
         }
         catch
         {
-            LogUtil.LogInfo("SysBot", $"El modo actual ({mode}) no admite este tipo de bot ({cfg.CurrentRoutineType}).");
+            LogUtil.LogInfo("SysBot", L($"The current mode ({mode}) does not support this bot type ({cfg.CurrentRoutineType})."));
             return false;
         }
         try
@@ -112,7 +114,7 @@ public static class BotContainer
             return false;
         }
 
-        LogUtil.LogInfo("SysBot", $"Agregado: {cfg}: {cfg.InitialRoutine}");
+        LogUtil.LogInfo("SysBot", L($"Added: {cfg}: {cfg.InitialRoutine}"));
         return true;
     }
 
@@ -124,6 +126,8 @@ public static class BotContainer
         ProgramMode.SV => new PokeBotRunnerImpl<PK9>(new PokeTradeHub<PK9>(prog.Hub), new BotFactory9SV(), prog),
         ProgramMode.LGPE => new PokeBotRunnerImpl<PB7>(new PokeTradeHub<PB7>(prog.Hub), new BotFactory7LGPE(), prog),
         ProgramMode.PLZA => new PokeBotRunnerImpl<PA9>(new PokeTradeHub<PA9>(prog.Hub), new BotFactory9PLZA(), prog),
-        _ => throw new IndexOutOfRangeException("Modo no compatible."),
+        _ => throw new IndexOutOfRangeException(L("Unsupported mode.")),
     };
+
+    private static string L(string message) => AppLocalization.LocalizeRuntimeMessage(message);
 }

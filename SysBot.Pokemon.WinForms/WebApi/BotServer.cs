@@ -268,6 +268,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             "/" => (200, HtmlTemplate, "text/html"),
             "/BotControlPanel.css" => (200, LoadEmbeddedResource("BotControlPanel.css"), "text/css"),
             "/BotControlPanel.js" => (200, LoadEmbeddedResource("BotControlPanel.js"), "text/javascript"),
+            "/api/bot/localization" => (200, GetLocalizationInfo(), "application/json"),
             "/api/bot/instances" => (200, await GetInstancesAsync(), "application/json"),
             "/api/bot/queue/status" => (200, await Task.FromResult(GetQueueStatus()), "application/json"),
             var p when p.StartsWith("/api/bot/instances/") && p.EndsWith("/bots") =>
@@ -644,7 +645,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
 
     private static string GetStateMessage(RestartState state)
     {
-        return state switch
+        return L(state switch
         {
             RestartState.Idle => "No restart in progress",
             RestartState.Preparing => "Preparing restart sequence",
@@ -654,7 +655,16 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             RestartState.RestartingSlaves => "Restarting slave instances",
             RestartState.RestartingMaster => "Restarting master instance",
             _ => "Processing..."
-        };
+        });
+    }
+
+    private static string GetLocalizationInfo()
+    {
+        return JsonSerializer.Serialize(new
+        {
+            language = AppLocalization.Language.ToString(),
+            culture = AppLocalization.Culture.Name
+        }, JsonOptions);
     }
 
     private static async Task<string> UpdateRestartSchedule(HttpListenerRequest request)
@@ -859,15 +869,15 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
 
                 var response = new UpdateCheckResponse
                 {
-                    Version = "Latest",
-                    Changelog = "## Update Available\n\n" +
-                               "Unable to fetch changelog from GitHub repository.\n\n" +
-                               "**Update will proceed to the latest version from the repository.**\n\n" +
-                               "Possible reasons:\n" +
-                               "- GitHub API rate limit reached\n" +
-                               "- Network connectivity issues\n" +
-                               "- Repository access issues\n\n" +
-                               "The update process will download the latest version directly from the GitHub releases.",
+                    Version = L("Latest"),
+                    Changelog = $"## {L("Update Available")}\n\n" +
+                               $"{L("Unable to fetch changelog from GitHub repository.")}\n\n" +
+                               $"**{L("Update will proceed to the latest version from the repository.")}**\n\n" +
+                               $"{L("Possible reasons:")}\n" +
+                               $"- {L("GitHub API rate limit reached")}\n" +
+                               $"- {L("Network connectivity issues")}\n" +
+                               $"- {L("Repository access issues")}\n\n" +
+                               L("The update process will download the latest version directly from the GitHub releases."),
                     Available = true,  // Assume update is available even if we can't verify
                     Error = null
                 };
@@ -879,7 +889,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             {
                 Version = latestVersion,
                 Changelog = string.IsNullOrEmpty(changelog)
-                    ? "No changelog available for this version."
+                    ? L("No changelog available for this version.")
                     : changelog,
                 Available = updateAvailable
             };
@@ -892,11 +902,11 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
 
             var response = new UpdateCheckResponse
             {
-                Version = "Latest",
-                Changelog = "## Update Information Unavailable\n\n" +
-                           $"Error: {ex.Message}\n\n" +
-                           "**You can still proceed with the update.**\n\n" +
-                           "The update process will attempt to download and install the latest version from the GitHub repository.",
+                Version = L("Latest"),
+                Changelog = $"## {L("Update Information Unavailable")}\n\n" +
+                           $"{L("Error")}: {ex.Message}\n\n" +
+                           $"**{L("You can still proceed with the update.")}**\n\n" +
+                           L("The update process will attempt to download and install the latest version from the GitHub repository."),
                 Available = true,  // Allow update to proceed even on error
                 Error = null  // Don't expose error to frontend UI
             };
@@ -1816,7 +1826,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
                 {
                     id = session.SessionId,
                     phase = session.Phase.ToString(),
-                    message = session.Message,
+                    message = L(session.Message),
                     totalInstances = session.TotalInstances,
                     completedInstances = session.CompletedInstances,
                     failedInstances = session.FailedInstances,
@@ -1850,7 +1860,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
                         processId = i.ProcessId,
                         isMaster = i.IsMaster,
                         status = i.Status.ToString(),
-                        error = i.Error,
+                        error = string.IsNullOrWhiteSpace(i.Error) ? null : L(i.Error),
                         retryCount = i.RetryCount,
                         updateStartTime = i.UpdateStartTime?.ToString("o"),
                         updateEndTime = i.UpdateEndTime?.ToString("o"),

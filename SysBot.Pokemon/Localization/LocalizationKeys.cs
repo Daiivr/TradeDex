@@ -28,6 +28,7 @@ public static class LocalizationKeys
     public const string BotsNewTooltip = nameof(BotsNewTooltip);
     public const string BotsReloadTooltip = nameof(BotsReloadTooltip);
     public const string BotsUpdateAvailableTooltip = nameof(BotsUpdateAvailableTooltip);
+    public const string BotsNewRelease = nameof(BotsNewRelease);
     public const string BotsGameModePlaceholder = nameof(BotsGameModePlaceholder);
     public const string BotsModeSwitchErrorTitle = nameof(BotsModeSwitchErrorTitle);
     public const string BotsMainFormUnavailable = nameof(BotsMainFormUnavailable);

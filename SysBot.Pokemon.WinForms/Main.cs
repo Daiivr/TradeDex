@@ -1705,7 +1705,7 @@ namespace SysBot.Pokemon.WinForms
 
                 downloadFontsLink = new LinkLabel
                 {
-                    Text = "Download Fonts",
+                    Text = AppLocalization.Get(LocalizationKeys.DownloadFonts),
                     AutoSize = true,
                     LinkColor = Color.FromArgb(51, 255, 255),
                     VisitedLinkColor = Color.FromArgb(51, 255, 255),
@@ -1939,7 +1939,7 @@ namespace SysBot.Pokemon.WinForms
         private void InitializeDialog()
         {
             // Form settings
-            this.Text = "Download Fonts";
+            this.Text = L("Download Fonts");
             this.Size = new Size(500, 240);
             this.FormBorderStyle = FormBorderStyle.FixedDialog;
             this.StartPosition = FormStartPosition.CenterParent;
@@ -1950,7 +1950,7 @@ namespace SysBot.Pokemon.WinForms
             // Message label
             lblMessage = new Label
             {
-                Text = "Would you like to download the fonts used in this program in order to install them to display the text correctly?\n\nBe sure after you install the fonts that you reload the program.",
+                Text = L("Would you like to download the fonts used in this program in order to install them to display the text correctly?\n\nBe sure after you install the fonts that you reload the program."),
                 Location = new Point(20, 20),
                 Size = new Size(440, 80),
                 Font = new Font("Segoe UI", 9.75F),
@@ -1961,7 +1961,7 @@ namespace SysBot.Pokemon.WinForms
             // Checkbox
             chkDontShowAgain = new CheckBox
             {
-                Text = "Do not display a link to Download Fonts again",
+                Text = L("Do not display a link to Download Fonts again"),
                 Location = new Point(20, 110),
                 Size = new Size(350, 24),
                 Font = new Font("Segoe UI", 9F),
@@ -1972,7 +1972,7 @@ namespace SysBot.Pokemon.WinForms
             // Yes button
             btnYes = new Button
             {
-                Text = "Yes",
+                Text = L("Yes"),
                 Location = new Point(280, 145),
                 Size = new Size(90, 30),
                 Font = new Font("Segoe UI", 9F),
@@ -1987,7 +1987,7 @@ namespace SysBot.Pokemon.WinForms
             // No button
             btnNo = new Button
             {
-                Text = "No",
+                Text = L("No"),
                 Location = new Point(380, 145),
                 Size = new Size(90, 30),
                 Font = new Font("Segoe UI", 9F),
@@ -2009,5 +2009,7 @@ namespace SysBot.Pokemon.WinForms
             this.AcceptButton = btnYes;
             this.CancelButton = btnNo;
         }
+
+        private static string L(string message) => AppLocalization.LocalizeRuntimeMessage(message);
     }
 }

@@ -8,6 +8,299 @@
 'use strict';
 
 // ============================================================================
+// LOCALIZATION
+// ============================================================================
+
+const ES_TRANSLATIONS = {
+    'TradeDex Control Center': 'Centro de Control TradeDex',
+    'Pokemon Bot Control Panel - Manage and monitor your Pokemon automation bots': 'Panel de control de bots Pokemon - administra y monitorea tus bots de automatizacion Pokemon',
+    'Control Center': 'Centro de Control',
+    'Toggle theme': 'Cambiar tema',
+    'Toggle dark/light mode': 'Cambiar modo oscuro/claro',
+    'Switch to light mode': 'Cambiar a modo claro',
+    'Switch to dark mode': 'Cambiar a modo oscuro',
+    'Refresh data': 'Actualizar datos',
+    'Refresh': 'Actualizar',
+    'Auto-refresh active': 'Actualizacion automatica activa',
+    'Auto': 'Auto',
+    'Main controls': 'Controles principales',
+    'Dashboard Overview': 'Resumen del panel',
+    'Bot statistics': 'Estadisticas de bots',
+    'Total Instances': 'Instancias totales',
+    'Active Bots': 'Bots activos',
+    'Idle Bots': 'Bots en reposo',
+    'Online': 'En linea',
+    'Start all bots': 'Iniciar todos los bots',
+    'Start All': 'Iniciar todos',
+    'Stop all bots': 'Detener todos los bots',
+    'Stop All': 'Detener todos',
+    'Idle all bots': 'Poner todos en reposo',
+    'Idle All': 'Reposo todos',
+    'Resume all bots': 'Reanudar todos los bots',
+    'Resume All': 'Reanudar todos',
+    'Turn on all screens': 'Encender todas las pantallas',
+    'Screen On': 'Encender pantalla',
+    'Turn off all screens': 'Apagar todas las pantallas',
+    'Screen Off': 'Apagar pantalla',
+    'Update all bots': 'Actualizar todos los bots',
+    'Update All': 'Actualizar todos',
+    'Restart all bots': 'Reiniciar todos los bots',
+    'Restart All': 'Reiniciar todos',
+    'Scheduled Restart': 'Reinicio programado',
+    'Enable scheduled restart': 'Activar reinicio programado',
+    'Restart time': 'Hora de reinicio',
+    'Next restart:': 'Proximo reinicio:',
+    'Bot Instances': 'Instancias de bots',
+    'Bot instances list': 'Lista de instancias de bots',
+    'System Update': 'Actualizacion del sistema',
+    'Current Version': 'Version actual',
+    'Repository Version': 'Version del repositorio',
+    'Loading...': 'Cargando...',
+    'All instances will be updated to the latest version from the repository, regardless of their current version.': 'Todas las instancias se actualizaran a la version mas reciente del repositorio, sin importar su version actual.',
+    "What's New": 'Novedades',
+    'Loading changelog...': 'Cargando cambios...',
+    'Cancel': 'Cancelar',
+    'Update Now': 'Actualizar ahora',
+    'Update in Progress': 'Actualizacion en progreso',
+    'Initializing...': 'Inicializando...',
+    'Starting update process': 'Iniciando proceso de actualizacion',
+    'bots idled': 'bots en reposo',
+    'Timeout in': 'Tiempo limite en',
+    'Update will be forced automatically after timeout': 'La actualizacion se forzara automaticamente despues del tiempo limite',
+    'Title': 'Titulo',
+    'Message': 'Mensaje',
+    'Remote Control': 'Control remoto',
+    'Select Bot/Switch:': 'Selecciona bot/Switch:',
+    'Loading bots...': 'Cargando bots...',
+    'Left Stick - Click and drag to move': 'Stick izquierdo - haz clic y arrastra para mover',
+    'Right Stick - Click and drag to move': 'Stick derecho - haz clic y arrastra para mover',
+    'Macro Commands': 'Comandos macro',
+    'Enter macro commands (e.g., A B X Y d100 UP DOWN)': 'Ingresa comandos macro (ej., A B X Y d100 UP DOWN)',
+    'Execute macro commands': 'Ejecutar comandos macro',
+    'Execute Macro': 'Ejecutar macro',
+    'Confirm': 'Confirmar',
+    'Back x3': 'Atras x3',
+    'Home': 'Home',
+    'Spam A': 'Spam A',
+    'Save Game': 'Guardar partida',
+    'Up x5': 'Arriba x5',
+    'Dialog Skip': 'Saltar dialogo',
+    'Trade Accept': 'Aceptar trade',
+    'Live Mode (instant button press)': 'Modo en vivo (pulsacion instantanea)',
+    'Ready': 'Listo',
+    'Actions': 'Acciones',
+    'Start': 'Iniciar',
+    'Stop': 'Detener',
+    'Idle': 'Reposo',
+    'Resume': 'Reanudar',
+    'Restart': 'Reiniciar',
+    'Reboot': 'Reiniciar consola',
+    'Update': 'Actualizar',
+    'Connected': 'Conectado',
+    'Disconnected': 'Desconectado',
+    'Stopped': 'Detenido',
+    'Running': 'Ejecutando',
+    'All Running': 'Todos ejecutando',
+    'All Idle': 'Todos en reposo',
+    'All Stopped': 'Todos detenidos',
+    'Version': 'Version',
+    'Mode': 'Modo',
+    'Process ID': 'ID de proceso',
+    'Connection': 'Conexion',
+    'BOTS': 'BOTS',
+    'Bot Count:': 'Cantidad de bots:',
+    'Status Unknown': 'Estado desconocido',
+    'No bot instances found. Make sure at least one instance of TradeDex is running.': 'No se encontraron instancias de bots. Asegurate de que al menos una instancia de TradeDex este ejecutandose.',
+    'Error': 'Error',
+    'Success': 'Correcto',
+    'Info': 'Info',
+    'Warning': 'Aviso',
+    'Unknown': 'Desconocido',
+    'Latest': 'Mas reciente',
+    'Checking...': 'Revisando...',
+    'Checking for updates...': 'Buscando actualizaciones...',
+    'No changelog available': 'No hay cambios disponibles',
+    'Network error': 'Error de red',
+    'Update Information Unavailable': 'Informacion de actualizacion no disponible',
+    'Unable to connect to update server': 'No se pudo conectar con el servidor de actualizaciones',
+    'You can still proceed with the update. The system will attempt to download and install the latest version from the GitHub repository.': 'Aun puedes continuar con la actualizacion. El sistema intentara descargar e instalar la version mas reciente desde el repositorio de GitHub.',
+    'You can still proceed with the update. The system will attempt to download the latest version from the repository.': 'Aun puedes continuar con la actualizacion. El sistema intentara descargar la version mas reciente desde el repositorio.',
+    'Updating All Instances': 'Actualizando todas las instancias',
+    'Updating Instance': 'Actualizando instancia',
+    'Started update for all instances (master update)': 'Actualizacion iniciada para todas las instancias (actualizacion maestra)',
+    'Started update for instance on port': 'Actualizacion iniciada para la instancia en el puerto',
+    'Failed to start update': 'No se pudo iniciar la actualizacion',
+    'Failed to start update process': 'No se pudo iniciar el proceso de actualizacion',
+    'Update completed successfully': 'Actualizacion completada correctamente',
+    'Connection Lost': 'Conexion perdida',
+    'Master instance may be updating...': 'La instancia maestra podria estar actualizandose...',
+    'Updating:': 'Actualizando:',
+    'Checking for updates': 'Buscando actualizaciones',
+    'Idling bots': 'Poniendo bots en reposo',
+    'Updating instances': 'Actualizando instancias',
+    'Verifying updates': 'Verificando actualizaciones',
+    'Update complete!': 'Actualizacion completada!',
+    'Update error': 'Error de actualizacion',
+    'Processing...': 'Procesando...',
+    'Update Progress:': 'Progreso de actualizacion:',
+    'Updated': 'Actualizado',
+    'Updating...': 'Actualizando...',
+    'Failed': 'Fallido',
+    'Pending': 'Pendiente',
+    'Master': 'Maestra',
+    'Update Complete!': 'Actualizacion completada!',
+    'Update Failed': 'Actualizacion fallida',
+    'Update completed successfully! Refreshing...': 'Actualizacion completada correctamente! Actualizando...',
+    'Update completed with errors': 'La actualizacion termino con errores',
+    'Restart in Progress': 'Reinicio en progreso',
+    'No master instance found. Cannot initiate restart.': 'No se encontro una instancia maestra. No se puede iniciar el reinicio.',
+    'Stopping bots': 'Deteniendo bots',
+    'Verifying bot status': 'Verificando estado de bots',
+    'Stopping services': 'Deteniendo servicios',
+    'Restarting slaves': 'Reiniciando instancias secundarias',
+    'Restarting master': 'Reiniciando instancia maestra',
+    'Finalizing': 'Finalizando',
+    'Initializing restart sequence': 'Inicializando secuencia de reinicio',
+    'Failed to initiate restart': 'No se pudo iniciar el reinicio',
+    'Restart failed': 'Reinicio fallido',
+    'Failed to restart instances': 'No se pudieron reiniciar las instancias',
+    'Restart timeout - process took too long': 'Tiempo de reinicio agotado; el proceso tardo demasiado',
+    'API unavailable': 'API no disponible',
+    'Restart complete': 'Reinicio completado',
+    'All instances have been restarted successfully': 'Todas las instancias se reiniciaron correctamente',
+    'All instances restarted successfully': 'Todas las instancias se reiniciaron correctamente',
+    'Timeout': 'Tiempo agotado',
+    'Restarting...': 'Reiniciando...',
+    'Waiting for services to come back online': 'Esperando a que los servicios vuelvan a estar en linea',
+    'Ready to restart': 'Listo para reiniciar',
+    'Preparing restart sequence': 'Preparando secuencia de reinicio',
+    'Stopping all bots': 'Deteniendo todos los bots',
+    'Waiting for bots to stop': 'Esperando a que los bots se detengan',
+    'Finalizing restart': 'Finalizando reinicio',
+    'Restart completed': 'Reinicio completado',
+    'Scheduled restart disabled': 'Reinicio programado desactivado',
+    'Failed to update restart schedule': 'No se pudo actualizar el reinicio programado',
+    'Schedule is disabled, not updating time': 'El horario esta desactivado; no se actualiza la hora',
+    'Failed to update restart time': 'No se pudo actualizar la hora de reinicio',
+    'System will restart in': 'El sistema se reiniciara en',
+    'seconds': 'segundos',
+    'No bots available': 'No hay bots disponibles',
+    'Failed to load bot list': 'No se pudo cargar la lista de bots',
+    'Selected bot is not running': 'El bot seleccionado no esta ejecutandose',
+    'Failed to send button': 'No se pudo enviar el boton',
+    'Connection error': 'Error de conexion',
+    'Failed to execute macro': 'No se pudo ejecutar la macro',
+    'Open actions menu': 'Abrir menu de acciones',
+    'Update instance': 'Actualizar instancia'
+};
+
+class I18n {
+    constructor() {
+        this.language = 'English';
+    }
+
+    async init() {
+        try {
+            const response = await fetch('/api/bot/localization', { cache: 'no-cache' });
+            if (response.ok) {
+                const data = await response.json();
+                this.language = data.language || 'English';
+            }
+        } catch {
+            this.language = document.documentElement.lang?.startsWith('es') ? 'Spanish' : 'English';
+        }
+
+        document.documentElement.lang = this.isSpanish() ? 'es' : 'en';
+        this.localizeStatic();
+    }
+
+    isSpanish() {
+        return this.language === 'Spanish' || this.language === 'SpanishLatinAmerica' || this.language === 'es';
+    }
+
+    t(text) {
+        if (!this.isSpanish() || text === null || text === undefined) {
+            return text;
+        }
+
+        const value = String(text);
+        if (ES_TRANSLATIONS[value]) {
+            return ES_TRANSLATIONS[value];
+        }
+
+        const decorated = value.match(/^([^A-Za-z0-9]*)([A-Za-z0-9].*)$/u);
+        if (decorated && ES_TRANSLATIONS[decorated[2]]) {
+            return `${decorated[1]}${ES_TRANSLATIONS[decorated[2]]}`;
+        }
+
+        return this.translatePatterns(value);
+    }
+
+    translatePatterns(value) {
+        return value
+            .replace(/^Port (\d+)$/u, 'Puerto $1')
+            .replace(/^Bot Count: (\d+)$/u, 'Cantidad de bots: $1')
+            .replace(/^(\d+)\/(\d+) Running$/u, '$1/$2 ejecutando')
+            .replace(/^(\d+)\/(\d+) Idle$/u, '$1/$2 en reposo')
+            .replace(/^Update instance on port (\d+) \((.+)\)\?\n\nThis will restart the instance with the latest version\.$/u,
+                'Actualizar instancia en el puerto $1 ($2)?\n\nEsto reiniciara la instancia con la version mas reciente.')
+            .replace(/^Update Master instance on port (\d+)\?\n\nThis will update ALL instances including the master\.\n\nAll instances will be restarted with the latest version\.$/u,
+                'Actualizar instancia maestra en el puerto $1?\n\nEsto actualizara TODAS las instancias, incluida la maestra.\n\nTodas las instancias se reiniciaran con la version mas reciente.')
+            .replace(/^Instance on port (\d+) not found$/u, 'No se encontro la instancia en el puerto $1')
+            .replace(/^Started update for instance on port (\d+)$/u, 'Actualizacion iniciada para la instancia en el puerto $1')
+            .replace(/^Failed to start update: (.+)$/u, 'No se pudo iniciar la actualizacion: $1')
+            .replace(/^Updating Instance (\d+)$/u, 'Actualizando instancia $1')
+            .replace(/^Successfully updated (.+) instance\(s\)$/u, 'Instancias actualizadas correctamente: $1')
+            .replace(/^Update completed with (.+) error\(s\)$/u, 'La actualizacion termino con $1 error(es)')
+            .replace(/^Instance (\d+)$/u, 'Instancia $1')
+            .replace(/^Scheduled restart enabled for (.+)$/u, 'Reinicio programado activado para $1')
+            .replace(/^Restart time changed to (.+)$/u, 'Hora de reinicio cambiada a $1')
+            .replace(/^System will restart in (\d+) seconds$/u, 'El sistema se reiniciara en $1 segundos')
+            .replace(/^Macro executed: (\d+) commands$/u, 'Macro ejecutada: $1 comandos');
+    }
+
+    localizeStatic(root = document) {
+        if (!this.isSpanish()) {
+            return;
+        }
+
+        const walker = document.createTreeWalker(root.body || root, NodeFilter.SHOW_TEXT);
+        const textNodes = [];
+        while (walker.nextNode()) {
+            textNodes.push(walker.currentNode);
+        }
+
+        for (const node of textNodes) {
+            const original = node.nodeValue;
+            const trimmed = original.trim();
+            if (!trimmed) continue;
+            const translated = this.t(trimmed);
+            if (translated !== trimmed) {
+                node.nodeValue = original.replace(trimmed, translated);
+            }
+        }
+
+        const attributes = ['title', 'aria-label', 'placeholder'];
+        for (const attr of attributes) {
+            root.querySelectorAll?.(`[${attr}]`).forEach(element => {
+                const value = element.getAttribute(attr);
+                const translated = this.t(value);
+                if (translated !== value) {
+                    element.setAttribute(attr, translated);
+                }
+            });
+        }
+
+        if (document.title) {
+            document.title = this.t(document.title);
+        }
+    }
+}
+
+window.i18n = new I18n();
+const t = (text) => window.i18n?.t(text) ?? text;
+
+// ============================================================================
 // THEME MANAGEMENT
 // ============================================================================
 
@@ -102,8 +395,8 @@ class ThemeManager {
             const button = document.createElement('button');
             button.className = 'theme-toggle-btn floating-theme-toggle';
             button.innerHTML = this.currentTheme === 'dark' ? '☀️' : '🌙';
-            button.title = 'Toggle theme';
-            button.setAttribute('aria-label', 'Toggle theme');
+            button.title = t('Toggle theme');
+            button.setAttribute('aria-label', t('Toggle theme'));
             button.addEventListener('click', () => this.toggleTheme());
             document.body.appendChild(button);
         }
@@ -126,7 +419,7 @@ class ThemeManager {
         const headerButton = document.getElementById('theme-toggle');
         if (headerButton) {
             headerButton.setAttribute('aria-label', 
-                `Switch to ${this.currentTheme === 'dark' ? 'light' : 'dark'} mode`);
+                t(`Switch to ${this.currentTheme === 'dark' ? 'light' : 'dark'} mode`));
         }
         
         // Update any floating/legacy buttons
@@ -310,7 +603,7 @@ class StatusManager {
      */
     getInstanceStatus(instance) {
         if (!instance.botStatuses || instance.botStatuses.length === 0) {
-            return { status: 'stopped', text: 'Stopped' };
+            return { status: 'stopped', text: t('Stopped') };
         }
 
         const statuses = instance.botStatuses.map(b => this.getStatusClass(b.status));
@@ -323,18 +616,18 @@ class StatusManager {
         const total = instance.botStatuses.length;
 
         if (counts.running === total) {
-            return { status: 'running', text: 'All Running' };
+            return { status: 'running', text: t('All Running') };
         } else if (counts.idle === total) {
-            return { status: 'idle', text: 'All Idle' };
+            return { status: 'idle', text: t('All Idle') };
         } else if (counts.stopped === total) {
-            return { status: 'stopped', text: 'All Stopped' };
+            return { status: 'stopped', text: t('All Stopped') };
         } else if (counts.running > 0) {
-            return { status: 'mixed', text: `${counts.running}/${total} Running` };
+            return { status: 'mixed', text: t(`${counts.running}/${total} Running`) };
         } else if (counts.idle > 0) {
-            return { status: 'mixed', text: `${counts.idle}/${total} Idle` };
+            return { status: 'mixed', text: t(`${counts.idle}/${total} Idle`) };
         }
 
-        return { status: 'stopped', text: 'Stopped' };
+        return { status: 'stopped', text: t('Stopped') };
     }
 }
 
@@ -380,8 +673,8 @@ class ToastManager {
 
         const config = this.config[type] || this.config.info;
         toast.querySelector('.toast-icon').textContent = config.icon;
-        toast.querySelector('.toast-title').textContent = title;
-        toast.querySelector('.toast-message').textContent = message;
+        toast.querySelector('.toast-title').textContent = t(title);
+        toast.querySelector('.toast-message').textContent = t(message);
         toast.className = `toast ${config.class}`;
 
         document.body.appendChild(toast);
@@ -580,8 +873,8 @@ class InstanceRenderer {
         const isOnline = instance.isOnline || false;
         const statusClass = isOnline ? 'online' : 'offline';
         const statusIndicator = isOnline ?
-            '<span class="online-indicator"></span>Connected' :
-            '<span class="offline-indicator"></span>Disconnected';
+            `<span class="online-indicator"></span>${t('Connected')}` :
+            `<span class="offline-indicator"></span>${t('Disconnected')}`;
 
         const instanceStatus = this.statusManager.getInstanceStatus(instance);
         const animationClass = isMobile ? '' : 'animate-in';
@@ -597,7 +890,7 @@ class InstanceRenderer {
                             ${instanceStatus.text}
                         </span>
                     </h3>
-                    <span class="instance-badge">Port ${instance.port}</span>
+                    <span class="instance-badge">${t(`Port ${instance.port}`)}</span>
                 </div>
                 <div class="instance-body">
                     ${this.renderInstanceInfo(instance, statusIndicator)}
@@ -606,15 +899,15 @@ class InstanceRenderer {
                         <button class="action-menu-button" 
                                 data-port="${instance.port}" 
                                 ${!isOnline ? 'disabled' : ''}
-                                aria-label="Open actions menu">
-                            ⚡ Actions
+                                aria-label="${t('Open actions menu')}">
+                            ⚡ ${t('Actions')}
                         </button>
                         <button class="update-button" 
                                 data-port="${instance.port}" 
                                 ${!isOnline ? 'disabled' : ''}
-                                aria-label="Update instance"
+                                aria-label="${t('Update instance')}"
                                 onclick="window.botControlPanel.updateManager.updateInstance(${instance.port})">
-                            🔄 Update
+                            🔄 ${t('Update')}
                         </button>
                     </div>
                 </div>
@@ -632,19 +925,19 @@ class InstanceRenderer {
         return `
             <div class="instance-info">
                 <div class="info-item">
-                    <span class="info-label">Version</span>
+                    <span class="info-label">${t('Version')}</span>
                     <span class="info-value">${this.escapeHtml(instance.version)}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Mode</span>
+                    <span class="info-label">${t('Mode')}</span>
                     <span class="info-value">${this.escapeHtml(instance.mode)}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Process ID</span>
+                    <span class="info-label">${t('Process ID')}</span>
                     <span class="info-value">${instance.processId}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">Connection</span>
+                    <span class="info-label">${t('Connection')}</span>
                     <span class="info-value">${statusIndicator}</span>
                 </div>
             </div>
@@ -661,7 +954,7 @@ class InstanceRenderer {
             return `
                 <div class="bot-status">
                     <div class="info-label" style="margin-bottom: 0.5rem;">
-                        BOTS (${instance.botStatuses.length})
+                        ${t('BOTS')} (${instance.botStatuses.length})
                     </div>
                     ${instance.botStatuses.map((bot, index) => `
                         <div class="bot-status-item">
@@ -679,10 +972,10 @@ class InstanceRenderer {
         } else if (instance.botCount > 0) {
             return `
                 <div class="bot-status">
-                    <div class="info-label">BOTS</div>
+                    <div class="info-label">${t('BOTS')}</div>
                     <div class="bot-status-item">
-                        <span class="bot-name">Bot Count: ${instance.botCount}</span>
-                        <span class="bot-state">Status Unknown</span>
+                        <span class="bot-name">${t(`Bot Count: ${instance.botCount}`)}</span>
+                        <span class="bot-state">${t('Status Unknown')}</span>
                     </div>
                 </div>
             `;
@@ -704,8 +997,8 @@ class InstanceRenderer {
         const connectionValue = card.querySelector('.info-item:nth-child(4) .info-value');
         if (connectionValue) {
             connectionValue.innerHTML = isOnline ?
-                '<span class="online-indicator"></span>Connected' :
-                '<span class="offline-indicator"></span>Disconnected';
+                `<span class="online-indicator"></span>${t('Connected')}` :
+                `<span class="offline-indicator"></span>${t('Disconnected')}`;
         }
 
         // Update instance status badge
@@ -753,7 +1046,7 @@ class InstanceRenderer {
     renderEmptyState() {
         return `
             <div class="error-message">
-                ⚠️ No bot instances found. Make sure at least one instance of TradeDex is running.
+                ⚠️ ${t('No bot instances found. Make sure at least one instance of TradeDex is running.')}
             </div>
         `;
     }
@@ -1554,7 +1847,7 @@ class UpdateManager {
                 ? `Update Master instance on port ${port}?\n\nThis will update ALL instances including the master.\n\nAll instances will be restarted with the latest version.`
                 : `Update instance on port ${port} (${instance.name || 'Unknown'})?\n\nThis will restart the instance with the latest version.`;
 
-            const confirmed = confirm(confirmMessage);
+            const confirmed = confirm(t(confirmMessage));
             if (!confirmed) return;
 
             // Start single instance update
@@ -1567,7 +1860,7 @@ class UpdateManager {
 
                     // Show progress modal
                     this.showModal('progress');
-                    document.getElementById('progress-modal-title').textContent = 'Updating All Instances';
+                    document.getElementById('progress-modal-title').textContent = t('Updating All Instances');
 
                     // Initialize update state for update all
                     const updateState = this.app.state.get('updateState');
@@ -1580,7 +1873,7 @@ class UpdateManager {
 
                     // Show progress modal
                     this.showModal('progress');
-                    document.getElementById('progress-modal-title').textContent = `Updating Instance ${port}`;
+                    document.getElementById('progress-modal-title').textContent = t(`Updating Instance ${port}`);
 
                     // Initialize update state
                     const updateState = this.app.state.get('updateState');
@@ -1612,28 +1905,28 @@ class UpdateManager {
             const currentVersion = instancesData.instances?.[0]?.version || 'Unknown';
 
             document.getElementById('current-version').textContent = currentVersion;
-            document.getElementById('new-version').textContent = 'Checking...';
+            document.getElementById('new-version').textContent = t('Checking...');
             document.getElementById('changelog-content').innerHTML = '<div class="spinner"></div>';
 
             const checkResponse = await fetch(this.app.api.endpoints.updateCheck);
-            let updateInfo = { version: 'Latest', changelog: 'Checking for updates...', available: true };
+            let updateInfo = { version: 'Latest', changelog: t('Checking for updates...'), available: true };
 
             if (checkResponse.ok) {
                 updateInfo = await checkResponse.json();
             } else {
                 const statusText = checkResponse.statusText || 'Network error';
-                updateInfo.changelog = `⚠️ Unable to connect to update server (${statusText})\n\nYou can still proceed with the update. The system will attempt to download the latest version from the repository.`;
+                updateInfo.changelog = `⚠️ ${t('Unable to connect to update server')} (${t(statusText)})\n\n${t('You can still proceed with the update. The system will attempt to download the latest version from the repository.')}`;
                 console.warn('Update check failed:', checkResponse.status, statusText);
             }
 
             // Update version display
-            document.getElementById('new-version').textContent = updateInfo.version || 'Latest';
+            document.getElementById('new-version').textContent = updateInfo.version || t('Latest');
 
             // Format and display changelog
             const changelogElement = document.getElementById('changelog-content');
             if (changelogElement) {
                 // Convert basic markdown-style formatting to HTML
-                let formattedChangelog = (updateInfo.changelog || 'No changelog available')
+                let formattedChangelog = (updateInfo.changelog || t('No changelog available'))
                     .replace(/\n/g, '<br>')
                     .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
                     .replace(/^##\s+(.+)$/gm, '<h4 style="margin-top: 1rem; margin-bottom: 0.5rem; color: var(--primary-color);">$1</h4>')
@@ -1644,14 +1937,14 @@ class UpdateManager {
 
         } catch (error) {
             console.error('Error checking updates:', error);
-            document.getElementById('new-version').textContent = 'Latest';
+            document.getElementById('new-version').textContent = t('Latest');
             const changelogElement = document.getElementById('changelog-content');
             if (changelogElement) {
                 changelogElement.innerHTML = `
                     <div style="color: var(--warning-yellow);">
-                        ⚠️ <strong>Update Information Unavailable</strong><br><br>
-                        Error: ${this.escapeHtml(error.message)}<br><br>
-                        You can still proceed with the update. The system will attempt to download and install the latest version from the GitHub repository.
+                        ⚠️ <strong>${t('Update Information Unavailable')}</strong><br><br>
+                        ${t('Error')}: ${this.escapeHtml(error.message)}<br><br>
+                        ${t('You can still proceed with the update. The system will attempt to download and install the latest version from the GitHub repository.')}
                     </div>
                 `;
             }
@@ -1685,7 +1978,7 @@ class UpdateManager {
             const response = await this.app.api.post(this.app.api.endpoints.updateAll, { force: true });
 
             if (!response.ok && !response.sessionId) {
-                throw new Error('Failed to start update');
+                throw new Error(t('Failed to start update'));
             }
 
             updateState.id = response.sessionId;
@@ -1749,7 +2042,7 @@ class UpdateManager {
                     success: true,
                     successCount: instancesResponse.instances?.length || 0,
                     failureCount: 0,
-                    message: 'Update completed successfully'
+                    message: t('Update completed successfully')
                 });
                 return;
             }
@@ -1788,9 +2081,9 @@ class UpdateManager {
         if (progressDetails) {
             let details = status.message || '';
             if (status.currentUpdatingInstance) {
-                details = `Updating: ${status.currentUpdatingInstance} - ${details}`;
+                details = `${t('Updating:')} ${status.currentUpdatingInstance} - ${t(details)}`;
             }
-            progressDetails.textContent = details;
+            progressDetails.textContent = t(details);
         }
         
         // Update step icon based on phase
@@ -1843,7 +2136,7 @@ class UpdateManager {
             'Complete': 'Update complete!',
             'Failed': 'Update error'
         };
-        return phaseMap[phase] || 'Processing...';
+        return t(phaseMap[phase] || 'Processing...');
     }
 
     /**
@@ -1873,7 +2166,7 @@ class UpdateManager {
                 const logHtml = progress.instances.map(inst => {
                     const statusClass = inst.allIdle ? 'success' : 'warning';
                     const statusIcon = inst.allIdle ? '✅' : '⏳';
-                    const idleInfo = `${inst.idleBots}/${inst.totalBots} idle`;
+                    const idleInfo = `${inst.idleBots}/${inst.totalBots} ${t('Idle').toLowerCase()}`;
                     
                     let html = `<div class="idle-instance ${statusClass}">`;
                     html += `<span class="instance-name">${statusIcon} ${inst.name}:</span>`;
@@ -1917,25 +2210,25 @@ class UpdateManager {
                     case 'Completed':
                         statusClass = 'completed';
                         statusIcon = '✅';
-                        statusText = 'Updated';
+                        statusText = t('Updated');
                         break;
                     case 'Updating':
                         statusClass = 'updating';
                         statusIcon = '🔄';
-                        statusText = 'Updating...';
+                        statusText = t('Updating...');
                         break;
                     case 'Failed':
                         statusClass = 'failed';
                         statusIcon = '❌';
-                        statusText = inst.error || 'Failed';
+                        statusText = t(inst.error || 'Failed');
                         break;
                     default:
                         statusClass = 'pending';
                         statusIcon = '⏳';
-                        statusText = 'Pending';
+                        statusText = t('Pending');
                 }
                 
-                const instanceName = inst.isMaster ? 'Master' : `Instance ${inst.tcpPort}`;
+                const instanceName = inst.isMaster ? t('Master') : t(`Instance ${inst.tcpPort}`);
                 const isCurrent = status.currentUpdatingInstance === instanceName;
                 
                 return `<div class="timeline-item ${statusClass} ${isCurrent ? 'current' : ''}">
@@ -1945,7 +2238,7 @@ class UpdateManager {
                 </div>`;
             }).join('');
             
-            timeline.innerHTML = `<div class="timeline-header">Update Progress:</div>${timelineHtml}`;
+            timeline.innerHTML = `<div class="timeline-header">${t('Update Progress:')}</div>${timelineHtml}`;
             timeline.style.display = 'block';
         } else if (status.phase !== 'Idling') {
             timeline.style.display = 'none';
@@ -1973,15 +2266,15 @@ class UpdateManager {
         
         if (status.success) {
             // Update UI to show success
-            if (progressStatus) progressStatus.textContent = '✅ Update Complete!';
-            if (progressDetails) progressDetails.textContent = `Successfully updated ${status.successCount || 'all'} instance(s)`;
+            if (progressStatus) progressStatus.textContent = `✅ ${t('Update Complete!')}`;
+            if (progressDetails) progressDetails.textContent = t(`Successfully updated ${status.successCount || 'all'} instance(s)`);
             if (progressBar) {
                 progressBar.style.width = '100%';
                 progressBar.style.background = 'var(--status-online)';
                 progressBar.classList.remove('indeterminate');
             }
             
-            this.app.toastManager.success(`Update completed successfully! Refreshing...`);
+            this.app.toastManager.success('Update completed successfully! Refreshing...');
             
             // Reload page after showing success
             setTimeout(() => {
@@ -1989,8 +2282,8 @@ class UpdateManager {
             }, 2000);
         } else {
             // Update UI to show failure
-            if (progressStatus) progressStatus.textContent = '❌ Update Failed';
-            if (progressDetails) progressDetails.textContent = `Update completed with ${status.failureCount || 'some'} error(s)`;
+            if (progressStatus) progressStatus.textContent = `❌ ${t('Update Failed')}`;
+            if (progressDetails) progressDetails.textContent = t(`Update completed with ${status.failureCount || 'some'} error(s)`);
             if (progressBar) {
                 progressBar.style.background = 'var(--danger-red)';
                 progressBar.classList.remove('indeterminate');
@@ -2078,7 +2371,7 @@ class RestartManager {
         }
 
         this.showModal('progress');
-        document.getElementById('progress-modal-title').textContent = 'Restart in Progress';
+        document.getElementById('progress-modal-title').textContent = t('Restart in Progress');
 
         // Track restart phases
         this.restartPhases = [
@@ -2100,7 +2393,7 @@ class RestartManager {
                 // Monitor the restart process
                 await this.monitorRestartProgress(masterInstance, slaveInstances);
             } else {
-                throw new Error(result.error || result.message || 'Failed to initiate restart');
+                throw new Error(t(result.error || result.message || 'Failed to initiate restart'));
             }
         } catch (error) {
             console.error('Error restarting instances:', error);
@@ -2125,7 +2418,7 @@ class RestartManager {
             try {
                 const elapsed = Date.now() - startTime;
                 if (elapsed > maxWaitTime) {
-                    throw new Error('Restart timeout - process took too long');
+                    throw new Error(t('Restart timeout - process took too long'));
                 }
 
                 // Try to get restart status
@@ -2350,7 +2643,7 @@ class RestartManager {
             next.setDate(next.getDate() + 1);
         }
 
-        const formatter = new Intl.DateTimeFormat('en-US', {
+        const formatter = new Intl.DateTimeFormat(window.i18n?.isSpanish() ? 'es' : 'en-US', {
             weekday: 'short',
             month: 'short',
             day: 'numeric',
@@ -2437,8 +2730,8 @@ class RestartManager {
      * Update progress display
      */
     updateProgress(status, details, percentage) {
-        document.getElementById('progress-status').textContent = status;
-        document.getElementById('progress-details').textContent = details;
+        document.getElementById('progress-status').textContent = t(status);
+        document.getElementById('progress-details').textContent = t(details);
 
         const progressBar = document.getElementById('progress-bar');
         if (percentage >= 0) {
@@ -2818,7 +3111,7 @@ class RemoteControl {
         selector.innerHTML = '';
         
         if (!bots || bots.length === 0) {
-            selector.innerHTML = '<option value="">No bots available</option>';
+            selector.innerHTML = `<option value="">${t('No bots available')}</option>`;
             return;
         }
         
@@ -2850,7 +3143,7 @@ class RemoteControl {
             const name = bot.Name || bot.name || 'Bot';
             const status = bot.Status || bot.status || 'Unknown';
             
-            connectionInfo.textContent = `${name} - ${status}`;
+            connectionInfo.textContent = `${name} - ${t(status)}`;
             connectionInfo.className = `connection-info status-${isRunning ? 'success' : 'warning'}`;
         }
     }
@@ -2961,7 +3254,9 @@ class RemoteControl {
 // ============================================================================
 
 // Initialize application when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
+    await window.i18n.init();
+
     // Hide all modals initially
     const modals = document.querySelectorAll('.modal');
     modals.forEach(modal => {

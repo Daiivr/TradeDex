@@ -20,6 +20,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.BotsNewTooltip] = "Create a new bot slot.";
                 target[LocalizationKeys.BotsReloadTooltip] = "Reload the application cleanly.";
                 target[LocalizationKeys.BotsUpdateAvailableTooltip] = "Click to view update details and download the latest version.";
+                target[LocalizationKeys.BotsNewRelease] = "NEW RELEASE!";
                 target[LocalizationKeys.BotsGameModePlaceholder] = "Game";
                 target[LocalizationKeys.BotsModeSwitchErrorTitle] = "Mode Switch Error";
                 target[LocalizationKeys.BotsMainFormUnavailable] = "Main form instance not available. Please restart the program.";
@@ -43,6 +44,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.BotsNewTooltip] = "Crea un nuevo espacio de bot.";
                 target[LocalizationKeys.BotsReloadTooltip] = "Recarga la aplicacion limpiamente.";
                 target[LocalizationKeys.BotsUpdateAvailableTooltip] = "Haz clic para ver detalles de la actualizacion y descargar la ultima version.";
+                target[LocalizationKeys.BotsNewRelease] = "NUEVA VERSION!";
                 target[LocalizationKeys.BotsGameModePlaceholder] = "Juego";
                 target[LocalizationKeys.BotsModeSwitchErrorTitle] = "Error al cambiar modo";
                 target[LocalizationKeys.BotsMainFormUnavailable] = "La ventana principal no esta disponible. Reinicia el programa.";

@@ -54,8 +54,9 @@ namespace SysBot.Pokemon.WinForms
 #pragma warning disable CS0169 // Field is never used
         private PictureBox? _pictureBox1;
 #pragma warning restore CS0169
-        private PictureBox _updateNotificationLabel = null!;
+        private PictureBox _updateNotificationImage = null!;
         private Label _updateVersionLabel = null!;
+        private string _availableUpdateVersion = string.Empty;
 
         public BotsForm()
         {
@@ -128,7 +129,7 @@ namespace SysBot.Pokemon.WinForms
             _B_Reload.Click += (_, _) => RestartApplication();
 
             // Update Notification Image
-            _updateNotificationLabel = new PictureBox
+            _updateNotificationImage = new PictureBox
             {
                 SizeMode = PictureBoxSizeMode.AutoSize,
                 Size = new Size(132, 23),
@@ -147,7 +148,7 @@ namespace SysBot.Pokemon.WinForms
                 {
                     if (stream != null)
                     {
-                        _updateNotificationLabel.Image = Image.FromStream(stream);
+                        _updateNotificationImage.Image = Image.FromStream(stream);
                         System.Diagnostics.Debug.WriteLine("Update notification image loaded from embedded resources");
                     }
                     else
@@ -161,8 +162,8 @@ namespace SysBot.Pokemon.WinForms
                 System.Diagnostics.Debug.WriteLine($"Failed to load update notification image: {ex.Message}");
             }
 
-            _updateNotificationLabel.Click += (s, e) => _updater.PerformClick();
-            _toolTips.SetToolTip(_updateNotificationLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+            _updateNotificationImage.Click += (s, e) => _updater.PerformClick();
+            _toolTips.SetToolTip(_updateNotificationImage, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
 
             // Update Version Label (displays version number above the image)
             _updateVersionLabel = new Label
@@ -239,7 +240,7 @@ namespace SysBot.Pokemon.WinForms
                 Controls.AddRange(new Control[] {
                 _B_Start, _B_Stop, _B_RebootStop, _updater, _B_New,
                 _B_Reload, _TB_IP, _NUD_Port, _CB_Protocol, _CB_Routine, _CB_GameMode,
-                _FLP_Bots, _updateNotificationLabel, _updateVersionLabel
+                _FLP_Bots, _updateNotificationImage, _updateVersionLabel
             });
 
             ApplyLocalization();
@@ -254,13 +255,15 @@ namespace SysBot.Pokemon.WinForms
             _B_RebootStop.Text = AppLocalization.Get(LocalizationKeys.BotsReboot);
             _updater.Text = AppLocalization.Get(LocalizationKeys.BotsUpdate);
             _B_Reload.Text = AppLocalization.Get(LocalizationKeys.BotsReload);
+            if (_updateVersionLabel.Visible && !string.IsNullOrWhiteSpace(_availableUpdateVersion))
+                _updateVersionLabel.Text = AppLocalization.Format(LocalizationKeys.BotsUpdateNowTo, _availableUpdateVersion);
             _toolTips.SetToolTip(_B_Start, AppLocalization.Get(LocalizationKeys.BotsStartTooltip));
             _toolTips.SetToolTip(_B_Stop, AppLocalization.Get(LocalizationKeys.BotsStopTooltip));
             _toolTips.SetToolTip(_B_RebootStop, AppLocalization.Get(LocalizationKeys.BotsRebootTooltip));
             _toolTips.SetToolTip(_updater, AppLocalization.Get(LocalizationKeys.BotsUpdateTooltip));
             _toolTips.SetToolTip(_B_New, AppLocalization.Get(LocalizationKeys.BotsNewTooltip));
             _toolTips.SetToolTip(_B_Reload, AppLocalization.Get(LocalizationKeys.BotsReloadTooltip));
-            _toolTips.SetToolTip(_updateNotificationLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+            _toolTips.SetToolTip(_updateNotificationImage, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
             _toolTips.SetToolTip(_updateVersionLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
         }
 
@@ -478,16 +481,18 @@ namespace SysBot.Pokemon.WinForms
 
             if (isUpdateAvailable && !string.IsNullOrWhiteSpace(newVersion))
             {
+                _availableUpdateVersion = newVersion;
                 _updateVersionLabel.Text = AppLocalization.Format(LocalizationKeys.BotsUpdateNowTo, newVersion);
                 _updateVersionLabel.Visible = true;
                 _updateVersionLabel.BringToFront();
-                _updateNotificationLabel.Visible = true;
-                _updateNotificationLabel.BringToFront();
+                _updateNotificationImage.Visible = true;
+                _updateNotificationImage.BringToFront();
             }
             else
             {
+                _availableUpdateVersion = string.Empty;
                 _updateVersionLabel.Visible = false;
-                _updateNotificationLabel.Visible = false;
+                _updateNotificationImage.Visible = false;
             }
         }
     }

@@ -1133,6 +1133,17 @@ public static class Helpers<T> where T : PKM, new()
     private static async Task<(MemoryStream Stream, string FileName)?> CreatePokemonErrorThumbnailAsync(ProcessedPokemonResult<T> result)
     {
         var imageUrl = GetFailedPokemonImageUrl(result);
+        return await CreatePokemonErrorThumbnailAsync(imageUrl).ConfigureAwait(false);
+    }
+
+    private static async Task<(MemoryStream Stream, string FileName)?> CreatePokemonErrorThumbnailAsync(T pk)
+    {
+        var imageUrl = TradeExtensions<T>.PokeImg(pk, false, false, TradeSettings.ImageSize.Size128x128);
+        return await CreatePokemonErrorThumbnailAsync(imageUrl).ConfigureAwait(false);
+    }
+
+    private static async Task<(MemoryStream Stream, string FileName)?> CreatePokemonErrorThumbnailAsync(string? imageUrl)
+    {
         if (string.IsNullOrWhiteSpace(imageUrl))
             return null;
 
@@ -1352,6 +1363,40 @@ public static class Helpers<T> where T : PKM, new()
         var embed = CreateTradeErrorEmbed(context, title ?? AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle), description);
         return await context.Channel
             .SendMessageAsync(text: context.User.Mention, embed: embed.Build())
+            .ConfigureAwait(false);
+    }
+
+    private static async Task<IUserMessage> SendPokemonTradeErrorNoticeAsync(SocketCommandContext context, T pk, string speciesName, string errorText)
+    {
+        var title = AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle);
+        var description = TrimEmbedDescription(
+            $"{AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, speciesName)}\n\n" +
+            $"### {AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}\n" +
+            $"• {errorText}");
+
+        var embedBuilder = new EmbedBuilder()
+            .WithColor(Color.Red)
+            .WithImageUrl(ErrorImageUrl)
+            .WithAuthor(title, WarningIconUrl)
+            .WithDescription(description)
+            .WithFooter(f =>
+            {
+                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
+                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
+            });
+
+        var errorThumbnail = await CreatePokemonErrorThumbnailAsync(pk).ConfigureAwait(false);
+        if (errorThumbnail is null)
+            embedBuilder.WithThumbnailUrl(ErrorThumbnailUrl);
+        else
+            embedBuilder.WithThumbnailUrl($"attachment://{errorThumbnail.Value.FileName}");
+
+        if (errorThumbnail is null)
+            return await context.Channel.SendMessageAsync(text: context.User.Mention, embed: embedBuilder.Build()).ConfigureAwait(false);
+
+        await using var stream = errorThumbnail.Value.Stream;
+        return await context.Channel
+            .SendFileAsync(stream, errorThumbnail.Value.FileName, text: context.User.Mention, embed: embedBuilder.Build())
             .ConfigureAwait(false);
     }
 
@@ -1803,7 +1848,7 @@ public static class Helpers<T> where T : PKM, new()
         if (Info.Hub.Config.Legality.DisallowNonNatives && isNonNative)
         {
             string speciesName = SpeciesName.GetSpeciesName(pk!.Species, (int)LanguageID.English);
-            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Format(LocalizationKeys.DiscordNonNativeBlocked, speciesName)).ConfigureAwait(false);
+            var reply = await SendPokemonTradeErrorNoticeAsync(context, pk, speciesName, AppLocalization.Format(LocalizationKeys.DiscordNonNativeBlocked, speciesName)).ConfigureAwait(false);
             _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
             return;
         }
@@ -1811,7 +1856,7 @@ public static class Helpers<T> where T : PKM, new()
         if (Info.Hub.Config.Legality.DisallowTracked && pk is IHomeTrack { HasTracker: true })
         {
             string speciesName = SpeciesName.GetSpeciesName(pk.Species, (int)LanguageID.English);
-            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Format(LocalizationKeys.DiscordHomeTrackedBlocked, speciesName)).ConfigureAwait(false);
+            var reply = await SendPokemonTradeErrorNoticeAsync(context, pk, speciesName, AppLocalization.Format(LocalizationKeys.DiscordHomeTrackedBlocked, speciesName)).ConfigureAwait(false);
             _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
             return;
         }

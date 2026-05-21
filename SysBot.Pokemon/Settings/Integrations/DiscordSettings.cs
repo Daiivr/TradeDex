@@ -92,7 +92,7 @@ public class DiscordSettings
     [Category(Startup), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuraciones relacionadas con el estado del canal.")]
     public ChannelStatusSettings ChannelStatusConfig { get; set; } = new();
 
-    [Category(Startup), Description("Estado personalizado del bot."), DisplayName("Estado de Juego del Bot")]
+    [Category(Startup), Description("Texto que se mostrara como estado personalizado del bot, junto al avatar."), DisplayName("Estado personalizado del bot")]
     public string BotGameStatus { get; set; } = "Trading Pokémon";
 
     [Category(Operation), Description("Habilita o deshabilita el sistema de XP para usuarios cuando usan comandos."), DisplayName("Sistema de XP")]

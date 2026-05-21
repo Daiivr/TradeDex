@@ -47,9 +47,12 @@ public static class DetailsExtractor<T> where T : PKM, new()
             (pk is PK9 && SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowTeraType ? $"**{AppLocalization.Get(LocalizationKeys.DiscordTeraTypeLabel)}:** {embedData.TeraType}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowAbility ? $"**{AppLocalization.Get(LocalizationKeys.DiscordAbilityLabel)}:** {embedData.Ability}\n" : "") +
             (pk.Version is GameVersion.PLA or GameVersion.SL or GameVersion.VL && SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowScale ? $"**{AppLocalization.Get(LocalizationKeys.DiscordScaleLabel)}:** {embedData.Scale.Item1}\n" : "") +
+            (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowBall ? $"**{AppLocalization.Get(LocalizationKeys.DiscordBallLabel)}:** {embedData.Ball}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowNature ? $"**{AppLocalization.Get(LocalizationKeys.DiscordNatureLabel)}:** {embedData.Nature}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowNature && !string.IsNullOrEmpty(embedData.StatNature) ? $"**{AppLocalization.Get(LocalizationKeys.DiscordStatNatureLabel)}:** {embedData.StatNature}\n" : "") +
+            (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowMetLevel ? $"**{AppLocalization.Get(LocalizationKeys.DiscordMetLevelLabel)}:** {embedData.MetLevel}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowMetDate ? $"**{metDateLabel}:** {embedData.MetDate}\n" : "") +
+            (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowMetLocation ? $"**{AppLocalization.Get(LocalizationKeys.DiscordMetLocationLabel)}:** {embedData.MetLocation}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowLanguage ? $"**{AppLocalization.Get(LocalizationKeys.DiscordLanguageLabel)}**: {embedData.Language}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowIVs ? $"**{AppLocalization.Get(LocalizationKeys.DiscordIvsLabel)}**: {embedData.IVsDisplay}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowEVs && !string.IsNullOrWhiteSpace(embedData.EVsDisplay) ? $"**{AppLocalization.Get(LocalizationKeys.DiscordEvsLabel)}**: {embedData.EVsDisplay}\n" : "") +

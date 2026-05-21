@@ -145,7 +145,7 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
         private bool _useEmbeds = true;
 
-        [Category(EmbedSettings), Description("Si es verdadero, mostrará hermosos embeds en sus canales de trade de discord de lo que el usuario este tradeando. False mostrará el texto por defecto."), DisplayName("Usar Embeds")]
+        [Category(EmbedSettings), Description("Si es verdadero, mostrará hermosos embeds en sus canales de trade de discord de lo que el usuario este tradeando. False mostrará el texto por defecto."), DisplayName("Usar embeds")]
         public bool UseEmbeds
         {
             get => _useEmbeds;
@@ -327,16 +327,16 @@ public class TradeSettings : IBotStateSettings, ICountSettings
         public bool ShowLevel { get; set; } = true;
 
         [Category(EmbedSettings), Description("Mostrara la Ball en el embed de trade (solo Discord)."), DisplayName("Mostrar Ball")]
-        public bool ShowBall { get; set; } = true;
+        public bool ShowBall { get; set; } = false;
 
         [Category(EmbedSettings), Description("Mostrara el nivel de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar nivel de encuentro")]
-        public bool ShowMetLevel { get; set; } = true;
+        public bool ShowMetLevel { get; set; } = false;
 
         [Category(EmbedSettings), Description("Mostrará MetDate en el Embed Trade (sólo Discord)."), DisplayName("Mostrar Fecha de Encuentro")]
         public bool ShowMetDate { get; set; } = true;
 
         [Category(EmbedSettings), Description("Mostrara la ubicacion de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar ubicacion de encuentro")]
-        public bool ShowMetLocation { get; set; } = true;
+        public bool ShowMetLocation { get; set; } = false;
 
         [Category(EmbedSettings), Description("Se mostrará Habilidad en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Habilidad")]
         public bool ShowAbility { get; set; } = true;

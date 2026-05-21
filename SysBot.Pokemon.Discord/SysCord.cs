@@ -887,7 +887,10 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
     private async Task LoadLoggingAndEcho()
     {
         if (MessageChannelsLoaded)
+        {
+            await ApplyDiscordCustomStatusAsync().ConfigureAwait(false);
             return;
+        }
 
         // Restore Echoes
         EchoModule.RestoreChannels(_client, Hub.Config.Discord);
@@ -906,9 +909,37 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         await Log(new LogMessage(LogSeverity.Info, "LoadLoggingAndEcho()", AppLocalization.Get(LocalizationKeys.LogLoggingEchoLoaded))).ConfigureAwait(false);
         MessageChannelsLoaded = true;
 
-        var game = Hub.Config.Discord.BotGameStatus;
-        if (!string.IsNullOrWhiteSpace(game))
-            await _client.SetGameAsync(game).ConfigureAwait(false);
+        await ApplyDiscordCustomStatusAsync().ConfigureAwait(false);
+    }
+
+    private async Task ApplyDiscordCustomStatusAsync()
+    {
+        var status = GetLocalizedBotStatus(Hub.Config.Discord.BotGameStatus);
+        await _client.SetCustomStatusAsync(status).ConfigureAwait(false);
+    }
+
+    private static string GetLocalizedBotStatus(string? configuredStatus)
+    {
+        const string EnglishDefault = "Trading Pokémon";
+        const string SpanishDefault = "Tradeando Pokémon";
+
+        var status = configuredStatus?.Trim();
+        if (string.IsNullOrWhiteSpace(status) ||
+            status.Equals(EnglishDefault, StringComparison.OrdinalIgnoreCase) ||
+            status.Equals(SpanishDefault, StringComparison.OrdinalIgnoreCase))
+        {
+            return AppLocalization.Language == AppLanguage.Spanish
+                ? SpanishDefault
+                : EnglishDefault;
+        }
+
+        return status;
+    }
+
+    private async Task ApplyDiscordStatusAsync(UserStatus status)
+    {
+        await _client.SetStatusAsync(status).ConfigureAwait(false);
+        await ApplyDiscordCustomStatusAsync().ConfigureAwait(false);
     }
 
     private async Task MonitorStatusAsync(CancellationToken token)
@@ -938,7 +969,7 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
                 if (idle != state)
                 {
                     state = idle;
-                    await _client.SetStatusAsync(state).ConfigureAwait(false);
+                    await ApplyDiscordStatusAsync(state).ConfigureAwait(false);
                 }
                 await Task.Delay(2_000, token).ConfigureAwait(false);
                 continue;
@@ -948,7 +979,7 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
             if (active != state)
             {
                 state = active;
-                await _client.SetStatusAsync(state).ConfigureAwait(false);
+                await ApplyDiscordStatusAsync(state).ConfigureAwait(false);
             }
             await Task.Delay(gap, token).ConfigureAwait(false);
         }

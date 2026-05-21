@@ -1,57 +1,80 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en" data-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="TradeDex web trades">
     <title data-i18n="pageTitle">TradeDex Trades</title>
     <link rel="icon" type="image/x-icon" href="/icon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="/TradePortal.css">
 </head>
 <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="bg-aurora" aria-hidden="true">
+        <span class="bg-blob bg-blob-1"></span>
+        <span class="bg-blob bg-blob-2"></span>
+        <span class="bg-blob bg-blob-3"></span>
+    </div>
+
     <header class="topbar">
         <a class="brand" href="/trade" aria-label="TradeDex">
-            <span class="brand-mark"></span>
-            <span>TradeDex</span>
-            <small data-i18n="brandSuffix">Web Trades</small>
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <circle cx="16" cy="16" r="14.5" class="pb-shell"/>
+                <path d="M1.5 16 A14.5 14.5 0 0 1 30.5 16 Z" class="pb-top"/>
+                <rect x="1.5" y="14.5" width="29" height="3" class="pb-band"/>
+                <circle cx="16" cy="16" r="4.5" class="pb-button-outer"/>
+                <circle cx="16" cy="16" r="2.2" class="pb-button-inner"/>
+            </svg>
+            <span class="brand-word">TradeDex</span>
+            <span class="brand-tag" data-i18n="brandSuffix">Web Trades</span>
         </a>
         <nav class="nav-actions" aria-label="Navigation">
             <a id="control-link" class="ghost-link" href="/" data-i18n="controlPanel" hidden>Control</a>
         </nav>
     </header>
 
-    <main class="shell">
-        <section class="hero-panel">
-            <div class="hero-copy">
+    <main id="main" class="shell">
+        <section class="hero">
+            <div class="hero-text">
                 <p class="eyebrow" data-i18n="webTrades">Web trades</p>
-                <h1 data-i18n="heroTitle">Trade without Discord chat</h1>
-                <p data-i18n="heroText">Login once, paste your Pokemon Showdown set, and follow the live instructions until the trade is complete.</p>
+                <h1 class="display" data-i18n="heroTitle">Trade without Discord chat</h1>
+                <p class="lede" data-i18n="heroText">Login once, paste your Pokemon Showdown set, and follow the live instructions until the trade is complete.</p>
+                <dl class="hero-meta">
+                    <div>
+                        <dt data-i18n="queue">Queue</dt>
+                        <dd id="queue-state" data-i18n="checking">Checking</dd>
+                    </div>
+                    <div>
+                        <dt data-i18n="session">Session</dt>
+                        <dd id="session-state" data-i18n="guest">Guest</dd>
+                    </div>
+                    <div>
+                        <dt data-i18n="mode">Mode</dt>
+                        <dd id="mode-state">Trade</dd>
+                    </div>
+                </dl>
             </div>
-            <div class="hero-media" aria-hidden="true">
+            <figure class="hero-art" aria-hidden="true">
+                <span class="hero-art-chrome top-left">Trade Station</span>
+                <span class="hero-art-chrome top-right">
+                    <span class="hero-art-dot"></span>Online
+                </span>
+                <span class="hero-art-scan"></span>
                 <img id="mode-image" src="/sv_mode_image.png" alt="">
-            </div>
-            <div class="hero-stats">
-                <div>
-                    <span class="eyebrow" data-i18n="queue">Queue</span>
-                    <strong id="queue-state" data-i18n="checking">Checking</strong>
-                </div>
-                <div>
-                    <span class="eyebrow" data-i18n="session">Session</span>
-                    <strong id="session-state" data-i18n="guest">Guest</strong>
-                </div>
-                <div>
-                    <span class="eyebrow" data-i18n="mode">Mode</span>
-                    <strong id="mode-state">Trade</strong>
-                </div>
-            </div>
+                <span class="hero-art-chrome bottom-left">SYS // TRADE.BOT</span>
+            </figure>
         </section>
 
         <section class="workspace">
-            <form id="trade-form" class="trade-form">
-                <div class="form-header">
+            <form id="trade-form" class="composer">
+                <header class="composer-header">
                     <div>
                         <p class="eyebrow" data-i18n="request">Request</p>
-                        <h2 id="request-title" data-i18n="requestTitle">Create a trade</h2>
+                        <h2 id="request-title" class="display-2" data-i18n="requestTitle">Create a trade</h2>
                     </div>
                     <div id="user-actions" class="user-actions" hidden>
                         <div id="user-pill" class="user-pill">
@@ -59,13 +82,15 @@
                             <span id="user-name"></span>
                         </div>
                         <button id="logout-button" class="icon-button" title="Logout" aria-label="Logout">
-                            <span aria-hidden="true">↪</span>
+                            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                                <path d="M12.5 4.5L17 9m0 0l-4.5 4.5M17 9H7M9 16H4.5A1.5 1.5 0 013 14.5v-9A1.5 1.5 0 014.5 4H9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
                         </button>
                     </div>
-                </div>
+                </header>
 
                 <div id="login-panel" class="login-panel">
-                    <div>
+                    <div class="login-copy">
                         <h3 data-i18n="discordLogin">Discord login required</h3>
                         <p data-i18n="loginText">Your Discord ID is used for trade codes, saved trainer data, and queue tracking.</p>
                     </div>
@@ -75,14 +100,14 @@
 
                 <div id="trade-panel" class="trade-panel" hidden>
                     <label class="field">
-                        <span data-i18n="showdownSet">Pokemon Showdown set</span>
+                        <span class="field-label" data-i18n="showdownSet">Pokemon Showdown set</span>
                         <textarea id="showdown-set" name="showdownSet" rows="13" spellcheck="false" data-i18n-placeholder="showdownPlaceholder" placeholder="Flutter Mane @ Booster Energy&#10;Ability: Protosynthesis&#10;Tera Type: Fairy&#10;EVs: 4 HP / 252 SpA / 252 Spe&#10;Timid Nature&#10;- Moonblast&#10;- Shadow Ball&#10;- Protect&#10;- Icy Wind"></textarea>
                     </label>
 
                     <label class="file-drop" for="pkm-file">
                         <input id="pkm-file" type="file" accept=".pk3,.pk4,.pk5,.pk6,.pk7,.pb7,.pk8,.pb8,.pa8,.pk9,.pa9">
                         <span class="file-icon" aria-hidden="true">PK</span>
-                        <span>
+                        <span class="file-copy">
                             <strong data-i18n="pkhexUpload">Upload PKHeX file</strong>
                             <small id="pkm-file-label" data-i18n="pkhexHelp">Optional: use a .pk/.pb/.pa file instead of a Showdown set.</small>
                         </span>
@@ -98,35 +123,41 @@
                     </div>
                 </div>
 
-                <section id="trade-terminal" class="trade-terminal" hidden>
-                    <div class="terminal-topline">
+                <section id="trade-terminal" class="terminal" hidden>
+                    <header class="terminal-header">
                         <span id="terminal-state" class="state-badge">Queued</span>
-                        <span id="terminal-pokemon">Pokemon</span>
-                    </div>
+                        <span id="terminal-pokemon" class="terminal-pokemon">Pokemon</span>
+                    </header>
                     <div class="terminal-screen" role="log" aria-live="polite">
                         <ol id="terminal-list" class="terminal-list"></ol>
                     </div>
-                    <div class="terminal-footer">
-                        <div>
-                            <span class="eyebrow" data-i18n="linkCode">Link code</span>
-                            <strong id="terminal-code">0000 0000</strong>
+                    <footer class="terminal-footer">
+                        <div class="terminal-code-block">
+                            <p class="eyebrow" data-i18n="linkCode">Link code</p>
+                            <strong id="terminal-code" class="terminal-code">0000 0000</strong>
                         </div>
                         <button id="new-trade-button" type="button" class="primary-button" hidden data-i18n="requestAnotherTrade">Request another trade</button>
-                    </div>
+                    </footer>
                 </section>
             </form>
 
-            <aside class="side-panel">
-                <section class="active-panel">
-                    <div class="panel-title-row">
+            <aside class="sidebar">
+                <section class="status-panel">
+                    <header class="panel-header">
                         <div>
                             <p class="eyebrow" data-i18n="liveStatus">Live status</p>
-                            <h2 data-i18n="currentTrade">Current trade</h2>
+                            <h2 class="display-3" data-i18n="currentTrade">Current trade</h2>
                         </div>
                         <button id="cancel-button" class="text-button" type="button" hidden data-i18n="cancel">Cancel</button>
-                    </div>
-                    <div id="empty-trade" class="empty-state" data-i18n="emptyTrade">
-                        Your queued trade will appear here.
+                    </header>
+                    <div id="empty-trade" class="empty-state">
+                        <svg class="empty-state-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                            <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                            <path d="M3 32 H61" stroke="currentColor" stroke-width="1.2"/>
+                            <circle cx="32" cy="32" r="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                            <circle cx="32" cy="32" r="3" fill="currentColor"/>
+                        </svg>
+                        <p data-i18n="emptyTrade">Your queued trade will appear here.</p>
                     </div>
                     <div id="active-trade" class="active-trade" hidden>
                         <div class="trade-status-row">
@@ -136,7 +167,7 @@
                             <div class="pokemon-art">
                                 <img id="trade-pokemon-image" alt="" hidden>
                             </div>
-                            <h3 id="trade-pokemon">Pokemon</h3>
+                            <h3 id="trade-pokemon" class="display-3">Pokemon</h3>
                         </div>
                         <div class="code-box" id="trade-code">0000 0000</div>
                         <p id="trade-message"></p>
@@ -148,10 +179,10 @@
                 </section>
 
                 <section class="profile-panel">
-                    <div class="panel-title-row">
-                        <h2 data-i18n="profile">Profile</h2>
-                    </div>
-                    <dl>
+                    <header class="panel-header">
+                        <h2 class="display-3" data-i18n="profile">Profile</h2>
+                    </header>
+                    <dl class="profile-list">
                         <div class="trade-code-row">
                             <dt data-i18n="tradeCode">Trade code</dt>
                             <dd>
@@ -159,7 +190,7 @@
                             </dd>
                             <div id="code-editor" class="code-editor" hidden>
                                 <label class="field compact-code-field">
-                                    <span data-i18n="editTradeCode">Edit trade code</span>
+                                    <span class="field-label" data-i18n="editTradeCode">Edit trade code</span>
                                     <input id="trade-code-input" inputmode="numeric" maxlength="9" data-i18n-placeholder="tradeCodePlaceholder" placeholder="0000 0000">
                                 </label>
                                 <div class="code-actions">
@@ -169,7 +200,7 @@
                                 <p class="help-text" data-i18n="tradeCodeHelp">Use eight digits. This code is saved to your Discord ID.</p>
                             </div>
                         </div>
-                        <div><dt data-i18n="totalTrades">Total trades</dt><dd id="profile-count">-</dd></div>
+                        <div class="profile-row"><dt data-i18n="totalTrades">Total trades</dt><dd id="profile-count">-</dd></div>
                         <div class="trainer-row">
                             <dt data-i18n="trainer">Trainer</dt>
                             <dd>
@@ -182,7 +213,7 @@
                                 <div><span data-i18n="discordUser">Discord</span><strong id="trainer-popover-discord">-</strong></div>
                             </div>
                         </div>
-                        <div><dt data-i18n="lastTrade">Last trade</dt><dd id="profile-last">-</dd></div>
+                        <div class="profile-row"><dt data-i18n="lastTrade">Last trade</dt><dd id="profile-last">-</dd></div>
                     </dl>
                 </section>
             </aside>
@@ -191,16 +222,16 @@
 
     <div id="guide-widget" class="guide-widget">
         <button id="guide-button" class="guide-button" type="button" data-i18n-title="guideButtonTitle" title="Trade guide" aria-expanded="false" aria-controls="guide-popover">
-            <span id="console-led" class="console-led"></span>
-            <span aria-hidden="true">?</span>
+            <span id="console-led" class="console-led" aria-hidden="true"></span>
+            <span class="guide-glyph" aria-hidden="true">?</span>
         </button>
         <section id="guide-popover" class="guide-popover" hidden>
-            <div class="panel-title-row">
+            <header class="panel-header">
                 <div>
                     <p class="eyebrow" data-i18n="guide">Guide</p>
-                    <h2 data-i18n="tradeConsole">Website guide</h2>
+                    <h2 class="display-3" data-i18n="tradeConsole">Website guide</h2>
                 </div>
-            </div>
+            </header>
             <ol id="site-guide-list" class="console-list site-guide-list"></ol>
         </section>
     </div>

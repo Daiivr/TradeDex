@@ -1030,7 +1030,7 @@ function launchTerminalConfetti() {
     burst.className = 'terminal-confetti';
     burst.setAttribute('aria-hidden', 'true');
 
-    const colors = ['#58bcff', '#69f5d4', '#ff4d7d', '#9b7bff', '#ffd166', '#f8fbff'];
+    const colors = ['#e94e3b', '#ff7d3a', '#f4ecdc', '#f5c557', '#67d39a', '#7aa9ff'];
     const pieces = 54;
     for (let i = 0; i < pieces; i++) {
         const piece = document.createElement('span');
@@ -1188,21 +1188,40 @@ function toggleGuide(forceOpen = null) {
 function toggleTrainerPopover(forceOpen = null) {
     const popover = $('trainer-popover');
     const button = $('profile-trainer');
+    const row = button.closest('.trainer-row');
     const open = forceOpen ?? popover.hidden;
     popover.hidden = !open;
     button.setAttribute('aria-expanded', String(open));
-    button.closest('.trainer-row')?.classList.toggle('popover-open', open);
+    row?.classList.toggle('popover-open', open);
+    if (open && row) placePopover(popover, row);
+    else row?.classList.remove('flip-up');
 }
 
 function toggleCodePopover(forceOpen = null) {
     const popover = $('code-editor');
     const button = $('profile-code');
+    const row = button.closest('.trade-code-row');
     const open = forceOpen ?? popover.hidden;
     popover.hidden = !open;
     button.setAttribute('aria-expanded', String(open));
-    button.closest('.trade-code-row')?.classList.toggle('popover-open', open);
-    if (open) {
+    row?.classList.toggle('popover-open', open);
+    if (open && row) {
+        placePopover(popover, row);
         window.setTimeout(() => $('trade-code-input').focus(), 0);
+    } else {
+        row?.classList.remove('flip-up');
+    }
+}
+
+function placePopover(popover, row) {
+    row.classList.remove('flip-up');
+    const popRect = popover.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const margin = 16;
+    const overflowBottom = popRect.bottom + margin > window.innerHeight;
+    const fitsAbove = rowRect.top - margin > popRect.height;
+    if (overflowBottom && fitsAbove) {
+        row.classList.add('flip-up');
     }
 }
 
@@ -1280,5 +1299,60 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.stopPropagation();
         clearPkmFile();
     });
+    initSpotlightCards();
+    initMagneticButtons();
     await initAuth();
 });
+
+function initSpotlightCards() {
+    const cards = document.querySelectorAll('.composer');
+    if (!cards.length || matchMedia('(hover: none)').matches) return;
+
+    for (const card of cards) {
+        let frame = null;
+        card.addEventListener('pointermove', (event) => {
+            if (frame) return;
+            frame = requestAnimationFrame(() => {
+                const rect = card.getBoundingClientRect();
+                card.style.setProperty('--mx', `${event.clientX - rect.left}px`);
+                card.style.setProperty('--my', `${event.clientY - rect.top}px`);
+                frame = null;
+            });
+        });
+        card.addEventListener('pointerleave', () => {
+            card.style.removeProperty('--mx');
+            card.style.removeProperty('--my');
+        });
+    }
+}
+
+function initMagneticButtons() {
+    if (matchMedia('(hover: none)').matches) return;
+
+    const buttons = document.querySelectorAll('.primary-button');
+    for (const button of buttons) {
+        let frame = null;
+        const reset = () => {
+            button.style.setProperty('--mag-x', '0px');
+            button.style.setProperty('--mag-y', '0px');
+        };
+
+        button.addEventListener('pointermove', (event) => {
+            if (frame) return;
+            frame = requestAnimationFrame(() => {
+                const rect = button.getBoundingClientRect();
+                const strength = 0.22;
+                const cx = rect.left + rect.width / 2;
+                const cy = rect.top + rect.height / 2;
+                const dx = (event.clientX - cx) * strength;
+                const dy = (event.clientY - cy) * strength;
+                button.style.setProperty('--mag-x', `${dx}px`);
+                button.style.setProperty('--mag-y', `${dy}px`);
+                frame = null;
+            });
+        });
+
+        button.addEventListener('pointerleave', reset);
+        button.addEventListener('blur', reset);
+    }
+}

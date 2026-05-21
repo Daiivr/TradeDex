@@ -1,6 +1,7 @@
 using PKHeX.Core;
 using SysBot.Base;
 using SysBot.Pokemon.Helpers;
+using SysBot.Pokemon.Localization;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -124,14 +125,14 @@ public partial class BotServer
     {
         var query = ParseQuery(request.Url?.Query);
         if (!query.TryGetValue("code", out var code) || !query.TryGetValue("state", out var state))
-            return BuildAuthCallbackHtml(false, "Discord did not return a valid login response.");
+            return BuildAuthCallbackHtml(false, "invalid-response");
 
         if (!OAuthStates.TryRemove(state, out var expiresAt) || expiresAt < DateTimeOffset.UtcNow)
-            return BuildAuthCallbackHtml(false, "The login session expired. Please try again.");
+            return BuildAuthCallbackHtml(false, "session-expired");
 
         var settings = Main.Config?.Hub.WebServer;
         if (settings == null)
-            return BuildAuthCallbackHtml(false, "WebServer settings are unavailable.");
+            return BuildAuthCallbackHtml(false, "server-settings");
 
         try
         {
@@ -146,25 +147,25 @@ public partial class BotServer
 
             using var tokenResponse = await DiscordHttp.PostAsync("https://discord.com/api/oauth2/token", tokenContent).ConfigureAwait(false);
             if (!tokenResponse.IsSuccessStatusCode)
-                return BuildAuthCallbackHtml(false, "Discord rejected the login code.");
+                return BuildAuthCallbackHtml(false, "rejected-code");
 
             var token = await JsonSerializer.DeserializeAsync<DiscordTokenResponse>(
                 await tokenResponse.Content.ReadAsStreamAsync().ConfigureAwait(false), JsonOptions).ConfigureAwait(false);
 
             if (string.IsNullOrWhiteSpace(token?.AccessToken))
-                return BuildAuthCallbackHtml(false, "Discord did not return an access token.");
+                return BuildAuthCallbackHtml(false, "no-token");
 
             using var userRequest = new HttpRequestMessage(HttpMethod.Get, "https://discord.com/api/users/@me");
             userRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token.AccessToken);
             using var userResponse = await DiscordHttp.SendAsync(userRequest).ConfigureAwait(false);
             if (!userResponse.IsSuccessStatusCode)
-                return BuildAuthCallbackHtml(false, "Could not read the Discord user profile.");
+                return BuildAuthCallbackHtml(false, "no-profile");
 
             var user = await JsonSerializer.DeserializeAsync<DiscordUserResponse>(
                 await userResponse.Content.ReadAsStreamAsync().ConfigureAwait(false), JsonOptions).ConfigureAwait(false);
 
             if (user == null || !ulong.TryParse(user.Id, out var discordId))
-                return BuildAuthCallbackHtml(false, "Discord returned an invalid user ID.");
+                return BuildAuthCallbackHtml(false, "invalid-user");
 
             var sessionId = CreateToken(32);
             TradeSessions[sessionId] = new WebTradeSession
@@ -177,12 +178,12 @@ public partial class BotServer
             };
 
             response.Headers.Add("Set-Cookie", $"{TradeSessionCookie}={sessionId}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000");
-            return BuildAuthCallbackHtml(true, "Login complete.");
+            return BuildAuthCallbackHtml(true, "login-complete");
         }
         catch (Exception ex)
         {
             LogUtil.LogError($"Discord OAuth callback failed: {ex.Message}", "WebTrade");
-            return BuildAuthCallbackHtml(false, "Login failed while talking to Discord.");
+            return BuildAuthCallbackHtml(false, "login-failed");
         }
     }
 
@@ -709,43 +710,268 @@ public partial class BotServer
             OAuthStates.TryRemove(state, out _);
     }
 
-    private static string BuildAuthCallbackHtml(bool success, string message)
+    private static string BuildAuthCallbackHtml(bool success, string messageKey)
     {
-        var safeMessage = WebUtility.HtmlEncode(message);
-        var status = success ? "success" : "error";
+        bool isSpanish = AppLocalization.Language == AppLanguage.Spanish;
+        string lang = isSpanish ? "es" : "en";
+        string title = isSpanish ? "TradeDex - Login" : "TradeDex Login";
+        string statusLabel = success
+            ? (isSpanish ? "Listo" : "Success")
+            : "Error";
+        string statusClass = success ? "ok" : "err";
+        string closeText = isSpanish
+            ? "Puedes cerrar esta pestaña y volver a la página de trades."
+            : "You can close this tab and return to the trade page.";
+        string safeMessage = WebUtility.HtmlEncode(LocalizeCallbackMessage(messageKey, isSpanish));
+        string successLower = success ? "true" : "false";
+
         return $$"""
             <!doctype html>
-            <html lang="en">
+            <html lang="{{lang}}">
             <head>
                 <meta charset="utf-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1">
-                <title>TradeDex Login</title>
+                <title>{{title}}</title>
+                <link rel="icon" type="image/x-icon" href="/icon.ico">
+                <link rel="preconnect" href="https://fonts.googleapis.com">
+                <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+                <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Geist:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
                 <style>
-                    body { margin: 0; min-height: 100vh; display: grid; place-items: center; font-family: Inter, Segoe UI, sans-serif; background: #0d1324; color: #eef2ff; }
-                    main { width: min(440px, calc(100vw - 32px)); border: 1px solid rgba(255,255,255,.12); border-radius: 8px; padding: 28px; background: rgba(255,255,255,.06); }
-                    .status { color: {{(success ? "#7ee787" : "#ff7b72")}}; font-weight: 700; text-transform: uppercase; font-size: 12px; letter-spacing: .08em; }
-                    p { color: #b9c2d9; line-height: 1.6; }
+                    :root {
+                        --bg: oklch(0.165 0.012 50);
+                        --surface: oklch(0.215 0.014 55);
+                        --ink: oklch(0.97 0.008 80);
+                        --ink-soft: oklch(0.84 0.012 75);
+                        --muted: oklch(0.66 0.014 70);
+                        --hairline: oklch(0.32 0.014 55);
+                        --hairline-soft: oklch(0.27 0.014 55);
+                        --accent: oklch(0.62 0.198 27);
+                        --accent-glow: oklch(0.62 0.198 27 / 0.32);
+                        --ok: oklch(0.72 0.16 150);
+                        --ok-soft: oklch(0.3 0.07 150);
+                        --ok-border: oklch(0.45 0.1 150);
+                        --ok-text: oklch(0.88 0.13 150);
+                        --danger: oklch(0.68 0.18 25);
+                        --danger-soft: oklch(0.3 0.09 25);
+                        --danger-border: oklch(0.45 0.12 25);
+                        --danger-text: oklch(0.88 0.13 25);
+                        --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+                    }
+                    * { box-sizing: border-box; }
+                    html, body {
+                        margin: 0;
+                        background: var(--bg);
+                        color: var(--ink);
+                        font-family: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+                        min-height: 100dvh;
+                        -webkit-font-smoothing: antialiased;
+                    }
+                    body {
+                        display: grid;
+                        place-items: center;
+                        padding: 24px;
+                        overflow: hidden;
+                        position: relative;
+                    }
+                    .aurora {
+                        position: fixed;
+                        inset: 0;
+                        z-index: -1;
+                        overflow: hidden;
+                        pointer-events: none;
+                    }
+                    .blob {
+                        position: absolute;
+                        border-radius: 50%;
+                        filter: blur(90px);
+                    }
+                    .blob-1 {
+                        width: 60vw; height: 60vw;
+                        top: -25vw; right: -20vw;
+                        background: oklch(0.42 0.2 27);
+                        opacity: 0.5;
+                        animation: drift1 26s ease-in-out infinite;
+                    }
+                    .blob-2 {
+                        width: 50vw; height: 50vw;
+                        bottom: -22vw; left: -18vw;
+                        background: oklch(0.3 0.13 285);
+                        opacity: 0.35;
+                        animation: drift2 34s ease-in-out infinite;
+                    }
+                    main {
+                        position: relative;
+                        width: min(440px, calc(100vw - 32px));
+                        padding: 38px 34px 30px;
+                        background: var(--surface);
+                        border: 1px solid var(--hairline);
+                        border-radius: 24px;
+                        box-shadow: 0 28px 70px oklch(0 0 0 / 0.5), inset 0 1px 0 oklch(1 0 0 / 0.05);
+                        text-align: center;
+                        animation: enter 600ms var(--ease-out) both;
+                    }
+                    main::before {
+                        content: "";
+                        position: absolute;
+                        inset: 0;
+                        border-radius: inherit;
+                        background: linear-gradient(180deg, oklch(1 0 0 / 0.03), transparent 35%);
+                        pointer-events: none;
+                    }
+                    main > * { position: relative; }
+                    .mark {
+                        width: 56px; height: 56px;
+                        margin: 0 auto 22px;
+                        display: block;
+                        filter: drop-shadow(0 10px 26px var(--accent-glow));
+                        animation: float 4.4s ease-in-out infinite;
+                    }
+                    .pb-shell { fill: var(--ink); }
+                    .pb-top { fill: var(--accent); }
+                    .pb-band { fill: var(--bg); }
+                    .pb-button-outer { fill: var(--bg); stroke: var(--ink); stroke-width: 1.4; }
+                    .pb-button-inner { fill: var(--ink); }
+                    .status {
+                        display: inline-flex;
+                        align-items: center;
+                        gap: 8px;
+                        padding: 5px 12px 5px 10px;
+                        border-radius: 999px;
+                        font-family: "JetBrains Mono", ui-monospace, monospace;
+                        font-size: 10.5px;
+                        font-weight: 500;
+                        text-transform: uppercase;
+                        letter-spacing: 0.18em;
+                        margin-bottom: 18px;
+                    }
+                    .status::before {
+                        content: "";
+                        width: 6px; height: 6px;
+                        border-radius: 50%;
+                    }
+                    .status.ok {
+                        background: var(--ok-soft);
+                        border: 1px solid var(--ok-border);
+                        color: var(--ok-text);
+                    }
+                    .status.ok::before {
+                        background: var(--ok);
+                        box-shadow: 0 0 12px var(--ok);
+                    }
+                    .status.err {
+                        background: var(--danger-soft);
+                        border: 1px solid var(--danger-border);
+                        color: var(--danger-text);
+                    }
+                    .status.err::before {
+                        background: var(--danger);
+                        box-shadow: 0 0 12px var(--danger);
+                    }
+                    h1 {
+                        margin: 0 0 14px;
+                        font-family: "Bricolage Grotesque", "Geist", system-ui, sans-serif;
+                        font-size: 36px;
+                        font-weight: 700;
+                        letter-spacing: -0.03em;
+                        line-height: 1;
+                        font-variation-settings: "opsz" 48, "wdth" 105;
+                    }
+                    p {
+                        margin: 0 0 8px;
+                        color: var(--ink-soft);
+                        font-size: 15px;
+                        line-height: 1.55;
+                        text-wrap: pretty;
+                    }
+                    .closing {
+                        margin-top: 20px;
+                        padding-top: 16px;
+                        border-top: 1px solid var(--hairline-soft);
+                        color: var(--muted);
+                        font-family: "JetBrains Mono", ui-monospace, monospace;
+                        font-size: 10.5px;
+                        text-transform: uppercase;
+                        letter-spacing: 0.16em;
+                        line-height: 1.5;
+                    }
+                    @keyframes enter {
+                        from { opacity: 0; transform: translateY(10px) scale(0.985); }
+                        to { opacity: 1; transform: translateY(0) scale(1); }
+                    }
+                    @keyframes float {
+                        0%, 100% { transform: translateY(0); }
+                        50% { transform: translateY(-5px); }
+                    }
+                    @keyframes drift1 {
+                        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+                        50% { transform: translate3d(-3vw, 4vw, 0) scale(1.08); }
+                    }
+                    @keyframes drift2 {
+                        0%, 100% { transform: translate3d(0, 0, 0) scale(1); }
+                        50% { transform: translate3d(4vw, -3vw, 0) scale(0.94); }
+                    }
+                    @media (prefers-reduced-motion: reduce) {
+                        *, *::before, *::after {
+                            animation-duration: 0.01ms !important;
+                            animation-delay: 0ms !important;
+                            transition-duration: 0.01ms !important;
+                        }
+                    }
                 </style>
             </head>
             <body>
+                <div class="aurora" aria-hidden="true">
+                    <span class="blob blob-1"></span>
+                    <span class="blob blob-2"></span>
+                </div>
                 <main>
-                    <div class="status">{{status}}</div>
+                    <svg class="mark" viewBox="0 0 32 32" aria-hidden="true">
+                        <circle cx="16" cy="16" r="14.5" class="pb-shell"/>
+                        <path d="M1.5 16 A14.5 14.5 0 0 1 30.5 16 Z" class="pb-top"/>
+                        <rect x="1.5" y="14.5" width="29" height="3" class="pb-band"/>
+                        <circle cx="16" cy="16" r="4.5" class="pb-button-outer"/>
+                        <circle cx="16" cy="16" r="2.2" class="pb-button-inner"/>
+                    </svg>
+                    <div class="status {{statusClass}}">{{statusLabel}}</div>
                     <h1>TradeDex</h1>
                     <p>{{safeMessage}}</p>
-                    <p>You can close this tab and return to the trade page.</p>
+                    <p class="closing">{{closeText}}</p>
                 </main>
                 <script>
                     if (window.opener) {
-                        window.opener.postMessage({ type: 'tradedex-auth', success: {{success.ToString().ToLowerInvariant()}} }, window.location.origin);
-                        setTimeout(() => window.close(), 700);
+                        window.opener.postMessage({ type: 'tradedex-auth', success: {{successLower}} }, window.location.origin);
+                        setTimeout(() => window.close(), 1100);
                     } else {
-                        setTimeout(() => window.location.href = '/trade', 900);
+                        setTimeout(() => window.location.href = '/trade', 1400);
                     }
                 </script>
             </body>
             </html>
             """;
     }
+
+    private static string LocalizeCallbackMessage(string key, bool isSpanish) => (key, isSpanish) switch
+    {
+        ("login-complete", true) => "Sesión iniciada correctamente.",
+        ("login-complete", false) => "Login complete.",
+        ("invalid-response", true) => "Discord no devolvió una respuesta de login válida.",
+        ("invalid-response", false) => "Discord did not return a valid login response.",
+        ("session-expired", true) => "La sesión de login expiró. Inténtalo de nuevo.",
+        ("session-expired", false) => "The login session expired. Please try again.",
+        ("server-settings", true) => "Los ajustes del WebServer no están disponibles.",
+        ("server-settings", false) => "WebServer settings are unavailable.",
+        ("rejected-code", true) => "Discord rechazó el código de login.",
+        ("rejected-code", false) => "Discord rejected the login code.",
+        ("no-token", true) => "Discord no devolvió un token de acceso.",
+        ("no-token", false) => "Discord did not return an access token.",
+        ("no-profile", true) => "No se pudo leer el perfil de Discord.",
+        ("no-profile", false) => "Could not read the Discord user profile.",
+        ("invalid-user", true) => "Discord devolvió un ID de usuario inválido.",
+        ("invalid-user", false) => "Discord returned an invalid user ID.",
+        ("login-failed", true) => "Falló el login al conectar con Discord.",
+        ("login-failed", false) => "Login failed while talking to Discord.",
+        _ => key
+    };
 
     private sealed class WebTradeNotifier<T>(WebTradeSession session, string pokemonName, string spriteUrl, int code, int uniqueTradeId) : IPokeTradeNotifier<T>
         where T : PKM, new()

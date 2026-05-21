@@ -57,6 +57,9 @@
     <EmbeddedResource Include="Resources\BotControlPanel.css" />
     <EmbeddedResource Include="Resources\BotControlPanel.html" />
     <EmbeddedResource Include="Resources\BotControlPanel.js" />
+    <EmbeddedResource Include="Resources\TradePortal.css" />
+    <EmbeddedResource Include="Resources\TradePortal.html" />
+    <EmbeddedResource Include="Resources\TradePortal.js" />
     <EmbeddedResource Include="Resources\LeftJoyCon.png" />
     <EmbeddedResource Include="Resources\lgpe_mode_image.png" />
     <EmbeddedResource Include="Resources\lgpe_mode_upper.png" />
@@ -91,6 +94,9 @@
   <ItemGroup>
     <Reference Include="PKHeX.Core">
       <HintPath>..\SysBot.Pokemon\deps\PKHeX.Core.dll</HintPath>
+    </Reference>
+    <Reference Include="PKHeX.Core.AutoMod">
+      <HintPath>..\SysBot.Pokemon\deps\PKHeX.Core.AutoMod.dll</HintPath>
     </Reference>
     <Reference Include="PKHeX.Drawing">
       <HintPath>deps\PKHeX.Drawing.dll</HintPath>

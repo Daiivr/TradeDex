@@ -226,7 +226,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             }
 
 
-            var (statusCode, content, contentType) = await ProcessRequestAsync(request);
+            var (statusCode, content, contentType) = await ProcessRequestAsync(request, response);
 
             if ((contentType == "image/x-icon" || contentType == "image/png") && content is byte[] imageBytes)
             {
@@ -259,16 +259,34 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
         }
     }
-    private async Task<(int statusCode, object? content, string contentType)> ProcessRequestAsync(HttpListenerRequest request)
+    private async Task<(int statusCode, object? content, string contentType)> ProcessRequestAsync(HttpListenerRequest request, HttpListenerResponse response)
     {
         var path = request.Url?.LocalPath ?? "";
 
         return path switch
         {
             "/" => (200, HtmlTemplate, "text/html"),
+            "/trade" or "/trade/" => (200, LoadEmbeddedResource("TradePortal.html"), "text/html"),
             "/BotControlPanel.css" => (200, LoadEmbeddedResource("BotControlPanel.css"), "text/css"),
             "/BotControlPanel.js" => (200, LoadEmbeddedResource("BotControlPanel.js"), "text/javascript"),
+            "/TradePortal.css" => (200, LoadEmbeddedResource("TradePortal.css"), "text/css"),
+            "/TradePortal.js" => (200, LoadEmbeddedResource("TradePortal.js"), "text/javascript"),
             "/api/bot/localization" => (200, GetLocalizationInfo(), "application/json"),
+            "/api/trade/auth/config" => (200, GetTradeAuthConfig(request), "application/json"),
+            "/api/trade/auth/login" => (200, StartDiscordLogin(request, response), "application/json"),
+            "/api/trade/auth/callback" => (200, await CompleteDiscordLogin(request, response), "text/html"),
+            "/api/trade/auth/me" => (200, GetCurrentTradeUser(request), "application/json"),
+            "/api/trade/auth/logout" => (200, LogoutTradeUser(response), "application/json"),
+            "/api/trade/profile" => (200, GetTradeProfile(request), "application/json"),
+            "/api/trade/queue" => (200, GetWebTradeQueueStatus(request), "application/json"),
+            var p when p == "/api/trade/code" && request.HttpMethod == "POST" =>
+                (200, await SaveTradeCode(request), "application/json"),
+            var p when p == "/api/trade/code/delete" && request.HttpMethod == "POST" =>
+                (200, DeleteTradeCode(request), "application/json"),
+            var p when p == "/api/trade/submit" && request.HttpMethod == "POST" =>
+                (200, await SubmitWebTrade(request), "application/json"),
+            var p when p == "/api/trade/cancel" && request.HttpMethod == "POST" =>
+                (200, CancelWebTrade(request), "application/json"),
             "/api/bot/instances" => (200, await GetInstancesAsync(), "application/json"),
             "/api/bot/queue/status" => (200, await Task.FromResult(GetQueueStatus()), "application/json"),
             var p when p.StartsWith("/api/bot/instances/") && p.EndsWith("/bots") =>
@@ -293,6 +311,9 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             "/icon.ico" => (200, GetIconBytes(), "image/x-icon"),
             "/LeftJoyCon.png" => (200, LoadEmbeddedResourceBinary("LeftJoyCon.png"), "image/png"),
             "/RightJoyCon.png" => (200, LoadEmbeddedResourceBinary("RightJoyCon.png"), "image/png"),
+            "/sv_mode_image.png" => (200, LoadEmbeddedResourceBinary("sv_mode_image.png"), "image/png"),
+            "/plza_mode_image.png" => (200, LoadEmbeddedResourceBinary("plza_mode_image.png"), "image/png"),
+            "/swsh_mode_image.png" => (200, LoadEmbeddedResourceBinary("swsh_mode_image.png"), "image/png"),
             _ => (404, null, "text/plain")
         };
     }

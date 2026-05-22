@@ -6,6 +6,7 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using SysBot.Pokemon.Localization;
+using SysBot.Pokemon.WinForms.Helpers;
 
 namespace SysBot.Pokemon.WinForms
 {
@@ -28,6 +29,7 @@ namespace SysBot.Pokemon.WinForms
             InitializeComponent();
             ConfigureDynamicUpdateInfo();
             labelChangelogTitle.Text = $"{L("Changelog")} ({newVersion}):";
+            DarkScrollHelper.Apply(textBoxChangelog);
             Load += async (sender, e) => await FetchAndDisplayChangelog();
             UpdateFormText();
         }
@@ -60,71 +62,80 @@ namespace SysBot.Pokemon.WinForms
 
         private void InitializeComponent()
         {
+            var theme = ThemeManager.CurrentColors;
+
             labelUpdateInfo = new Label();
             buttonDownload = new Button();
             textBoxChangelog = new TextBox();
-            labelChangelogTitle = new Label(); // Ensure labelChangelogTitle is initialized
+            labelChangelogTitle = new Label();
             SuspendLayout();
-            // 
+            //
             // labelUpdateInfo
-            // 
+            //
             labelUpdateInfo.AutoSize = true;
-            labelUpdateInfo.ForeColor = Color.White;
-            labelUpdateInfo.Location = new Point(12, 8);
+            labelUpdateInfo.Font = new Font("Segoe UI", 9.5F, FontStyle.Regular);
+            labelUpdateInfo.ForeColor = theme.ForeColor;
+            labelUpdateInfo.Location = new Point(20, 18);
             labelUpdateInfo.Name = "labelUpdateInfo";
             labelUpdateInfo.Size = new Size(158, 20);
             labelUpdateInfo.TabIndex = 0;
             labelUpdateInfo.Text = L("Checking for updates...");
-            // 
+            //
             // labelChangelogTitle
             //
-            labelChangelogTitle = new Label(); // Ensure labelChangelogTitle is explicitly initialized
             labelChangelogTitle.AutoSize = true;
-            labelChangelogTitle.ForeColor = Color.White;
-            labelChangelogTitle.Font = new Font("Segoe UI", 10F, FontStyle.Bold, GraphicsUnit.Point);
-            labelChangelogTitle.Location = new Point(10, 48); // Moved higher
+            labelChangelogTitle.ForeColor = theme.Muted;
+            labelChangelogTitle.Font = new Font("Segoe UI", 8.25F, FontStyle.Bold, GraphicsUnit.Point);
+            labelChangelogTitle.Location = new Point(20, 52);
             labelChangelogTitle.Name = "labelChangelogTitle";
-            labelChangelogTitle.Size = new Size(85, 20);
+            labelChangelogTitle.Size = new Size(85, 18);
             labelChangelogTitle.TabIndex = 3;
-            labelChangelogTitle.Text = L("Changelog:");
-            // 
+            labelChangelogTitle.Text = L("Changelog:").ToUpperInvariant();
+            //
             // buttonDownload
-            // 
-            buttonDownload.BackColor = Color.FromArgb(20, 19, 57);
+            //
+            buttonDownload.BackColor = theme.Hover;
             buttonDownload.Dock = DockStyle.Bottom;
             buttonDownload.FlatStyle = FlatStyle.Flat;
-            buttonDownload.ForeColor = Color.White;
+            buttonDownload.FlatAppearance.BorderSize = 0;
+            buttonDownload.FlatAppearance.MouseOverBackColor = theme.Shadow;
+            buttonDownload.FlatAppearance.MouseDownBackColor = theme.Shadow;
+            buttonDownload.Font = new Font("Segoe UI", 9.5F, FontStyle.Regular);
+            buttonDownload.ForeColor = theme.ForeColor;
+            buttonDownload.Cursor = Cursors.Hand;
             buttonDownload.Location = new Point(0, 275);
             buttonDownload.Name = "buttonDownload";
-            buttonDownload.Size = new Size(708, 40);
+            buttonDownload.Size = new Size(708, 46);
             buttonDownload.TabIndex = 1;
             buttonDownload.Text = L("Download Update");
             buttonDownload.UseVisualStyleBackColor = false;
             buttonDownload.Click += ButtonDownload_Click;
-            // 
+            //
             // textBoxChangelog
-            // 
+            //
             textBoxChangelog.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxChangelog.BackColor = Color.FromArgb(20, 19, 57);
-            textBoxChangelog.BorderStyle = BorderStyle.FixedSingle;
-            textBoxChangelog.ForeColor = Color.White;
-            textBoxChangelog.Location = new Point(10, 71);
+            textBoxChangelog.BackColor = theme.Hover;
+            textBoxChangelog.BorderStyle = BorderStyle.None;
+            textBoxChangelog.Font = new Font("Consolas", 9.5F, FontStyle.Regular);
+            textBoxChangelog.ForeColor = Color.FromArgb(200, 204, 210);
+            textBoxChangelog.Location = new Point(20, 78);
             textBoxChangelog.Multiline = true;
             textBoxChangelog.Name = "textBoxChangelog";
             textBoxChangelog.ReadOnly = true;
             textBoxChangelog.ScrollBars = ScrollBars.Vertical;
-            textBoxChangelog.Size = new Size(688, 187);
+            textBoxChangelog.Size = new Size(668, 180);
             textBoxChangelog.TabIndex = 2;
-            // 
+            //
             // UpdateForm
-            // 
-            BackColor = Color.FromArgb(31, 30, 68);
-            ClientSize = new Size(708, 300);
+            //
+            BackColor = theme.PanelBase;
+            ClientSize = new Size(708, 321);
             Controls.Add(labelUpdateInfo);
             Controls.Add(buttonDownload);
             Controls.Add(textBoxChangelog);
             Controls.Add(labelChangelogTitle);
-            ForeColor = Color.White;
+            ForeColor = theme.ForeColor;
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -165,13 +176,13 @@ namespace SysBot.Pokemon.WinForms
                 }
                 else
                 {
-                    MessageBox.Show(L("Failed to fetch the download URL. Please check your internet connection and try again."),
-                        L("Download Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(L("Failed to fetch the download URL. Please check your internet connection and try again."),
+                        L("Download Error"), MessageBoxButtons.OK, SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(L($"Update failed: {ex.Message}"), L("Update Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(L($"Update failed: {ex.Message}"), L("Update Error"), MessageBoxButtons.OK, SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
             }
             finally
             {
@@ -238,7 +249,7 @@ namespace SysBot.Pokemon.WinForms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(L($"Failed to install update: {ex.Message}"), L("Update Error"), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(L($"Failed to install update: {ex.Message}"), L("Update Error"), MessageBoxButtons.OK, SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
             }
         }
 

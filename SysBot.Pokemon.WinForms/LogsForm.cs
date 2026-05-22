@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Windows.Forms;
 using System.Collections.Generic;
 using SysBot.Pokemon.Localization;
+using SysBot.Pokemon.WinForms.Helpers;
 
 namespace SysBot.Pokemon.WinForms
 {
@@ -40,13 +41,15 @@ namespace SysBot.Pokemon.WinForms
                 logsFont = new Font("Ubuntu Mono", 8);
             }
 
+            var theme = ThemeManager.CurrentColors;
             LogsBox = new RichTextBox
             {
                 Dock = DockStyle.Fill,
                 ReadOnly = true,
-                Font = logsFont,
-                BackColor = Color.FromArgb(10, 10, 40),
-                ForeColor = Color.FromArgb(51, 255, 255),
+                Font = new Font("Consolas", 9F, FontStyle.Regular),
+                BackColor = theme.Background,
+                ForeColor = Color.FromArgb(200, 204, 210),
+                BorderStyle = BorderStyle.None,
                 WordWrap = true,
                 ScrollBars = RichTextBoxScrollBars.Both,
                 ContextMenuStrip = CreateContextMenu()
@@ -66,12 +69,12 @@ namespace SysBot.Pokemon.WinForms
             placeholderLabel = new Label
             {
                 Text = AppLocalization.Get(LocalizationKeys.LogsNothingLogged),
-                ForeColor = Color.Cyan,
+                ForeColor = theme.Muted,
                 BackColor = Color.Transparent,
                 AutoSize = false,
                 TextAlign = ContentAlignment.MiddleCenter,
                 Dock = DockStyle.Fill,
-                Font = placeholderFont
+                Font = new Font("Segoe UI", 10F, FontStyle.Regular)
             };
 
             var logsPanel = new Panel { Dock = DockStyle.Fill };
@@ -85,6 +88,7 @@ namespace SysBot.Pokemon.WinForms
             Controls.Add(topPanel);
 
             LogsBox.TextChanged += LogsBox_TextChanged;
+            DarkScrollHelper.Apply(LogsBox);
             ApplyLocalization();
         }
 
@@ -111,11 +115,12 @@ namespace SysBot.Pokemon.WinForms
 
         private Panel CreateSearchPanel()
         {
+            var theme = ThemeManager.CurrentColors;
             var panel = new Panel
             {
                 Dock = DockStyle.Top,
                 Height = 30,
-                BackColor = Color.FromArgb(20, 20, 50) // top panel background
+                BackColor = theme.PanelBase
             };
 
             // Use FontManager for Montserrat with fallback
@@ -133,9 +138,9 @@ namespace SysBot.Pokemon.WinForms
             searchBox = new TextBox
             {
                 BorderStyle = BorderStyle.None,
-                BackColor = Color.FromArgb(40, 39, 77),
-                ForeColor = Color.Gray,
-                Font = searchFont,
+                BackColor = theme.Hover,
+                ForeColor = theme.Muted,
+                Font = new Font("Segoe UI", 9F, FontStyle.Italic),
                 Text = AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder),
                 Location = new Point(6, 5),
                 Size = new Size(198, 28),
@@ -157,8 +162,8 @@ namespace SysBot.Pokemon.WinForms
                 if (searchBox.Text == AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder))
                 {
                     searchBox.Text = "";
-                    searchBox.ForeColor = Color.White;
-                    searchBox.Font = searchFontRegular;
+                    searchBox.ForeColor = theme.ForeColor;
+                    searchBox.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
                 }
             };
 
@@ -167,8 +172,8 @@ namespace SysBot.Pokemon.WinForms
                 if (string.IsNullOrWhiteSpace(searchBox.Text))
                 {
                     searchBox.Text = AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder);
-                    searchBox.ForeColor = Color.Gray;
-                    searchBox.Font = searchFont;
+                    searchBox.ForeColor = theme.Muted;
+                    searchBox.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
                 }
             };
 
@@ -223,7 +228,7 @@ namespace SysBot.Pokemon.WinForms
             {
                 AutoSize = true,
                 Location = new Point(470, 6 - 2), // was 550
-                ForeColor = Color.White,
+                ForeColor = theme.ForeColor,
                 Font = buttonFont
             };
 
@@ -304,7 +309,7 @@ namespace SysBot.Pokemon.WinForms
 
         private void ClearHighlights()
         {
-            var originalColor = Color.FromArgb(10, 10, 40);
+            var originalColor = ThemeManager.CurrentColors.Background;
 
             LogsBox.SelectAll();
             LogsBox.SelectionBackColor = originalColor;
@@ -316,7 +321,7 @@ namespace SysBot.Pokemon.WinForms
             if (searchBox.Text == AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder))
             {
                 searchBox.Text = string.Empty;
-                searchBox.ForeColor = Color.White;
+                searchBox.ForeColor = ThemeManager.CurrentColors.ForeColor;
                 // Use existing font or fallback
                 try
                 {

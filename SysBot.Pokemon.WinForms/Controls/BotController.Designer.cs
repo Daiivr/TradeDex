@@ -43,13 +43,13 @@ partial class BotController
         btnActions = new Button();
         RCMenu = new ContextMenuStrip(components);
         SuspendLayout();
-        // 
-        // pnlStatus
-        // 
-        pnlStatus.BackColor = Color.Red;
-        pnlStatus.Location = new Point(8, 10);
+        //
+        // pnlStatus — small status dot at the left edge of the row.
+        //
+        pnlStatus.BackColor = Color.FromArgb(248, 113, 113);
+        pnlStatus.Location = new Point(14, 14);
         pnlStatus.Name = "pnlStatus";
-        pnlStatus.Size = new Size(15, 15);
+        pnlStatus.Size = new Size(8, 8);
         pnlStatus.TabIndex = 0;
         _statusGlowTimer = new Timer
         {
@@ -57,103 +57,115 @@ partial class BotController
         };
         _statusGlowTimer.Tick += (_, _) => AnimateStatusGlow();
         _statusGlowTimer.Start();
-        // 
+        //
         // lblStatus
-        // 
+        //
         lblStatus.AutoSize = true;
-        lblStatus.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-        lblStatus.ForeColor = Color.White;
-        lblStatus.Location = new Point(29, 7);
+        lblStatus.Font = new Font("Segoe UI", 8.25F, FontStyle.Bold);
+        lblStatus.ForeColor = Color.FromArgb(180, 184, 192);
+        lblStatus.Location = new Point(32, 9);
         lblStatus.Name = "lblStatus";
-        lblStatus.Size = new Size(122, 20);
+        lblStatus.Size = new Size(122, 18);
         lblStatus.TabIndex = 2;
         lblStatus.Text = "DISCONNECTED";
-        // 
-        // lblConnectionName
-        // 
-        lblConnectionName.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-        lblConnectionName.ForeColor = Color.White;
-        lblConnectionName.Location = new Point(28, 28);
+        //
+        // lblConnectionName — primary identity (IP / label).
+        //
+        lblConnectionName.Font = new Font("Segoe UI", 10.5F, FontStyle.Regular);
+        lblConnectionName.ForeColor = Color.FromArgb(232, 234, 238);
+        lblConnectionName.Location = new Point(32, 30);
         lblConnectionName.Name = "lblConnectionName";
-        lblConnectionName.Size = new Size(520, 20);
+        lblConnectionName.AutoSize = false;
+        lblConnectionName.Size = new Size(520, 22);
         lblConnectionName.TabIndex = 3;
         lblConnectionName.Text = "???";
-        // 
-        // lblConnectionInfo
-        // 
+        //
+        // lblBotMeta — "Routine · time", a plain Label so it lines up exactly with
+        // lblConnectionName (IP) and lblConnectionInfo (last-logged). RichTextBox added
+        // an extra 3-4 px of left padding that broke vertical alignment.
+        //
+        lblBotMeta = new Label
+        {
+            Name = "lblBotMeta",
+            AutoSize = false,
+            Location = new Point(32, 54),
+            Size = new Size(540, 20),
+            BackColor = Color.Transparent,
+            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(160, 164, 172),
+            TextAlign = ContentAlignment.MiddleLeft,
+            Text = string.Empty,
+            UseCompatibleTextRendering = false,
+        };
+        Controls.Add(lblBotMeta);
+        // Keep the rtbBotMeta field alive for source compatibility but invisible.
+        rtbBotMeta = new RichTextBox { Visible = false, Location = new Point(-100, -100), Size = new Size(0, 0) };
+        Controls.Add(rtbBotMeta);
+        //
+        // lblConnectionInfo — last-logged hint, smallest weight.
+        //
         lblConnectionInfo.Font = new Font("Segoe UI", 8.5F);
-        lblConnectionInfo.ForeColor = Color.White;
-        lblConnectionInfo.Location = new Point(28, 76);
+        lblConnectionInfo.ForeColor = Color.FromArgb(120, 124, 132);
+        lblConnectionInfo.Location = new Point(32, 78);
         lblConnectionInfo.Name = "lblConnectionInfo";
-        lblConnectionInfo.Size = new Size(661, 30);
+        lblConnectionInfo.AutoSize = false;
+        lblConnectionInfo.Size = new Size(540, 20);
         lblConnectionInfo.TabIndex = 4;
         BringToFront();
         //
-        // lblRoutine
+        // lblRoutine — kept as a hidden placeholder so existing references stay valid.
         //
         lblRoutine = new Label
         {
             AutoSize = true,
-            Font = new Font("Segoe UI", 9F, FontStyle.Regular),
-            ForeColor = Color.White,
-            Location = new Point(10, 60), // Adjust based on your layout
+            Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
+            ForeColor = Color.FromArgb(140, 144, 152),
+            Location = new Point(-100, -100),
             Name = "lblRoutine",
-            Size = new Size(150, 20),
+            Size = new Size(0, 0),
+            Visible = false,
         };
         Controls.Add(lblRoutine);
         //
-        // rtbBotMeta
-        //
-        rtbBotMeta = new RichTextBox
-        {
-            Name = "rtbBotMeta",
-            Location = new Point(32, 50), // adjust based on your layout
-            Size = new Size(240, 30),
-            BackColor = Color.FromArgb(20, 19, 57),
-            BorderStyle = BorderStyle.None,
-            ReadOnly = true,
-            ScrollBars = RichTextBoxScrollBars.None,
-            TabStop = false,
-            Font = new Font("Segoe UI", 9F),
-            ForeColor = Color.AntiqueWhite
-        };
-        Controls.Add(rtbBotMeta);
-        // 
         // btnActions
-        // 
+        //
         btnActions.Anchor = AnchorStyles.Top | AnchorStyles.Right;
-        btnActions.BackColor = Color.FromArgb(31, 30, 68);
-        btnActions.FlatAppearance.BorderColor = Color.FromArgb(51, 50, 98);
-        btnActions.FlatAppearance.MouseDownBackColor = Color.FromArgb(51, 50, 98);
-        btnActions.FlatAppearance.MouseOverBackColor = Color.FromArgb(41, 40, 88);
+        btnActions.BackColor = Color.FromArgb(30, 32, 36);
+        btnActions.FlatAppearance.BorderColor = Color.FromArgb(36, 38, 42);
+        btnActions.FlatAppearance.BorderSize = 1;
+        btnActions.FlatAppearance.MouseDownBackColor = Color.FromArgb(36, 38, 42);
+        btnActions.FlatAppearance.MouseOverBackColor = Color.FromArgb(36, 38, 42);
         btnActions.FlatStyle = FlatStyle.Flat;
-        btnActions.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
-        btnActions.ForeColor = Color.White;
-        btnActions.Location = new Point(576, 6);
+        btnActions.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+        btnActions.ForeColor = Color.FromArgb(232, 234, 238);
+        btnActions.Cursor = Cursors.Hand;
+        btnActions.Location = new Point(576, 14);
         btnActions.Name = "btnActions";
-        btnActions.Size = new Size(116, 30);
+        btnActions.Size = new Size(116, 28);
         btnActions.TabIndex = 4;
-        btnActions.Text = "▶ BOT MENU";
+        btnActions.Text = "Actions  ▾";
         btnActions.UseVisualStyleBackColor = false;
         btnActions.Click += BtnActions_Click;
-        // 
+        //
         // RCMenu
-        // 
+        //
         RCMenu.ImageScalingSize = new Size(20, 20);
         RCMenu.Name = "RCMenu";
         RCMenu.Size = new Size(61, 4);
-        // 
+        //
         // BotController
-        // 
-        BackColor = Color.FromArgb(20, 19, 57);
+        //
+        BackColor = Color.FromArgb(22, 23, 26);
         Controls.Add(pnlStatus);
         Controls.Add(lblStatus);
         Controls.Add(lblConnectionName);
         Controls.Add(lblConnectionInfo);
         Controls.Add(btnActions);
-        Margin = new Padding(0);
+        Margin = new Padding(0, 0, 0, 1);
         Name = "BotController";
-        Size = new Size(700, 110);
+        // Slightly taller than before to leave a clear band above the 2px progress bar
+        // for the running Pikachu mascot.
+        Size = new Size(700, 122);
         ResumeLayout(false);
         PerformLayout();
     }
@@ -168,6 +180,7 @@ partial class BotController
 #pragma warning restore CS0649
     private Label lblConnectionName = new Label();
     private Label lblRoutine = null!;
+    private Label lblBotMeta = null!;
     private RichTextBox rtbBotMeta = null!;
     private Button btnActions = null!;
     private ContextMenuStrip RCMenu = null!;

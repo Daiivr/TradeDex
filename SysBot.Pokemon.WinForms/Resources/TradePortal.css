@@ -1752,14 +1752,25 @@ textarea:focus {
     bottom: 66px;
     width: min(380px, calc(100vw - 48px));
     max-height: min(560px, calc(100vh - 120px));
-    overflow: auto;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     padding: 24px;
-    background: var(--surface-raised);
+    background: oklch(0.215 0.014 55 / 0.96);
+    -webkit-backdrop-filter: saturate(160%) blur(18px);
+    backdrop-filter: saturate(160%) blur(18px);
     border: 1px solid var(--hairline-strong);
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-lg);
     transform-origin: bottom right;
     animation: popoverEnter 220ms var(--ease-out) both;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+.guide-popover::-webkit-scrollbar {
+    width: 0;
+    height: 0;
+    display: none;
 }
 
 .guide-popover .panel-header {
@@ -1998,14 +2009,17 @@ textarea:focus {
 
 /* ============ Responsive ============ */
 
+/* ============ Tablet ( <= 1100px ) ============ */
+
 @media (max-width: 1100px) {
     .hero {
         grid-template-columns: 1fr;
-        gap: 36px;
+        gap: 28px;
     }
 
     .hero-art {
-        max-width: 480px;
+        max-width: 540px;
+        max-height: 300px;
         justify-self: start;
         aspect-ratio: 16 / 10;
     }
@@ -2017,104 +2031,341 @@ textarea:focus {
     .sidebar {
         position: static;
         grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-        gap: 48px;
+        gap: clamp(28px, 4vw, 48px);
     }
 }
 
+/* ============ Mobile ( <= 760px ) ============ */
+
 @media (max-width: 760px) {
     .topbar {
-        height: auto;
-        flex-direction: column;
-        align-items: stretch;
-        gap: 12px;
-        padding-top: 14px;
-        padding-bottom: 14px;
+        height: 56px;
+        margin: 10px 12px 0;
+        padding: 0 14px 0 12px;
+        top: 10px;
+        gap: 10px;
     }
 
     .brand {
-        flex-wrap: wrap;
+        font-size: 19px;
+        gap: 10px;
+        min-width: 0;
+        flex-shrink: 1;
+    }
+
+    .brand-mark {
+        width: 24px;
+        height: 24px;
+    }
+
+    .brand-tag {
+        display: none;
     }
 
     .nav-actions {
-        width: 100%;
+        width: auto;
+        flex-shrink: 0;
     }
 
     .ghost-link {
-        width: 100%;
+        width: auto;
+        min-height: 36px;
+        padding: 7px 14px;
+        font-size: 12.5px;
     }
 
     .shell {
-        gap: 48px;
+        gap: 28px;
+        padding-top: clamp(20px, 3vw, 28px);
+        padding-bottom: 48px;
+    }
+
+    .display {
+        font-size: clamp(28px, 8vw, 38px);
+        margin: 0 0 14px;
+        letter-spacing: -0.028em;
+    }
+
+    .lede {
+        font-size: 14.5px;
+        line-height: 1.5;
+        margin-bottom: 18px;
+    }
+
+    .hero {
+        gap: 18px;
+    }
+
+    .hero::after {
+        display: none;
     }
 
     .hero-art {
+        width: 100%;
         max-width: none;
+        max-height: none;
+        justify-self: stretch;
+        aspect-ratio: 16 / 10;
+        padding: 5% 7%;
+        border-radius: var(--radius-xl);
+    }
+
+    .hero-art img {
+        max-width: 100%;
+        max-height: 78%;
+        width: 100%;
+    }
+
+    .hero-art-chrome {
+        font-size: 8.5px;
+        padding: 4px 9px 4px 7px;
+        letter-spacing: 0.16em;
+    }
+
+    .hero-art-chrome.bottom-left {
+        display: none;
+    }
+
+    .hero-art-chrome.top-left,
+    .hero-art-chrome.top-right {
+        top: 10px;
+    }
+
+    .hero-art-chrome.top-left {
+        left: 10px;
+    }
+
+    .hero-art-chrome.top-right {
+        right: 10px;
     }
 
     .hero-meta {
-        grid-template-columns: 1fr;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
     }
 
     .hero-meta > div {
-        border-right: 0;
-        border-bottom: 1px solid var(--hairline-soft);
-        padding: 16px 0;
+        padding: 12px 8px 4px 0;
+        border-right: 1px solid var(--hairline-soft);
+        border-bottom: 0;
+        gap: 4px;
     }
 
     .hero-meta > div + div {
-        padding-left: 0;
+        padding-left: 8px;
     }
 
     .hero-meta > div:last-child {
-        border-bottom: 0;
+        border-right: 0;
+    }
+
+    .hero-meta dt {
+        font-size: 9.5px;
+        letter-spacing: 0.12em;
+    }
+
+    .hero-meta dd {
+        font-size: 14px;
+        letter-spacing: -0.012em;
     }
 
     .composer {
-        padding: 22px;
+        padding: 20px;
+        gap: 22px;
+        border-radius: var(--radius-xl);
     }
 
     .composer-header {
-        flex-direction: column;
-        align-items: stretch;
-        gap: 16px;
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 12px;
+        padding-bottom: 18px;
+    }
+
+    .composer-header > div:first-child {
+        flex: 1 1 auto;
+        min-width: 0;
+    }
+
+    .composer-header .eyebrow {
+        margin-bottom: 10px;
+    }
+
+    .display-2 {
+        font-size: clamp(24px, 6vw, 30px);
+        letter-spacing: -0.022em;
+    }
+
+    .user-actions {
+        justify-content: flex-end;
+        gap: 8px;
+        flex: 0 0 auto;
+        align-self: flex-end;
+    }
+
+    .user-pill {
+        max-width: 160px;
+        min-width: 0;
+        flex: 0 1 auto;
+        min-height: 36px;
+        padding: 3px 12px 3px 3px;
+        font-size: 12.5px;
+    }
+
+    .user-pill img {
+        width: 28px;
+        height: 28px;
     }
 
     .login-panel {
         grid-template-columns: 1fr;
+        padding: 18px;
+        gap: 16px;
+    }
+
+    .login-copy h3 {
+        font-size: 19px;
+    }
+
+    .login-copy p {
+        font-size: 13.5px;
     }
 
     .form-row {
         flex-direction: column;
         align-items: stretch;
+        gap: 14px;
     }
 
     .form-row .primary-button {
         width: 100%;
     }
 
+    .check-field {
+        font-size: 13px;
+    }
+
+    .field-label {
+        font-size: 10px;
+    }
+
+    input,
+    textarea {
+        font-size: 16px;
+    }
+
+    textarea {
+        min-height: 220px;
+        padding: 12px 14px;
+        line-height: 1.55;
+    }
+
     .file-drop {
-        grid-template-columns: 1fr;
+        grid-template-columns: 40px minmax(0, 1fr);
+        grid-template-rows: auto auto;
+        gap: 10px 12px;
+        padding: 14px;
         text-align: left;
     }
 
+    .file-drop #clear-file-button {
+        grid-column: 1 / -1;
+        grid-row: 2;
+        justify-self: stretch;
+        min-height: 36px;
+    }
+
     .file-icon {
-        width: 44px;
+        width: 40px;
+        height: 40px;
+        font-size: 12px;
+        border-radius: var(--radius-sm);
+    }
+
+    .file-copy strong {
+        font-size: 13.5px;
+    }
+
+    .file-copy small {
+        font-size: 12px;
     }
 
     .sidebar {
         grid-template-columns: 1fr;
-        gap: 48px;
+        gap: 36px;
+    }
+
+    .panel-header {
+        padding-bottom: 14px;
+        margin-bottom: 16px;
+        gap: 12px;
+    }
+
+    .panel-header .eyebrow {
+        margin-bottom: 8px;
+    }
+
+    .display-3 {
+        font-size: 19px;
+    }
+
+    .empty-state {
+        min-height: 140px;
+        padding: 22px 18px;
+        gap: 12px;
+    }
+
+    .empty-state-mark {
+        width: 38px;
+        height: 38px;
+    }
+
+    .empty-state p {
+        font-size: 13px;
+    }
+
+    .trade-summary {
+        grid-template-columns: 64px minmax(0, 1fr);
+        gap: 14px;
+        padding: 12px;
+    }
+
+    .pokemon-art {
+        width: 64px;
+        height: 64px;
+    }
+
+    .pokemon-art img {
+        width: 56px;
+        height: 56px;
+    }
+
+    #trade-pokemon {
+        font-size: 18px;
+    }
+
+    .code-box {
+        padding: 18px 14px;
+        font-size: clamp(24px, 7vw, 30px);
+        letter-spacing: 0.1em;
     }
 
     .profile-list > div {
         grid-template-columns: 1fr;
-        gap: 4px;
+        gap: 6px;
+        padding: 13px 0;
+    }
+
+    .profile-list dt {
+        font-size: 10px;
     }
 
     .profile-list dd,
     .trainer-link,
     .code-link {
         text-align: left;
+        font-size: 16px;
     }
 
     .trainer-popover,
@@ -2124,8 +2375,19 @@ textarea:focus {
         width: 100%;
     }
 
+    .trainer-popover::before,
+    .code-editor::before {
+        right: auto;
+        left: 22px;
+    }
+
     .trainer-popover strong {
         text-align: left;
+        font-size: 14.5px;
+    }
+
+    .terminal {
+        border-radius: var(--radius-xl);
     }
 
     .terminal-header,
@@ -2133,23 +2395,91 @@ textarea:focus {
         flex-direction: column;
         align-items: stretch;
         gap: 12px;
-        padding: 16px 18px;
+        padding: 14px 16px;
+    }
+
+    .terminal-pokemon {
+        font-size: 18px;
     }
 
     .terminal-screen {
-        min-height: 300px;
-        padding: 18px;
+        min-height: 280px;
+        max-height: 380px;
+        padding: 16px;
+        font-size: 12.5px;
+    }
+
+    .terminal-code {
+        font-size: 22px;
     }
 
     .code-actions {
         grid-template-columns: 1fr;
     }
 
+    .guide-widget {
+        right: 14px;
+        bottom: 14px;
+    }
+
+    .guide-button {
+        width: 48px;
+        height: 48px;
+    }
+
     .toast {
-        right: 16px;
-        left: 16px;
-        bottom: 88px;
+        right: 14px;
+        left: 14px;
+        bottom: 76px;
         width: auto;
+        padding: 14px 16px 14px 44px;
+    }
+
+    .toast::before {
+        left: 16px;
+        top: 19px;
+    }
+}
+
+/* ============ Narrow mobile ( <= 420px ) ============ */
+
+@media (max-width: 420px) {
+    .topbar {
+        margin: 8px 8px 0;
+        padding: 0 12px;
+        top: 8px;
+        height: 52px;
+    }
+
+    .brand {
+        font-size: 18px;
+        gap: 8px;
+    }
+
+    .shell {
+        width: min(1320px, calc(100% - 20px));
+        gap: 24px;
+    }
+
+    .display {
+        font-size: clamp(24px, 9vw, 32px);
+    }
+
+    .hero-meta dd {
+        font-size: 13px;
+    }
+
+    .composer {
+        padding: 16px;
+        gap: 20px;
+    }
+
+    .user-pill {
+        max-width: 130px;
+    }
+
+    .terminal-screen {
+        min-height: 240px;
     }
 }
 
@@ -2160,6 +2490,14 @@ textarea:focus {
     .primary-button:hover,
     .guide-button:hover {
         background: inherit;
+    }
+
+    .composer:hover {
+        transform: none;
+        box-shadow:
+            var(--shadow-md),
+            inset 0 1px 0 oklch(1 0 0 / 0.05),
+            inset 0 0 0 1px oklch(0 0 0 / 0.2);
     }
 }
 

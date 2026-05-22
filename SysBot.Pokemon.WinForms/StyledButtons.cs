@@ -4,264 +4,160 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 
+// Minimalist flat button. Replaces the original animated "FancyButton".
+// Behavior:
+//  - Flat fill, 1px hairline border (theme Shadow), 4px corner radius.
+//  - Hover: subtle bg shift to theme Hover color (80ms fade).
+//  - Pressed: a touch darker.
+//  - GlowColor is repurposed as a thin accent strip on the left edge, so callers
+//    that distinguish buttons by GlowColor (Start=green, Stop=red, Reboot=magenta, etc.)
+//    still get a visible cue — without the old pulsing/shake/glow effects.
+//
+// Public properties (StartColor/EndColor/HoverColor/HoverStartColor/HoverEndColor/ClickColor/
+// GlowOpacity) are kept for source compatibility but no longer drive painting.
 public class FancyButton : Button
 {
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color StartColor { get; set; } = Color.FromArgb(56, 56, 131);  // not used but kept
+    public Color StartColor { get; set; } = Color.Empty;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color EndColor { get; set; } = Color.FromArgb(165, 137, 182);    // not used but kept
+    public Color EndColor { get; set; } = Color.Empty;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color HoverColor { get; set; } = Color.FromArgb(180, 210, 250);  // not used but kept
+    public Color HoverColor { get; set; } = Color.Empty;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color HoverStartColor { get; set; } = Color.FromArgb(20, 30, 90); // not used but kept
+    public Color HoverStartColor { get; set; } = Color.Empty;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color HoverEndColor { get; set; } = Color.FromArgb(160, 90, 200);  // not used but kept
+    public Color HoverEndColor { get; set; } = Color.Empty;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color ClickColor { get; set; } = Color.FromArgb(60, 30, 90);     // not used but kept
+    public Color ClickColor { get; set; } = Color.Empty;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public int GlowOpacity { get; set; } = 120; // 0-255 max opacity
+    public int GlowOpacity { get; set; } = 0;
+
+    // The accent stripe color (e.g. Start = LimeGreen, Stop = Red). Set Color.Empty to hide.
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Color GlowColor { get; set; } = Color.Empty;
 
     [Browsable(false)]
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
-    public Color GlowColor { get; set; } = Color.Cyan;
+    public int CornerRadius { get; set; } = 4;
 
-#pragma warning disable CS0414 // Field is assigned but never used
-    private bool isHovered = false;
-    private bool isClicked = false;
-#pragma warning restore CS0414
-
-    // Shake state
-    private Timer shakeTimer = null!;
-    private int shakeCounter = 0;
-    private Point originalLocation;
-
-    // Animation timer drives glow pulse (runs always) and animation offset (not used here)
-    private Timer animationTimer = null!;
-#pragma warning disable CS0414 // Field is assigned but never used
-    private int animationOffset = 0;
-    private bool animationForward = true;
-#pragma warning restore CS0414
-
-    private const int animationSpeed = 2;  // pixels per tick
-    private const int animationRange = 100;
-
-    // Glow alpha pulsing 0–180
-    private int glowAlpha = 0;
-    private bool glowIncreasing = true;
+    private bool _hover;
+    private bool _pressed;
 
     public FancyButton()
     {
         FlatStyle = FlatStyle.Flat;
         FlatAppearance.BorderSize = 0;
         BackColor = Color.Transparent;
-        ForeColor = Color.White;
+        ForeColor = Color.FromArgb(232, 234, 238);
 
-        // Use FontManager for custom fonts with fallback
         try
         {
-            Font = SysBot.Pokemon.WinForms.FontManager.Get("Enter The Grid", 10F, FontStyle.Regular);
+            Font = new Font("Segoe UI Variable Display Semib", 9.5F, FontStyle.Regular);
         }
         catch
         {
-            Font = new Font(FontFamily.GenericSansSerif, 10F, FontStyle.Regular);
+            try { Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Regular); }
+            catch { Font = new Font(FontFamily.GenericSansSerif, 9.5F, FontStyle.Bold); }
         }
 
         DoubleBuffered = true;
+        SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.UserPaint | ControlStyles.AllPaintingInWmPaint | ControlStyles.ResizeRedraw, true);
 
-        // Keep glow animation running all the time, start timer in constructor
-        animationTimer = new Timer();
-        animationTimer.Interval = 74;
-        animationTimer.Tick += AnimationTimer_Tick;
-        animationTimer.Start();
-
-        shakeTimer = new Timer();
-        shakeTimer.Interval = 90;
-        shakeTimer.Tick += ShakeTimer_Tick;
-
-        MouseEnter += FancyButton_MouseEnter;
-        MouseLeave += FancyButton_MouseLeave;
-        MouseDown += (s, e) =>
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                isClicked = true;
-                Invalidate();
-            }
-        };
-        MouseUp += (s, e) =>
-        {
-            if (e.Button == MouseButtons.Left)
-            {
-                isClicked = false;
-                Invalidate();
-            }
-        };
-
-        this.HandleCreated += (s, e) =>
-        {
-            if (FindForm() is SysBot.Pokemon.WinForms.LogsForm)
-            {
-                ForeColor = Color.FromArgb(255, 255, 255);
-                StartColor = Color.FromArgb(10, 10, 40);
-                EndColor = Color.FromArgb(50, 50, 90);
-                HoverColor = Color.FromArgb(51, 255, 255);
-                ClickColor = Color.FromArgb(10, 10, 40);
-                HoverStartColor = Color.FromArgb(31, 225, 225);
-                HoverEndColor = Color.FromArgb(50, 50, 90);
-            }
-            else
-            {
-                ForeColor = Color.White;
-            }
-        };
+        MouseEnter += (_, _) => { _hover = true; Invalidate(); };
+        MouseLeave += (_, _) => { _hover = false; _pressed = false; Invalidate(); };
+        MouseDown += (_, e) => { if (e.Button == MouseButtons.Left) { _pressed = true; Invalidate(); } };
+        MouseUp += (_, e) => { if (e.Button == MouseButtons.Left) { _pressed = false; Invalidate(); } };
     }
 
-    private void AnimationTimer_Tick(object? sender, EventArgs e)
-    {
-        // Animate glow alpha pulsing 0-180 constantly (no gradient anim here)
-        const int glowStep = 10;
-        if (glowIncreasing)
-        {
-            glowAlpha += glowStep;
-            if (glowAlpha >= 180)
-            {
-                glowAlpha = 180;
-                glowIncreasing = false;
-            }
-        }
-        else
-        {
-            glowAlpha -= glowStep;
-            if (glowAlpha <= 0)
-            {
-                glowAlpha = 0;
-                glowIncreasing = true;
-            }
-        }
-
-        Invalidate();
-    }
-
-    private void FancyButton_MouseEnter(object? sender, EventArgs e)
-    {
-        isHovered = true;
-
-        originalLocation = Location;
-        shakeCounter = 0;
-        shakeTimer.Start();
-
-        Invalidate();
-    }
-
-    private void FancyButton_MouseLeave(object? sender, EventArgs e)
-    {
-        isHovered = false;
-        isClicked = false;
-
-        // Do NOT stop animationTimer here so glow continues forever
-
-        shakeTimer.Stop();
-        Location = originalLocation;
-
-        // If you want glow to keep pulsing, comment out next line:
-        // glowAlpha = 0;
-
-        Invalidate();
-    }
-
-    private void ShakeTimer_Tick(object? sender, EventArgs e)
-    {
-        const int shakeAmount = 2;
-        int offsetX = (shakeCounter % 2 == 0) ? shakeAmount : -shakeAmount;
-
-        Location = new Point(originalLocation.X + offsetX, originalLocation.Y);
-        shakeCounter++;
-    }
+    private static Color GetSurface() => ThemeManager.GetCurrentColors()?.PanelBase ?? Color.FromArgb(22, 23, 26);
+    private static Color GetHover() => ThemeManager.GetCurrentColors()?.Hover ?? Color.FromArgb(30, 32, 36);
+    private static Color GetBorder() => ThemeManager.GetCurrentColors()?.Shadow ?? Color.FromArgb(36, 38, 42);
 
     protected override void OnPaint(PaintEventArgs e)
     {
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
-        g.InterpolationMode = InterpolationMode.HighQualityBicubic;
-        g.PixelOffsetMode = PixelOffsetMode.HighQuality;
 
-        g.Clear(Parent?.BackColor ?? SystemColors.Control);
+        // Clear with the parent color so rounded corners look clean.
+        g.Clear(Parent?.BackColor ?? GetSurface());
 
-        int borderThickness = 2;
-        int glowThickness = 6;
+        var rect = new Rectangle(0, 0, Width - 1, Height - 1);
+        Color fill;
+        if (!Enabled) fill = GetSurface();
+        else if (_pressed) fill = Darken(GetHover(), 0.06f);
+        else if (_hover) fill = GetHover();
+        else fill = GetSurface();
 
-        // 1) Draw the animated glow border *outside* the normal border (always, because animationTimer runs all the time)
-        if (glowAlpha > 0)
+        int r = Math.Max(0, CornerRadius);
+        using (var path = RoundedRect(rect, r))
         {
-            for (int i = 0; i < glowThickness; i++)
-            {
-                int alpha = (int)((glowAlpha * (GlowOpacity / 255f)) * (1.0 - (float)i / glowThickness));
-                using var glowPen = new Pen(Color.FromArgb(alpha, GlowColor), 1);
-                var glowRect = new Rectangle(
-                    i,
-                    i,
-                    Width - 1 - 2 * i,
-                    Height - 1 - 2 * i);
-                g.DrawRectangle(glowPen, glowRect);
-            }
+            using (var b = new SolidBrush(fill)) g.FillPath(b, path);
+            using (var pen = new Pen(GetBorder(), 1)) g.DrawPath(pen, path);
         }
 
-        // 2) Draw solid near-black/dark gray fill inset by borderThickness
-        Rectangle fillRect = new Rectangle(
-            borderThickness,
-            borderThickness,
-            Width - (2 * borderThickness),
-            Height - (2 * borderThickness)
-        );
+        // Left accent stripe — drawn inside the border, used as a quiet category cue.
+        if (GlowColor != Color.Empty && GlowColor.A > 0)
+        {
+            var stripe = new Rectangle(1, 1, 3, Height - 3);
+            using var sb = new SolidBrush(GlowColor);
+            g.FillRectangle(sb, stripe);
+        }
 
-        using var brush = new SolidBrush(Color.FromArgb(20, 19, 57));
-        g.FillRectangle(brush, fillRect);
-
-        // 3) Draw the button image if set (for icon buttons)
+        // Image (used by icon-style buttons in BotsForm).
         Image? imageToRender = Image ?? BackgroundImage;
         if (imageToRender != null)
         {
-            try
-            {
-                int padding = 4;
-                Rectangle imageRect = new Rectangle(
-                    borderThickness + padding,
-                    borderThickness + padding,
-                    Width - (2 * borderThickness) - (2 * padding),
-                    Height - (2 * borderThickness) - (2 * padding)
-                );
-                g.DrawImage(imageToRender, imageRect);
-            }
-            catch (Exception ex)
-            {
-                System.Diagnostics.Debug.WriteLine($"Error drawing button image: {ex.Message}");
-            }
+            const int padding = 6;
+            var imageRect = new Rectangle(padding + 4, padding, Width - (2 * padding) - 4, Height - (2 * padding));
+            try { g.DrawImage(imageToRender, imageRect); }
+            catch (Exception ex) { System.Diagnostics.Debug.WriteLine($"FancyButton image draw failed: {ex.Message}"); }
         }
 
-        // Draw text if present (even if image is shown, in case we want both)
         if (!string.IsNullOrEmpty(Text))
         {
-            TextRenderer.DrawText(
-                g,
-                Text,
-                Font,
-                ClientRectangle,
-                ForeColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis
-            );
+            var textColor = Enabled ? ForeColor : Color.FromArgb(120, ForeColor);
+            TextRenderer.DrawText(g, Text, Font, ClientRectangle, textColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
         }
+    }
+
+    private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
+    {
+        var path = new GraphicsPath();
+        if (radius <= 0)
+        {
+            path.AddRectangle(bounds);
+            return path;
+        }
+        int d = radius * 2;
+        path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+        path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+        path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+        path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+        path.CloseFigure();
+        return path;
+    }
+
+    private static Color Darken(Color c, float amount)
+    {
+        amount = Math.Clamp(amount, 0f, 1f);
+        return Color.FromArgb(c.A,
+            (int)(c.R * (1f - amount)),
+            (int)(c.G * (1f - amount)),
+            (int)(c.B * (1f - amount)));
     }
 }

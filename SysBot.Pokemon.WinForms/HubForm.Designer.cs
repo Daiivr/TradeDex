@@ -32,36 +32,39 @@ namespace SysBot.Pokemon.WinForms
         {
             PG_Hub = new System.Windows.Forms.PropertyGrid();
             SuspendLayout();
-            // 
-            // PG_Hub
-            // 
-            PG_Hub.BackColor = Color.FromArgb(30, 30, 60);
-            PG_Hub.CategoryForeColor = Color.White;
-            PG_Hub.CategorySplitterColor = Color.FromArgb(249, 88, 155);
-            PG_Hub.CommandsBackColor = Color.FromArgb(10, 10, 40);
-            PG_Hub.CommandsDisabledLinkColor = Color.Silver;
-            PG_Hub.CommandsForeColor = SystemColors.ControlText;
-            PG_Hub.DisabledItemForeColor = Color.White;
+            //
+            // PG_Hub — refined dark theme. Colors are also reapplied at runtime via ThemeManager.
+            //
+            PG_Hub.BackColor = Color.FromArgb(22, 23, 26);
+            PG_Hub.CategoryForeColor = Color.FromArgb(180, 184, 192);
+            PG_Hub.CategorySplitterColor = Color.FromArgb(36, 38, 42);
+            PG_Hub.CommandsBackColor = Color.FromArgb(22, 23, 26);
+            PG_Hub.CommandsActiveLinkColor = Color.FromArgb(96, 165, 250);
+            PG_Hub.CommandsBorderColor = Color.FromArgb(36, 38, 42);
+            PG_Hub.CommandsDisabledLinkColor = Color.FromArgb(120, 124, 132);
+            PG_Hub.CommandsForeColor = Color.FromArgb(232, 234, 238);
+            PG_Hub.CommandsLinkColor = Color.FromArgb(96, 165, 250);
+            PG_Hub.DisabledItemForeColor = Color.FromArgb(120, 124, 132);
             PG_Hub.Dock = System.Windows.Forms.DockStyle.Fill;
-            PG_Hub.Font = new Font("Trebuchet MS", 9F);
-            PG_Hub.HelpBackColor = Color.FromArgb(30, 30, 60);
-            PG_Hub.HelpBorderColor = Color.Black;
-            PG_Hub.HelpForeColor = Color.White;
-            PG_Hub.LineColor = Color.FromArgb(31, 30, 68);
+            PG_Hub.Font = new Font("Segoe UI", 9F);
+            PG_Hub.HelpBackColor = Color.FromArgb(22, 23, 26);
+            PG_Hub.HelpBorderColor = Color.FromArgb(36, 38, 42);
+            PG_Hub.HelpForeColor = Color.FromArgb(200, 204, 210);
+            PG_Hub.LineColor = Color.FromArgb(36, 38, 42);
             PG_Hub.Location = new Point(0, 0);
             PG_Hub.Name = "PG_Hub";
-            PG_Hub.SelectedItemWithFocusBackColor = Color.Orchid;
-            PG_Hub.SelectedItemWithFocusForeColor = Color.White;
+            PG_Hub.SelectedItemWithFocusBackColor = Color.FromArgb(36, 38, 42);
+            PG_Hub.SelectedItemWithFocusForeColor = Color.FromArgb(232, 234, 238);
             PG_Hub.Size = new Size(739, 305);
             PG_Hub.TabIndex = 0;
-            PG_Hub.ViewBackColor = Color.FromArgb(10, 10, 40);
-            PG_Hub.ViewBorderColor = Color.Black;
-            PG_Hub.ViewForeColor = Color.White;
-            // 
+            PG_Hub.ViewBackColor = Color.FromArgb(15, 16, 19);
+            PG_Hub.ViewBorderColor = Color.FromArgb(36, 38, 42);
+            PG_Hub.ViewForeColor = Color.FromArgb(232, 234, 238);
+            //
             // HubForm
-            // 
+            //
             AutoScaleMode = System.Windows.Forms.AutoScaleMode.None;
-            BackColor = Color.FromArgb(23, 22, 60);
+            BackColor = Color.FromArgb(15, 16, 19);
             ClientSize = new Size(739, 305);
             Controls.Add(PG_Hub);
             Name = "HubForm";

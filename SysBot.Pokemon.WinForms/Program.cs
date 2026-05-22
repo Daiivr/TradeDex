@@ -31,6 +31,12 @@ namespace SysBot.Pokemon.WinForms
 #endif
             // Standard WinForms setup to enable visual styles
             Application.EnableVisualStyles();
+
+            // NB: we deliberately do NOT call Application.SetColorMode(SystemColorMode.Dark).
+            // Enabling it globally also restyled flat IconButtons in the sidebar with a
+            // visible dark-mode border. Per-control dark scrollbars are handled via
+            // DarkScrollHelper instead, which leaves the rest of the chrome untouched.
+
             LocalizedPropertyGrid.Register();
 
             // Set text rendering to be compatible

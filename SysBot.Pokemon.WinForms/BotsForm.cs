@@ -10,6 +10,7 @@ using System.IO;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SysBot.Pokemon.WinForms.Controls;
+using SysBot.Pokemon.WinForms.Helpers;
 using System.Diagnostics;
 
 
@@ -77,9 +78,9 @@ namespace SysBot.Pokemon.WinForms
                 ShowAlways = true
             };
 
-            // Buttons
+            // Buttons — GlowColor is rendered as a quiet 3px left-edge stripe by the modernized FancyButton.
             _B_Start = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsStart), Location = new Point(11, 7), Size = new Size(100, 40) };
-            _B_Start.GlowColor = Color.LimeGreen;
+            _B_Start.GlowColor = Color.FromArgb(74, 222, 128);
             _toolTips.SetToolTip(_B_Start, AppLocalization.Get(LocalizationKeys.BotsStartTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 500;       // Delay before it shows up
@@ -87,7 +88,7 @@ namespace SysBot.Pokemon.WinForms
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
             _B_Stop = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsStop), Location = new Point(126, 7), Size = new Size(100, 40) };
-            _B_Stop.GlowColor = Color.Red;
+            _B_Stop.GlowColor = Color.FromArgb(248, 113, 113);
             _toolTips.SetToolTip(_B_Stop, AppLocalization.Get(LocalizationKeys.BotsStopTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 2000;       // Delay before it shows up
@@ -95,7 +96,7 @@ namespace SysBot.Pokemon.WinForms
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
             _B_RebootStop = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsReboot), Location = new Point(241, 7), Size = new Size(100, 40) };
-            _B_RebootStop.GlowColor = Color.Magenta;
+            _B_RebootStop.GlowColor = Color.FromArgb(192, 132, 252);
             _toolTips.SetToolTip(_B_RebootStop, AppLocalization.Get(LocalizationKeys.BotsRebootTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 2000;       // Delay before it shows up
@@ -109,9 +110,11 @@ namespace SysBot.Pokemon.WinForms
             _toolTips.ReshowDelay = 1000;        // Delay between tooltips
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
-            _B_New = new FancyButton { Text = "+", Location = new Point(423, 56), Size = new Size(54, 30) };
-            _B_New.GlowColor = Color.White;
-            _B_New.Font = new Font(_B_New.Font.FontFamily, 10, FontStyle.Bold);
+            // Positioned with deliberate spacing so it doesn't overlap the routine combo or the game-mode combo.
+            // Routine combo: x=301, w=130 → ends at 431. Game-mode combo: x=487.
+            _B_New = new FancyButton { Text = "+", Location = new Point(446, 56), Size = new Size(32, 30) };
+            _B_New.GlowColor = Color.Empty;
+            _B_New.Font = new Font("Segoe UI", 12, FontStyle.Bold);
             _toolTips.SetToolTip(_B_New, AppLocalization.Get(LocalizationKeys.BotsNewTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 2000;       // Delay before it shows up
@@ -119,7 +122,7 @@ namespace SysBot.Pokemon.WinForms
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
             _B_Reload = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsReload), Location = new Point(471, 7), Size = new Size(100, 40) };
-            _B_Reload.GlowColor = Color.DarkOrange;
+            _B_Reload.GlowColor = Color.FromArgb(251, 191, 36);
             _toolTips.SetToolTip(_B_Reload, AppLocalization.Get(LocalizationKeys.BotsReloadTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 2000;       // Delay before it shows up
@@ -180,46 +183,35 @@ namespace SysBot.Pokemon.WinForms
             _updateVersionLabel.Click += (s, e) => _updater.PerformClick();
             _toolTips.SetToolTip(_updateVersionLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
 
-            // Colors for boxes and controls
-            Color darkBG = Color.FromArgb(20, 19, 57);
-            Color whiteText = Color.White;
+            // Colors for boxes and controls (pulled from the current theme).
+            var theme = ThemeManager.CurrentColors;
+            Color inputBg = theme.Hover;
+            Color whiteText = theme.ForeColor;
 
             // Controls
-            _TB_IP = new TextBox { Location = new Point(12, 57), Width = 120, BackColor = Color.FromArgb(20, 19, 57), ForeColor = whiteText };
-            _NUD_Port = new NumericUpDown { Location = new Point(144, 57), Width = 65, Maximum = 65535, Minimum = 0, Value = 6000, BackColor = Color.FromArgb(20, 19, 57), ForeColor = whiteText };
+            _TB_IP = new TextBox { Location = new Point(12, 57), Width = 120, BackColor = inputBg, ForeColor = whiteText, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Segoe UI", 9F) };
+            _NUD_Port = new NumericUpDown { Location = new Point(144, 57), Width = 65, Maximum = 65535, Minimum = 0, Value = 6000, BackColor = inputBg, ForeColor = whiteText, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Segoe UI", 9F) };
 
-            _CB_Protocol = new ComboBox { Location = new Point(221, 57), Width = 62, DropDownStyle = ComboBoxStyle.DropDownList, BackColor = Color.FromArgb(20, 19, 57), ForeColor = whiteText };
+            _CB_Protocol = new FlatComboBox { Location = new Point(221, 57), Width = 70, BackColor = inputBg, ForeColor = whiteText };
             var protocols = ((SwitchProtocol[])Enum.GetValues(typeof(SwitchProtocol)))
                 .Select(z => new { Text = z.ToString(), Value = (int)z }).ToArray();
             _CB_Protocol.DisplayMember = "Text";
             _CB_Protocol.ValueMember = "Value";
             _CB_Protocol.DataSource = protocols;
             _CB_Protocol.SelectedValue = (int)SwitchProtocol.WiFi;
-            StyleComboBox(_CB_Protocol);
 
-            _CB_Routine = new ComboBox { Location = new Point(294, 57), Width = 120, DropDownStyle = ComboBoxStyle.DropDownList, BackColor = Color.FromArgb(20, 19, 57), ForeColor = whiteText };
+            _CB_Routine = new FlatComboBox { Location = new Point(301, 57), Width = 130, BackColor = inputBg, ForeColor = whiteText };
             var routines = ((PokeRoutineType[])Enum.GetValues(typeof(PokeRoutineType)))
                 .Select(z => new { Text = z.ToString(), Value = (int)z }).ToArray();
             _CB_Routine.DisplayMember = "Text";
             _CB_Routine.ValueMember = "Value";
             _CB_Routine.DataSource = routines;
             _CB_Routine.SelectedValue = (int)PokeRoutineType.FlexTrade;
-            StyleComboBox(_CB_Routine);
 
-            _CB_GameMode = new ComboBox { Location = new Point(485, 57), Size = new Size(86, 40), DropDownStyle = ComboBoxStyle.DropDownList, BackColor = Color.FromArgb(20, 19, 57), ForeColor = whiteText };
+            _CB_GameMode = new FlatComboBox { Location = new Point(490, 57), Size = new Size(96, 28), BackColor = inputBg, ForeColor = whiteText };
             _CB_GameMode.Items.AddRange(new object[] { "SWSH", "BDSP", "PLA", "SV", "LGPE", "PLZA" });
             _CB_GameMode.SelectedIndex = -1;
-            _CB_GameMode.DrawItem += (s, e) =>
-            {
-                e.DrawBackground();
-                if (s is not ComboBox cb) return;
-
-                string text = (e.Index >= 0) ? cb.Items[e.Index]?.ToString() ?? AppLocalization.Get(LocalizationKeys.BotsGameModePlaceholder) : AppLocalization.Get(LocalizationKeys.BotsGameModePlaceholder);
-                using var brush = new SolidBrush(cb.ForeColor);
-                e.Graphics.DrawString(text, cb.Font, brush, e.Bounds);
-            };
             _CB_GameMode.SelectedIndexChanged += CB_GameMode_SelectedIndexChanged;
-            StyleComboBox(_CB_GameMode);
 
             _FLP_Bots = new FlowLayoutPanel
             {
@@ -227,15 +219,16 @@ namespace SysBot.Pokemon.WinForms
                 Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Bottom,
                 Size = new Size(ClientSize.Width - 18, ClientSize.Height - 100),
                 AutoScroll = true,
-                BorderStyle = BorderStyle.FixedSingle,
+                BorderStyle = BorderStyle.None,
                 WrapContents = false,
                 FlowDirection = FlowDirection.TopDown,
-                BackColor = Color.FromArgb(28, 27, 65),
+                BackColor = theme.Background,
                 Padding = new Padding(0),
                 Margin = new Padding(0)
             };
+            DarkScrollHelper.Apply(_FLP_Bots);
 
-            this.BackColor = Color.FromArgb(28, 27, 65);
+            this.BackColor = theme.Background;
 
                 Controls.AddRange(new Control[] {
                 _B_Start, _B_Stop, _B_RebootStop, _updater, _B_New,
@@ -296,16 +289,16 @@ namespace SysBot.Pokemon.WinForms
                 }
                 else
                 {
-                    MessageBox.Show(
+                    SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(
                         AppLocalization.Get(LocalizationKeys.BotsMainFormUnavailable),
                         AppLocalization.Get(LocalizationKeys.BotsModeSwitchErrorTitle),
                         MessageBoxButtons.OK,
-                        MessageBoxIcon.Error);
+                        SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
                 }
             }
             catch (Exception ex)
             {
-                MessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsFailedSwitchMode, ex.Message), AppLocalization.Get(LocalizationKeys.DialogErrorTitle), MessageBoxButtons.OK, MessageBoxIcon.Error);
+                SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsFailedSwitchMode, ex.Message), AppLocalization.Get(LocalizationKeys.DialogErrorTitle), MessageBoxButtons.OK, SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
             }
         }
 
@@ -319,7 +312,7 @@ namespace SysBot.Pokemon.WinForms
 
                 if (!File.Exists(configPath))
                 {
-                    MessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsConfigFileNotFound, configPath));
+                    SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsConfigFileNotFound, configPath));
                     return;
                 }
 
@@ -347,7 +340,7 @@ namespace SysBot.Pokemon.WinForms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsFailedLoadConfig, ex.Message));
+                SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsFailedLoadConfig, ex.Message), icon: SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
             }
         }
 
@@ -362,7 +355,7 @@ namespace SysBot.Pokemon.WinForms
             }
             catch (Exception ex)
             {
-                MessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsFailedRestart, ex.Message));
+                SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(AppLocalization.Format(LocalizationKeys.BotsFailedRestart, ex.Message), icon: SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
                 return;
             }
 
@@ -437,34 +430,7 @@ namespace SysBot.Pokemon.WinForms
             _CB_Routine.SelectedValue = (int)cfg.InitialRoutine;
         }
 
-        private void StyleComboBox(ComboBox cb)
-        {
-            Color darkBG = Color.FromArgb(20, 19, 57);
-            Color whiteText = Color.White;
-
-            cb.BackColor = darkBG;
-            cb.ForeColor = whiteText;
-            cb.DrawMode = DrawMode.OwnerDrawFixed;
-            cb.FlatStyle = FlatStyle.Flat;
-
-            cb.DrawItem += (s, e) =>
-            {
-                if (s is not ComboBox combo) return;
-                e.DrawBackground();
-
-                // darker shade when selected
-                Color bgColor = (e.State & DrawItemState.Selected) == DrawItemState.Selected
-                    ? Color.FromArgb(40, 39, 87)
-                    : darkBG;
-
-                using (SolidBrush bg = new SolidBrush(bgColor))
-                    e.Graphics.FillRectangle(bg, e.Bounds);
-
-                string text = combo.GetItemText(combo.Items[e.Index]) ?? string.Empty;
-                using (SolidBrush brush = new SolidBrush(whiteText))
-                    e.Graphics.DrawString(text, combo.Font, brush, e.Bounds);
-            };
-        }
+        // StyleComboBox removed — FlatComboBox now handles its own painting.
 
         /// <summary>
         /// Shows or hides the update notification image with the specified version.

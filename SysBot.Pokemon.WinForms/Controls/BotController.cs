@@ -36,14 +36,24 @@ public partial class BotController : UserControl
     private Timer _sparkleTimer = null!;
     private int _targetProgress = 0;
     private int _currentProgress = 0;
-    private Color _glowColor = Color.Cyan;
+    private Color _glowColor = Color.FromArgb(96, 165, 250);
 #pragma warning disable CS0649 // Field is never assigned
     private int _shimmerX;
 #pragma warning restore CS0649
     private int _sparkleX = -50;
     private int _sparkleWidth = 50;
-    private Color _startColor = Color.FromArgb(0, 122, 204);
-    private Color _endColor = Color.FromArgb(153, 50, 204);
+    // Calm accent-only progress gradient (Graphite theme accent blue → lighter tint).
+    private Color _startColor = Color.FromArgb(59, 130, 246);
+    private Color _endColor = Color.FromArgb(125, 211, 252);
+
+    // Running-Pikachu mascot that surfs the leading edge of the progress fill.
+    private PictureBox? _pikachu;
+    private float _pikachuX = 0f;
+    private Point _lastPikachuLocation;
+    private bool _hasPikachuLocation;
+    private const float PikachuFollowEasing = 0.22f;
+    private const float PikachuMaxStepPixels = 4.5f;
+    private const float PikachuSnapDistancePixels = 0.35f;
     private bool _holdAt100 = false;
     private Timer _holdTimer = null!;
 
@@ -73,8 +83,8 @@ public partial class BotController : UserControl
         _progressBarContainer = new Panel
         {
             Dock = DockStyle.Bottom,
-            Height = 4,
-            BackColor = Color.FromArgb(20, 19, 57),
+            Height = 2,
+            BackColor = Color.FromArgb(15, 16, 19),
             Margin = Padding.Empty,
             Padding = Padding.Empty,
         };
@@ -92,6 +102,8 @@ public partial class BotController : UserControl
 
         _progressBarContainer.Controls.Add(_progressFill);
         Controls.Add(_progressBarContainer);
+
+        InitializePikachu();
 
         _progressAnimationTimer = new Timer { Interval = 15 };
         _progressAnimationTimer.Tick += (_, _) => AnimateProgress();
@@ -159,10 +171,16 @@ public partial class BotController : UserControl
     private void AnimateProgress()
     {
         if (_holdAt100)
+        {
+            UpdatePikachuPosition();
             return; // Don't animate while in the 6-second hold
+        }
 
         if (_currentProgress == _targetProgress)
+        {
+            UpdatePikachuPosition();
             return;
+        }
 
         int speed = 2;
 
@@ -173,12 +191,13 @@ public partial class BotController : UserControl
 
         int totalWidth = _progressBarContainer.Width;
         _progressFill.Width = (totalWidth * _currentProgress) / 100;
+        UpdatePikachuPosition();
 
-        // If we hit 100%, trigger the 6-second green hold
+        // If we hit 100%, trigger the 6-second hold
         if (_currentProgress == 100)
         {
             _holdAt100 = true;
-            _progressFill.BackColor = Color.FromArgb(249, 88, 155); // 100% progress color
+            _progressFill.BackColor = Color.FromArgb(74, 222, 128); // 100% — quiet green
 
             _holdTimer = new Timer { Interval = 6000 }; // 6 seconds
             _holdTimer.Tick += (s, e) =>
@@ -203,32 +222,123 @@ public partial class BotController : UserControl
     {
         base.OnPaint(e);
 
-        // Draw background bar
-        using (SolidBrush backBrush = new SolidBrush(Color.FromArgb(20, 19, 57)))
+        // Bottom hairline divider between rows.
+        using (var divider = new Pen(Color.FromArgb(36, 38, 42), 1))
         {
-            e.Graphics.FillRectangle(backBrush, 0, Height - 4, Width, 4);
+            e.Graphics.DrawLine(divider, 0, Height - 1, Width, Height - 1);
         }
+    }
 
-        // Progress fill
-        int fillWidth = (Width * _currentProgress) / 100;
-        if (fillWidth > 0)
+    // Loads the embedded Pikachu running GIF (if present) and parents it to the card so
+    // it animates over the progress bar. Failing silently if the resource isn't shipped
+    // keeps the redesign backwards-compatible with builds where the user hasn't dropped
+    // the GIF into Resources\ yet.
+    //
+    // Implementation detail: GDI+ requires the source stream to stay alive for the entire
+    // lifetime of the Image. We copy the embedded resource into a MemoryStream that we
+    // keep referenced as a class field — disposing it would invalidate the Image and the
+    // PictureBox would render the standard "broken image" red X.
+    private System.IO.MemoryStream? _pikachuStream;
+
+    private void InitializePikachu()
+    {
+        try
         {
-            using (SolidBrush fillBrush = new SolidBrush(InterpolateColor(_startColor, _endColor, _currentProgress / 100f)))
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+            const string resourceName = "SysBot.Pokemon.WinForms.Resources.pikachu_running.gif";
+            using var source = assembly.GetManifestResourceStream(resourceName);
+            if (source == null)
             {
-                e.Graphics.FillRectangle(fillBrush, 0, Height - 4, fillWidth, 4);
+                Debug.WriteLine($"[Pikachu] Embedded resource '{resourceName}' not found. Available: " +
+                    string.Join(", ", assembly.GetManifestResourceNames()));
+                return;
             }
 
-            // Shimmer effect
-            int glowWidth = 70; // or whatever length you want
-            using (LinearGradientBrush shimmerBrush = new LinearGradientBrush(
-                new Rectangle(_shimmerX, Height - 4, glowWidth, 4),
-                Color.FromArgb(180, Color.White),
-                Color.FromArgb(0, Color.White),
-                LinearGradientMode.Horizontal))
+            // Copy into a long-lived MemoryStream so the underlying buffer stays valid
+            // for ImageAnimator.
+            _pikachuStream = new System.IO.MemoryStream();
+            source.CopyTo(_pikachuStream);
+            _pikachuStream.Position = 0;
+
+            var img = Image.FromStream(_pikachuStream);
+
+            _pikachu = new PictureBox
             {
-                e.Graphics.FillRectangle(shimmerBrush, _shimmerX, Height - 4, glowWidth, 4);
+                Image = img,
+                Size = new Size(22, 22),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                Visible = false,
+                TabStop = false,
+            };
+            Controls.Add(_pikachu);
+            _pikachu.BringToFront();
+            // Let mouse events fall through to the underlying card so clicking on Pikachu
+            // still selects the row.
+            _pikachu.MouseDown += (_, e) => OnMouseDown(e);
+
+            // PictureBox handles animated GIF frame updates itself. Avoid manually
+            // driving ImageAnimator here because repeated invalidation can make the
+            // sprite look like it is restarting while parked at the progress edge.
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"[Pikachu] Failed to initialize: {ex.Message}");
+            _pikachu = null;
+        }
+    }
+
+    private void UpdatePikachuPosition()
+    {
+        if (_pikachu == null || _progressBarContainer == null) return;
+
+        int totalWidth = _progressBarContainer.Width;
+        if (totalWidth <= 0)
+        {
+            SetPikachuVisible(false);
+            return;
+        }
+
+        int fillWidth = (totalWidth * _currentProgress) / 100;
+        float targetX = Math.Clamp(fillWidth - (_pikachu.Width / 2f), 0, Math.Max(0, Width - _pikachu.Width));
+
+        if (_currentProgress <= 0 || !_pikachu.Visible)
+        {
+            _pikachuX = targetX;
+        }
+        else
+        {
+            float delta = targetX - _pikachuX;
+            float distance = Math.Abs(delta);
+
+            if (distance <= PikachuSnapDistancePixels)
+            {
+                _pikachuX = targetX;
+            }
+            else
+            {
+                float easedStep = Math.Min(distance * PikachuFollowEasing, PikachuMaxStepPixels);
+                _pikachuX += Math.Sign(delta) * easedStep;
             }
         }
+
+        // Sit just above the progress bar (which is 2px tall and bottom-docked).
+        int y = Height - _progressBarContainer.Height - _pikachu.Height;
+        SetPikachuVisible(_currentProgress > 0);
+
+        Point nextLocation = new((int)Math.Round(_pikachuX), y);
+        if (!_hasPikachuLocation || _lastPikachuLocation != nextLocation)
+        {
+            _pikachu.Location = nextLocation;
+            _lastPikachuLocation = nextLocation;
+            _hasPikachuLocation = true;
+        }
+    }
+
+    private void SetPikachuVisible(bool visible)
+    {
+        if (_pikachu != null && _pikachu.Visible != visible)
+            _pikachu.Visible = visible;
     }
 
     private Color InterpolateColor(Color start, Color end, float progress)
@@ -343,7 +453,7 @@ public partial class BotController : UserControl
     private class ColoredMenuRenderer : ToolStripProfessionalRenderer
     {
         private readonly Dictionary<string, Color> _colorMap;
-        private readonly Color _backgroundColor = Color.FromArgb(20, 19, 57);
+        private readonly Color _backgroundColor = Color.FromArgb(22, 23, 26);
         private readonly int _leftPadding = 22; // padding from left edge
 
         public ColoredMenuRenderer(Dictionary<string, Color> colorMap)
@@ -451,28 +561,16 @@ public partial class BotController : UserControl
         UpdateStatusUI(status);
 
         lblConnectionName.Text = bot.Connection?.Label ?? AppLocalization.Get(LocalizationKeys.BotUnknownConnection);
-        lblConnectionInfo.Text = $"↪ {bot.LastLogged}";
+        lblConnectionInfo.Text = bot.LastLogged ?? string.Empty;
         SetBotMetaDisplay(State.InitialRoutine.ToString(), bot.LastTime);
     }
     private void SetBotMetaDisplay(string routine, DateTime lastTime)
     {
-        rtbBotMeta.Clear();
-
-        // Format top line
-        string timeString = lastTime.ToString("h:mm.ss tt");
-        string topLine = $"{routine} @ {timeString}";
-
-        // Use system font with fallback
-        try
-        {
-            rtbBotMeta.SelectionFont = new Font("Segoe UI", 9F, FontStyle.Bold);
-        }
-        catch
-        {
-            rtbBotMeta.SelectionFont = new Font(FontFamily.GenericSansSerif, 9F, FontStyle.Bold);
-        }
-        rtbBotMeta.SelectionColor = Color.White;
-        rtbBotMeta.AppendText(topLine);
+        // Single-color label so the row aligns pixel-perfect with the IP above and the
+        // "↪ No iniciado" below. The middle-dot separator gives a soft visual pause
+        // without needing a second color span.
+        string timeString = lastTime.ToString("h:mm tt");
+        lblBotMeta.Text = $"{routine}  ·  {timeString}";
     }
 
     private void UpdateStatusUI(string status)
@@ -525,7 +623,7 @@ public partial class BotController : UserControl
         // Fade between BACKGROUND COLOR and _glowBaseColor
         float t = (_glowPhase - min) / (max - min);
 
-        Color background = Color.FromArgb(20, 19, 57);
+        Color background = Color.FromArgb(22, 23, 26);
         int r = (int)(background.R + (_glowBaseColor.R - background.R) * t);
         int g = (int)(background.G + (_glowBaseColor.G - background.G) * t);
         int b = (int)(background.B + (_glowBaseColor.B - background.B) * t);
@@ -604,14 +702,14 @@ public partial class BotController : UserControl
         var bot = GetBot();
         if (bot is null)
         {
-            MessageBox.Show(AppLocalization.Get(LocalizationKeys.BotNotFound), AppLocalization.Get(LocalizationKeys.BotRecoveryStatusTitle), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(AppLocalization.Get(LocalizationKeys.BotNotFound), AppLocalization.Get(LocalizationKeys.BotRecoveryStatusTitle), MessageBoxButtons.OK, SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Info);
             return;
         }
 
         var recoveryState = bot.GetRecoveryState();
         if (recoveryState is null)
         {
-            MessageBox.Show(AppLocalization.Get(LocalizationKeys.BotRecoveryNotEnabled), AppLocalization.Get(LocalizationKeys.BotRecoveryStatusTitle), MessageBoxButtons.OK, MessageBoxIcon.Information);
+            SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(AppLocalization.Get(LocalizationKeys.BotRecoveryNotEnabled), AppLocalization.Get(LocalizationKeys.BotRecoveryStatusTitle), MessageBoxButtons.OK, SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Info);
             return;
         }
 
@@ -636,7 +734,7 @@ public partial class BotController : UserControl
             }
         }
 
-        MessageBox.Show(status, AppLocalization.Get(LocalizationKeys.BotRecoveryStatusTitle), MessageBoxButtons.OK, MessageBoxIcon.Information);
+        SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(status, AppLocalization.Get(LocalizationKeys.BotRecoveryStatusTitle), MessageBoxButtons.OK, SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Info);
     }
 
     public string ReadBotState()

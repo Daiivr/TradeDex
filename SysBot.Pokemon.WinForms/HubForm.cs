@@ -1,6 +1,7 @@
 using System;
 using System.Windows.Forms;
 using SysBot.Pokemon.Localization;
+using SysBot.Pokemon.WinForms.Helpers;
 
 namespace SysBot.Pokemon.WinForms
 {
@@ -16,6 +17,7 @@ namespace SysBot.Pokemon.WinForms
             _hubConfig = selectedObject;
             PG_Hub.PropertySort = PropertySort.Categorized;
             PG_Hub.SelectedObject = _hubConfig;
+            DarkScrollHelper.ApplyScrollBarsRecursive(PG_Hub);
             AppLocalization.LanguageChanged += (_, _) => ApplyLocalization();
 
             // Optional: Auto-save on close

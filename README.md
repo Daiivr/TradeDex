@@ -1,419 +1,393 @@
-<h1 align="center">
-    <a href="https://amplication.com/#gh-light-mode-only">
-    <img src="https://i.imgur.com/CNMULyy.png">
-    </a>
+﻿<h1 align="center">
     <a href="https://amplication.com/#gh-dark-mode-only">
-    <img src="https://i.imgur.com/CNMULyy.png">
+    <img src="https://i.imgur.com/zhOvwMc.png">
     </a>
 </h1>
 
 <p align="center">
-  <i>A community-driven SysBot.NET project with a gorgeous UI, supporting LGPE, SWSH, BDSP, PLA, SV, and PLZA</i><br>
-    Now rebranded from <b>ZE FusionBot -> FusionBot</b>.
-</p>
-<h3 align="center">
-  Visit <a href="https://FreeMons.Org">FreeMons.Org</a>!
-</h3>
-<p align="center">
-    <img src="https://visitor-badge.laobi.icu/badge?page_id=Secludedly.FusionBot" alt="Visitors">
-</br>
-
-## 🎥 FusionBot Showcase Video
-
-<p align="center">
-  <a href="https://www.youtube.com/watch?v=kc6lRVt6M_0">
-    <img src="https://i.imgur.com/IdwuZwM.png" 
-         alt="FusionBot Showcase Video"
-         style="max-width: 100%; height: auto;">
-  </a>
-</p>
-
-<p align="center">
-  ▶️ <i>Click the image above to watch the full FusionBot showcase video on YouTube.</i>
+  <i>Un proyecto SysBot.NET impulsado por la comunidad con una interfaz hermosa, compatible con LGPE, SWSH, BDSP, PLA, SV y PLZA</i><br>
 </p>
 
 ---
 
-## 🚀 Introduction
+## 🚀 Introducción
 
-`FusionBot` is a powerful and open-source SysBot.NET fork, initially tailored for the Discord server [Zeraora's Emporium](https://discord.com/invite/BkHRuJdN7d). While originally built for internal server use, it has transformed into a beautiful, community-powered GUI with dozens of integrated forks and unique enhancements, catering to every Nintendo Switch Pokémon game.
+`TradeDex` es un fork potente y de código abierto de SysBot.NET. Si bien se construyó inicialmente para uso interno del servidor, se transformó en una hermosa GUI impulsada por la comunidad con decenas de forks integrados y mejoras únicas, atendiendo a cada juego de Pokémon de Nintendo Switch.
 
 ---
 <p align="center">
     <img src="https://i.imgur.com/zJF8VmN.gif" style="max-width: 100%; height: auto;">
 </p>
 
-## 🧬 Community Roots & Inspirations
+## 🧬 Raíces de la Comunidad e Inspiraciones
 
-> **FusionBot is a fusion by design — built from years of shared ideas, forks, experiments, and respect for the SysBot.NET ecosystem.**
+> **FusionBot es una fusión por diseño — construida a partir de años de ideas compartidas, forks, experimentos y respeto por el ecosistema SysBot.NET.**
 
-FusionBot was created, inspired, and upgraded through time, in pieces, through a collaboration of multiple developers of all skill levels with bright ideas and a hobby. There's many I know, and many I don't know, but I have respect and appreciation for them all. If they didn't inspire or help, simply diving into their code and learning C# over the years through their contributions helped me get to this point to continue to refine FusionBot and is also what allowed this project to grow into one of - if not *the best* SysBot program to date, in large to **[@hexbyt3's](https://github.com/hexbyt3)** **[PokeBot](https://github.com/hexbyt3/PokeBot)**, another contender as *the best* SysBot.
+FusionBot fue creado, inspirado y mejorado a lo largo del tiempo, en piezas, mediante la colaboración de múltiples desarrolladores de todos los niveles de habilidad con ideas brillantes y un pasatiempo. Hay muchos a los que conozco, y muchos a los que no conozco, pero tengo respeto y aprecio por todos ellos. Si no inspiraron o ayudaron, simplemente sumergirme en su código y aprender C# a lo largo de los años a través de sus contribuciones me ayudó a llegar a este punto para continuar refinando FusionBot, y es también lo que permitió que este proyecto creciera hasta convertirse en uno de — si no *el mejor* — programa SysBot hasta la fecha, en gran parte gracias a **[el PokeBot de @hexbyt3](https://github.com/hexbyt3/PokeBot)**, otro contendiente como *el mejor* SysBot.
 
-The projects below represent **the strongest influences** in the SysBot.NET space and the inspiration behind calling this a **Fusion** bot.
+Los proyectos a continuación representan **las influencias más fuertes** en el espacio de SysBot.NET y la inspiración detrás de llamar a esto un bot **Fusion**.
 
 <details>
-<summary><strong>🧬 Click to view credits & inspirations</strong></summary><br />
+<summary><strong>🧬 Hacé click para ver créditos e inspiraciones</strong></summary><br />
 
-### 🧬 Foundational Projects
+### 🧬 Proyectos Fundacionales
 
 - **[SysBot.NET](https://github.com/kwsch/SysBot.NET)**  
-  Created by **[@kwsch](https://github.com/kwsch)** — also the creator of PKHeX.  
-  *The origin of everything.*
+  Creado por **[@kwsch](https://github.com/kwsch)** — también el creador de PKHeX.  
+  *El origen de todo.*
 
 - **[ForkBot.NET](https://github.com/Koi-3088/ForkBot.NET)**  
-  Developed by **[@Koi-3088](https://github.com/Koi-3088)**.  
-  One of the earliest and most influential forks. TradeCord will never be forgotten.
-  Somewhat of a friend for a while, but it's been many years, yet his talent had me learn so much.
+  Desarrollado por **[@Koi-3088](https://github.com/Koi-3088)**.  
+  Uno de los forks más tempranos e influyentes. TradeCord nunca será olvidado.
 
-- **[SysBot.NET (berichan fork)](https://github.com/berichan/SysBot.NET)**  
-  An insightful and clever fork by **[@berichan](https://github.com/berichan)** that helped shape many later ideas.
-  Many years ago, I'd take and modify beri's work to learn more about C#.
+- **[SysBot.NET (fork de berichan)](https://github.com/berichan/SysBot.NET)**  
+  Un fork perspicaz e ingenioso de **[@berichan](https://github.com/berichan)** que ayudó a moldear muchas ideas posteriores.
 
-- **[SysBot.NET (Lusamine fork)](https://github.com/Lusamine/SysBot.NET)**  
-  A respected fork that stayed close to the original vision, maintained by **[@Lusamine](https://github.com/Lusamine)**.
+- **[SysBot.NET (fork de Lusamine)](https://github.com/Lusamine/SysBot.NET)**  
+  Un fork respetado que se mantuvo cerca de la visión original, mantenido por **[@Lusamine](https://github.com/Lusamine)**.
 
-- **[SysBot.NET (santacrab fork)](https://github.com/santacrab2/SysBot.NET)**  
-  A long-followed fork by **[@santacrab2](https://github.com/santacrab2)** — a brilliant developer and dear local friend.
+- **[SysBot.NET (fork de santacrab)](https://github.com/santacrab2/SysBot.NET)**  
+  Un fork seguido durante mucho tiempo por **[@santacrab2](https://github.com/santacrab2)** — un desarrollador brillante y querido amigo local.
 
 ---
 
-### 🔧 Evolutionary & Community-Driven Bots
+### 🔧 Bots Evolutivos e Impulsados por la Comunidad
 
 - **[MergeBot](https://github.com/Paschar1/MergeBot)**  
-  Originally created by **[@bakakaito](https://github.com/bakakaito)** (now offline), possibly preserved by **[@Paschar1](https://github.com/Paschar1)**.  
-  One of the first major user-driven evolutions of SysBot.
+  Originalmente creado por **[@bakakaito](https://github.com/bakakaito)** (ahora offline), posiblemente preservado por **[@Paschar1](https://github.com/Paschar1)**.  
+  Una de las primeras grandes evoluciones de SysBot impulsadas por usuarios.
 
 - **[PokeBot](https://github.com/hexbyt3/PokeBot)**  
-  Created by **[@hexbyt3](https://github.com/hexbyt3)**, a brilliant friend of mine — and the **primary foundation of FusionBot**.  
-  Much of FusionBot’s structure, philosophy, and stability originates here, alongside deep collaboration and shared ideas between repos.
+  Creado por **[@hexbyt3](https://github.com/hexbyt3)**, la **base principal de TradeDex**.  
+  Gran parte de la estructura, filosofía y estabilidad de TradeDex se origina aquí, junto con una profunda colaboración e ideas compartidas entre repositorios.
 
 ---
 
-### 🚀 Additional Inspirations
+### 🚀 Inspiraciones Adicionales
 
-- **[SysBot.NET (easyworld fork)](https://github.com/easyworld/SysBot.NET)** — by **[@easyworld](https://github.com/easyworld)**
-A fork I've followed for some time that's given me inspiration in the past
-- **[ManuBot.NET](https://github.com/Manu098vm/ManuBot.NET)** — by **[@Manu098vm](https://github.com/Manu098vm)**
-A fork I've been following for update inspiration with great C# knowledge
-- **[ManuBot.NET (9B1td0 fork)](https://github.com/9B1td0/ManuBot.NET)** — by **[@9B1td0](https://github.com/9B1td0)**
-I believe this is a fork of ManuBot.NET but seems almost collaborated with the original.
-- **[DudeBot.NET](https://github.com/Havokx89/DudeBot.NET)** — by **[@Havokx89](https://github.com/Havokx89)**
-A fun and fused iteration combining a lot of FusionBot that I follow for various integration ideas.
-- **[ZenBot.NET](https://github.com/Omni-KingZeno/ZenBot.NET)** — by **[@Omni-KingZeno](https://github.com/Omni-KingZeno)**
-A fork of ManuBot.NET that I follow and quite enjoy getting inspiration from. Plus, great bot name and username. I'm a DBtard.
-- **[TradeBot](https://github.com/jonklee99/Tradebot)** — by **[@jonklee99](https://github.com/jonklee99)** with **[@joseph11024](https://github.com/joseph11024)**
-Created by a good friend that tends to use their own ideas that I've happily borrowed from before.
-- **[ZE-FusionBot (Taku1991 fork)](https://github.com/Taku1991/ZE-FusionBot)** — by **[@Taku1991](https://github.com/Taku1991)**.  
-An independently evolved fork that shares ideas, structure, and inspiration within the FusionBot ecosystem that I myself have proudly borrowed from.
+- **[SysBot.NET (fork de easyworld)](https://github.com/easyworld/SysBot.NET)** — por **[@easyworld](https://github.com/easyworld)**
+Un fork que he seguido durante algún tiempo y que me ha dado inspiración en el pasado
+- **[ManuBot.NET](https://github.com/Manu098vm/ManuBot.NET)** — por **[@Manu098vm](https://github.com/Manu098vm)**
+Un fork que vengo siguiendo para inspirarme en actualizaciones, con gran conocimiento de C#
+- **[ManuBot.NET (fork de 9B1td0)](https://github.com/9B1td0/ManuBot.NET)** — por **[@9B1td0](https://github.com/9B1td0)**
+Creo que es un fork de ManuBot.NET, pero parece casi colaborado con el original.
+- **[DudeBot.NET](https://github.com/Havokx89/DudeBot.NET)** — por **[@Havokx89](https://github.com/Havokx89)**
+Una iteración divertida y fusionada que combina mucho de FusionBot y que sigo para varias ideas de integración.
+- **[ZenBot.NET](https://github.com/Omni-KingZeno/ZenBot.NET)** — por **[@Omni-KingZeno](https://github.com/Omni-KingZeno)**
+Un fork de ManuBot.NET que sigo y disfruto bastante sacar inspiración de él. Además, gran nombre de bot y de usuario. Soy un DBtard.
+- **[TradeBot](https://github.com/jonklee99/Tradebot)** — por **[@jonklee99](https://github.com/jonklee99)** con **[@joseph11024](https://github.com/joseph11024)**
+Creado por un buen amigo que tiende a usar sus propias ideas, de las que felizmente he tomado prestado antes.
+- **[ZE-FusionBot (fork de Taku1991)](https://github.com/Taku1991/ZE-FusionBot)** — por **[@Taku1991](https://github.com/Taku1991)**.  
+Un fork evolucionado de forma independiente que comparte ideas, estructura e inspiración dentro del ecosistema de FusionBot, del cual yo mismo he tomado prestado con orgullo.
 
 
 </details>
 
 ---
 
-## ✨ Highlights
+## ✨ Destacados
 
-- One-click Game Restart, Hot Reload, and Updater.
-- Batch trading - trade more than one Pokémon at a time in multiple ways.
-- Mystery Pokémon and Eggs, Battle-Ready, HOME-Ready, and Event Pokémon trading modules.
-- Full GUI control for PKHeX, SysDVR and Switch Remote for PC.
-- DM embeds with GIFs, Channel Status notifications, Announcement System, Keyword Response.
-- Queue tracking, trade counters, medal system.
-- Multi-Language request support.
-- Live/Real-time log searches.
-- Read user DMs sent to the bot.
-- In-depth and detailed error logging with user info.
-- Batch Trade Commands to simple Showdown Set options.
-- Webserver control panel at https://localhost:8080 while bot is open and operational.
-- Linux supported version releases via Wine-Staging.
-- Always updating with new features and ideas, some from the community.
-
----
-
-## 🖥️ GUI Features
-
-- Animated, hover-responsive buttons.
-- Color-coded UI themes.
-- Fully custom icons, fonts, buttons, and layout.
-- No native Windows titlebars. Drag by top panel.
-- Animated glow and shake effects on buttons.
-- Glowing visual progress bar during the trade process.
-- User-created custom logo option.
-- User-created custom background sparkle colors.
-- Separate sparkle colors for each game mode in the titlebar.
-- Custom UI images displayed per game mode.
-- One size UI with the ability to Maximize.
-- Bot Menu context menu with bot-specific command handling.
+- Reinicio de Juego con un click, Hot Reload y Actualizador.
+- Trading en lote - intercambiá más de un Pokémon a la vez de múltiples maneras.
+- Módulos de trading de Pokémon Misteriosos y Huevos, Battle-Ready, HOME-Ready y Pokémon de Eventos.
+- Control GUI completo para PKHeX, SysDVR y Switch Remote para PC.
+- Embeds de DM con GIFs, notificaciones de Estado de Canal, Sistema de Anuncios, Respuesta por Palabras Clave.
+- Seguimiento de cola, contadores de trades, sistema de medallas.
+- Soporte de pedidos en múltiples idiomas.
+- Búsquedas de logs en vivo/tiempo real.
+- Leé los DMs que los usuarios le envían al bot.
+- Logging de errores profundo y detallado con información del usuario.
+- Comandos de Batch Trade a opciones simples de Showdown Set.
+- Panel de control de servidor web en https://localhost:8080 mientras el bot está abierto y operativo.
+- Versiones liberadas con soporte para Linux vía Wine-Staging.
+- Siempre actualizándose con nuevas funciones e ideas, algunas de la comunidad.
 
 ---
 
-# 📖 Command Reference
+## 🖥️ Características de la GUI
 
-## ⚡ Basic Commands
+- Botones animados y responsivos al hover.
+- Temas de UI codificados por color.
+- Íconos, fuentes, botones y layout totalmente personalizados.
+- Sin barras de título nativas de Windows. Arrastrá por el panel superior.
+- Efectos animados de brillo y sacudida en los botones.
+- Barra de progreso visual brillante durante el proceso de trade.
+- Opción de logo personalizado creado por el usuario.
+- Colores de chispas de fondo personalizados creados por el usuario.
+- Colores de chispas separados para cada modo de juego en la barra de título.
+- Imágenes de UI personalizadas mostradas por modo de juego.
+- UI de un solo tamaño con la capacidad de Maximizar.
+- Menú contextual de Bot Menu con manejo de comandos específicos del bot.
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `trade` | t | Trade a Pokémon from Showdown Set or PKM file. | `trade <Showdown Format>` or `<upload pkm>` | Everyone |
-| `trade true` | t true | Trade a Pokémon from a PKM file, without AutoOT | `trade true <upload pkm>` | Everyone |
-| `tradeUser` | tu, tradeOther | Trade the mentioned user the attached file. | `tradeuser @user` | Everyone |
-| `hidetrade` | ht | Same as trade, but hides the embed. | `hidetrade <Showdown Format>` | Everyone |
-| `clone` | c | Clone the Pokémon you show via Link Trade. | `clone` | Everyone |
-| `dump` | d | Dump the Pokémon you show via Link Trade. | `dump` | Everyone |
-| `egg` | Egg | Trade an egg via provided Pokémon set. | `egg <Showdown Format>` | Everyone |
-| `seed` | checkMySeed, checkSeed, seedCheck, s, sc | Check a Pokémon seed. | `seedCheck` | Everyone |
-| `itemTrade` | it, item | Trade a Pokémon holding a requested item. | `it <Leftovers>` | Everyone |
-| `fixOT` | fix, f | Fix OT and Nickname of a Pokémon if an advert is detected. | `fixOT` | Everyone |
-| `convert` | showdown | Convert a Showdown Set to RegenTemplate. | `convert <set>` | Everyone |
-| `legalize` | alm | Attempt to legalize PKM data. | `legalize <pkm>` | Everyone |
-| `validate` | lc, check, verify | Verify PKM legality. | `validate <pkm>` | Everyone |
-| `verbose` | lcv | Verify PKM legality with verbose output. | `verbose <pkm>` | Everyone |
-| `findFrame` | ff, GetFrameData | Prints next shiny frame from seed. | `findFrame <seed>` | Everyone |
-| `deleteTradeCode` | dtc | Deletes the stored Link Trade Code for the user. | `dtc` | Everyone |
-| `changeTradeCode` | ctc | Change your stored Link Trade Code. | `ctc 12345678` | Everyone |
+---
 
-## 🎯 Advanced Trade Features
+# 📖 Referencia de Comandos
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `textTrade` | tt, text | Upload a .txt/.csv of Showdown sets for batch trading. | `tt <upload .txt/.csv file>` | Everyone |
-| `textView` | tv | View a specific Pokémon from your pending TextTrade file. | `tv 2` | Everyone |
-| `listEvents` | le | Lists available event files via DM. | `le <species> <page2>` | Everyone |
-| `eventRequest` | er | Downloads event attachments and adds to trade queue. | `eventRequest <file>` | Everyone |
-| `battleReadyList` | brl | Lists available battle-ready files via DM. | `brl <species> <page2>` | Everyone |
-| `battleReadyRequest` | br, brr | Downloads battle-ready attachments and adds to trade queue. | `battleReadyRequest <file>` | Everyone |
-| `pokepaste` | pp, Pokepaste, PP | Generates a team from a PokePaste URL. | `pp <URL>` | Everyone |
-| `dittoTrade` | dt, ditto | Trade a Ditto with requested stats, language, and nature. | `dt <LinkCode> <IVToBe0> <Lang> <Nature>` | Everyone |
-| `mysteryegg` | me | Get a random shiny 6IV egg. | `mysteryegg` | Everyone |
-| `mysterymon` | mm, mystery, surprise | Get a fully random Pokémon. | `mysterymon` | Everyone |
-| `randomTeam` | rt, RandomTeam, Rt | Generates a random team. | `randomTeam` | Everyone |
-| `homeReady` | hr | Displays instructions for HOME-ready trading. | `homeReady` | Everyone |
-| `homeReadyRequest` | hrr | Downloads HOME-ready files and adds to trade queue. | `homeReadyRequest <number>` | Everyone |
-| `homeReadylist` | hrl | Lists available HOME-ready files. | `homeReadylist` | Everyone |
-| `specialRequest` | sr, srp | Lists Wondercard events or requests specific ones. | `srp <game> <page2>` | Everyone |
-| `getEvent` | ge, gep | Downloads the requested event as a PKM file. | `getEvent <eventID>` | Everyone |
+## ⚡ Comandos Básicos
+
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `trade` | t | Intercambia un Pokémon desde un Showdown Set o archivo PKM. | `trade <Formato Showdown>` o `<subir pkm>` | Todos |
+| `trade true` | t true | Intercambia un Pokémon desde un archivo PKM, sin AutoOT | `trade true <subir pkm>` | Todos |
+| `tradeUser` | tu, tradeOther | Intercambia con el usuario mencionado el archivo adjunto. | `tradeuser @usuario` | Todos |
+| `hidetrade` | ht | Igual que trade, pero oculta el embed. | `hidetrade <Formato Showdown>` | Todos |
+| `clone` | c | Clona el Pokémon que mostrás vía Link Trade. | `clone` | Todos |
+| `dump` | d | Volca el Pokémon que mostrás vía Link Trade. | `dump` | Todos |
+| `egg` | Egg | Intercambia un huevo vía el set de Pokémon proporcionado. | `egg <Formato Showdown>` | Todos |
+| `seed` | checkMySeed, checkSeed, seedCheck, s, sc | Verifica la seed de un Pokémon. | `seedCheck` | Todos |
+| `itemTrade` | it, item | Intercambia un Pokémon con un ítem solicitado. | `it <Leftovers>` | Todos |
+| `fixOT` | fix, f | Arregla el OT y Nickname de un Pokémon si se detecta un anuncio. | `fixOT` | Todos |
+| `convert` | showdown | Convierte un Showdown Set a RegenTemplate. | `convert <set>` | Todos |
+| `legalize` | alm | Intenta legalizar los datos del PKM. | `legalize <pkm>` | Todos |
+| `validate` | lc, check, verify | Verifica la legalidad del PKM. | `validate <pkm>` | Todos |
+| `verbose` | lcv | Verifica la legalidad del PKM con salida detallada. | `verbose <pkm>` | Todos |
+| `findFrame` | ff, GetFrameData | Imprime el próximo frame shiny desde una seed. | `findFrame <seed>` | Todos |
+| `deleteTradeCode` | dtc | Elimina el Link Trade Code guardado para el usuario. | `dtc` | Todos |
+| `changeTradeCode` | ctc | Cambia tu Link Trade Code guardado. | `ctc 12345678` | Todos |
+
+## 🎯 Funciones Avanzadas de Trade
+
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `textTrade` | tt, text | Subí un .txt/.csv de Showdown sets para trading en lote. | `tt <subir archivo .txt/.csv>` | Todos |
+| `textView` | tv | Ver un Pokémon específico de tu archivo TextTrade pendiente. | `tv 2` | Todos |
+| `listEvents` | le | Lista los archivos de eventos disponibles vía DM. | `le <especie> <página2>` | Todos |
+| `eventRequest` | er | Descarga adjuntos de eventos y los agrega a la cola de trade. | `eventRequest <archivo>` | Todos |
+| `battleReadyList` | brl | Lista los archivos battle-ready disponibles vía DM. | `brl <especie> <página2>` | Todos |
+| `battleReadyRequest` | br, brr | Descarga adjuntos battle-ready y los agrega a la cola de trade. | `battleReadyRequest <archivo>` | Todos |
+| `pokepaste` | pp, Pokepaste, PP | Genera un equipo desde una URL de PokePaste. | `pp <URL>` | Todos |
+| `dittoTrade` | dt, ditto | Intercambia un Ditto con stats, idioma y naturaleza solicitados. | `dt <LinkCode> <IVEnCero> <Idioma> <Naturaleza>` | Todos |
+| `mysteryegg` | me | Obtené un huevo shiny 6IV aleatorio. | `mysteryegg` | Todos |
+| `mysterymon` | mm, mystery, surprise | Obtené un Pokémon totalmente aleatorio. | `mysterymon` | Todos |
+| `randomTeam` | rt, RandomTeam, Rt | Genera un equipo aleatorio. | `randomTeam` | Todos |
+| `homeReady` | hr | Muestra las instrucciones para trading HOME-ready. | `homeReady` | Todos |
+| `homeReadyRequest` | hrr | Descarga archivos HOME-ready y los agrega a la cola de trade. | `homeReadyRequest <número>` | Todos |
+| `homeReadylist` | hrl | Lista los archivos HOME-ready disponibles. | `homeReadylist` | Todos |
+| `specialRequest` | sr, srp | Lista eventos Wondercard o solicita específicos. | `srp <juego> <página2>` | Todos |
+| `getEvent` | ge, gep | Descarga el evento solicitado como archivo PKM. | `getEvent <eventID>` | Todos |
 
 ## 📦 Batch Trading
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `batchTrade` | bt | Trade multiple Pokémon (max 6) from a list. | `bt <Set1> --- <Set2>` | Everyone |
-| `batchTradeZip` | btz | Trade multiple Pokémon from a ZIP file. | `btz <file.zip>` | Everyone |
-| `batchInfo` | bei | Get info about a batch property. | `batchInfo <prop>` | Everyone |
-| `batchValidate` | bev | Validate a batch property. | `batchValidate <prop>` | Everyone |
-| `batchTradeMysteryMon` | btmm | Trade multiple Mystery Pokémon. | `btmm <number>` | Everyone |
-| `batchTradeMysteryEgg` | btme | Trade multiple Mystery eggs. | `btme <number>` | Everyone |
-| `itemBatchTrade` | ibt | Trade a specific item multiple times. | `ibt <item name> <number>` | Everyone |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `batchTrade` | bt | Intercambia múltiples Pokémon (máx 6) desde una lista. | `bt <Set1> --- <Set2>` | Todos |
+| `batchTradeZip` | btz | Intercambia múltiples Pokémon desde un archivo ZIP. | `btz <archivo.zip>` | Todos |
+| `batchInfo` | bei | Obtené info sobre una propiedad de batch. | `batchInfo <prop>` | Todos |
+| `batchValidate` | bev | Valida una propiedad de batch. | `batchValidate <prop>` | Todos |
+| `batchTradeMysteryMon` | btmm | Intercambia múltiples Pokémon Misteriosos. | `btmm <número>` | Todos |
+| `batchTradeMysteryEgg` | btme | Intercambia múltiples huevos Misteriosos. | `btme <número>` | Todos |
+| `itemBatchTrade` | ibt | Intercambia un ítem específico múltiples veces. | `ibt <nombre del ítem> <número>` | Todos |
 
-## 📊 Queue Management
+## 📊 Gestión de Cola
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `queueMode` | qm | Change queue control (manual/threshold/interval). | `qm manual` | Everyone |
-| `queueClearAll` | qca, tca | Clear all users from all queues. | `qca` | Sudo, Owner |
-| `queueClear` | qc, tc | Remove yourself from the queue. | `qc` | Everyone |
-| `queueClearUser` | qcu, tcu | Clear a specified user (sudo required). | `qcu @user` | Sudo, Owner |
-| `queueStatus` | qs, ts | Check your position in the queue. | `qs` | Everyone |
-| `queueToggle` | qt | Enable/disable queue joining. | `qt` | Sudo, Owner |
-| `queueList` | ql | DM the full queue list. | `ql` | Sudo, Owner |
-| `tradeList` | tl | Show users currently in trade queue. | `tl` | Sudo, Owner |
-| `fixOTList` | fl, fq | Prints the users in the FixOT queue. | `fixOTList` | Sudo, Owner |
-| `cloneList` | cl, cq | Prints the users in the Clone queue. | `cloneList` | Sudo, Owner |
-| `dumplist` | dl, dq | Prints the users in the Dump queue. | `dumplist` | Sudo, Owner |
-| `seedList` | sl, scq, seedCheckQueue, seedQueue, seedList | Show seed check queue users. | `seedList` | Sudo, Owner |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `queueMode` | qm | Cambia el control de cola (manual/threshold/interval). | `qm manual` | Todos |
+| `queueClearAll` | qca, tca | Limpia todos los usuarios de todas las colas. | `qca` | Sudo, Owner |
+| `queueClear` | qc, tc | Eliminate a vos mismo de la cola. | `qc` | Todos |
+| `queueClearUser` | qcu, tcu | Limpia un usuario especificado (requiere sudo). | `qcu @usuario` | Sudo, Owner |
+| `queueStatus` | qs, ts | Verificá tu posición en la cola. | `qs` | Todos |
+| `queueToggle` | qt | Activá/desactivá el ingreso a la cola. | `qt` | Sudo, Owner |
+| `queueList` | ql | DM con la lista completa de la cola. | `ql` | Sudo, Owner |
+| `tradeList` | tl | Muestra los usuarios actualmente en la cola de trade. | `tl` | Sudo, Owner |
+| `fixOTList` | fl, fq | Imprime los usuarios en la cola de FixOT. | `fixOTList` | Sudo, Owner |
+| `cloneList` | cl, cq | Imprime los usuarios en la cola de Clone. | `cloneList` | Sudo, Owner |
+| `dumplist` | dl, dq | Imprime los usuarios en la cola de Dump. | `dumplist` | Sudo, Owner |
+| `seedList` | sl, scq, seedCheckQueue, seedQueue, seedList | Muestra los usuarios en la cola de seed check. | `seedList` | Sudo, Owner |
 
-## 🛠 Admin Tools
+## 🛠 Herramientas de Admin
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `addSudo` | — | Add a user to global sudo. | `addSudo <ID>` | Owner |
-| `removeSudo` | — | Remove a user from global sudo. | `removeSudo <ID>` | Owner |
-| `blacklistServer` | bls | Adds a server ID to the server blacklist. | `blacklistServer <ID>` | Sudo, Owner |
-| `unblacklistServer` | ubls | Removes a server ID from the server blacklist. | `unblacklistServer <ID>` | Sudo, Owner |
-| `blacklist` | — | Blacklist a Discord user. | `blacklist @user` | Sudo, Owner |
-| `unblacklist` | — | Remove a user from blacklist. | `unblacklist @user` | Sudo, Owner |
-| `blacklistId` | — | Blacklist Discord user IDs. | `blacklistId <ID>` | Sudo, Owner |
-| `unBlacklistId` | — | Unblacklist Discord user IDs. | `unBlacklistId <ID>` | Sudo, Owner |
-| `blacklistComment` | — | Adds comment for blacklisted user. | `blacklistcomment <ID> <msg>` | Sudo, Owner |
-| `banTrade` | bant | Ban a user from trading with reason. | `bant @user <reason>` | Sudo, Owner |
-| `banID` | — | Ban an online user ID. | `banID <ID>` | Sudo, Owner |
-| `unbanID` | — | Unban an online user ID. | `unbanID <ID>` | Sudo, Owner |
-| `bannedIDComment` | — | Adds a comment for banned ID. | `bannedIDcomment <ID> <msg>` | Sudo, Owner |
-| `bannedIDSummary` | printBannedID, bannedIDPrint | Show list of banned IDs. | `bannedIDSummary` | Sudo, Owner |
-| `blacklistSummary` | printBlacklist, blacklistPrint | Show list of blacklisted users. | `blacklistSummary` | Sudo, Owner |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `addSudo` | — | Agrega un usuario al sudo global. | `addSudo <ID>` | Owner |
+| `removeSudo` | — | Remueve un usuario del sudo global. | `removeSudo <ID>` | Owner |
+| `blacklistServer` | bls | Agrega un ID de servidor a la blacklist de servidores. | `blacklistServer <ID>` | Sudo, Owner |
+| `unblacklistServer` | ubls | Remueve un ID de servidor de la blacklist de servidores. | `unblacklistServer <ID>` | Sudo, Owner |
+| `blacklist` | — | Pone en blacklist a un usuario de Discord. | `blacklist @usuario` | Sudo, Owner |
+| `unblacklist` | — | Remueve un usuario de la blacklist. | `unblacklist @usuario` | Sudo, Owner |
+| `blacklistId` | — | Pone en blacklist a IDs de usuarios de Discord. | `blacklistId <ID>` | Sudo, Owner |
+| `unBlacklistId` | — | Quita de la blacklist a IDs de usuarios de Discord. | `unBlacklistId <ID>` | Sudo, Owner |
+| `blacklistComment` | — | Agrega un comentario para el usuario en blacklist. | `blacklistcomment <ID> <msg>` | Sudo, Owner |
+| `banTrade` | bant | Banea a un usuario del trading con una razón. | `bant @usuario <razón>` | Sudo, Owner |
+| `banID` | — | Banea a un ID de usuario online. | `banID <ID>` | Sudo, Owner |
+| `unbanID` | — | Desbanea a un ID de usuario online. | `unbanID <ID>` | Sudo, Owner |
+| `bannedIDComment` | — | Agrega un comentario para un ID baneado. | `bannedIDcomment <ID> <msg>` | Sudo, Owner |
+| `bannedIDSummary` | printBannedID, bannedIDPrint | Muestra la lista de IDs baneados. | `bannedIDSummary` | Sudo, Owner |
+| `blacklistSummary` | printBlacklist, blacklistPrint | Muestra la lista de usuarios en blacklist. | `blacklistSummary` | Sudo, Owner |
 
-## 🎮 Switch Control
+## 🎮 Control de Switch
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `click` | — | Click a button on the Switch. | `click <IP> <Button>` | Sudo, Owner |
-| `setStick` | — | Move stick to coordinates. | `setStick <IP> <Coords>` | Sudo, Owner |
-| `setScreenOn` | screenOn, scrOn | Turn on screen. | `setScreenOn` | Sudo, Owner |
-| `setScreenOff` | screenOff, scrOff | Turn off screen. | `setScreenOff` | Sudo, Owner |
-| `setScreenOnAll` | screenOnAll, scrOnAll | Turn on screen for all bots. | `setScreenOnAll` | Sudo, Owner |
-| `setScreenOffAll` | screenOffAll, scrOffAll | Turn off screen for all bots. | `setScreenOffAll` | Sudo, Owner |
-| `peek` | repeek | Take and send a screenshot. | `peek` | Sudo, Owner |
-| `video` | Video | Record a GIF from the Switch. | `video` | Sudo, Owner |
-| `startSysdvr` | dvrstart, startdvr, sysdvrstart, dvr, stream | Start SysDVR streaming. | `startSysdvr` | Owner |
-| `sysDvr` | — | Show instructions for SysDVR. | `sysDvr` | Owner |
-| `startController` | controllerstart, startcontrol, controlstart, startremote, remotestart, sbr, controller | Start Switch Remote controller. | `startController` | Owner |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `click` | — | Hace click en un botón de la Switch. | `click <IP> <Botón>` | Sudo, Owner |
+| `setStick` | — | Mueve el stick a coordenadas. | `setStick <IP> <Coords>` | Sudo, Owner |
+| `setScreenOn` | screenOn, scrOn | Enciende la pantalla. | `setScreenOn` | Sudo, Owner |
+| `setScreenOff` | screenOff, scrOff | Apaga la pantalla. | `setScreenOff` | Sudo, Owner |
+| `setScreenOnAll` | screenOnAll, scrOnAll | Enciende la pantalla en todos los bots. | `setScreenOnAll` | Sudo, Owner |
+| `setScreenOffAll` | screenOffAll, scrOffAll | Apaga la pantalla en todos los bots. | `setScreenOffAll` | Sudo, Owner |
+| `peek` | repeek | Toma y envía una captura de pantalla. | `peek` | Sudo, Owner |
+| `video` | Video | Graba un GIF desde la Switch. | `video` | Sudo, Owner |
+| `startSysdvr` | dvrstart, startdvr, sysdvrstart, dvr, stream | Inicia el streaming con SysDVR. | `startSysdvr` | Owner |
+| `sysDvr` | — | Muestra instrucciones para SysDVR. | `sysDvr` | Owner |
+| `startController` | controllerstart, startcontrol, controlstart, startremote, remotestart, sbr, controller | Inicia el controlador Switch Remote. | `startController` | Owner |
 
-## 📡 Bot Management
+## 📡 Gestión del Bot
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `ping` | — | Ping the bot to check if it's running. | `ping` | Sudo, Owner |
-| `help` | — | Show all commands. | `help` | Everyone |
-| `info` | about, whoami, owner, bot | Show bot information. | `info` | Everyone |
-| `botStatus` | — | Get bot status via logs. | `botStatus` | Sudo, Owner |
-| `botStart` | — | Start the bot. | `botStart` | Sudo, Owner |
-| `botStop` | — | Stop the bot. | `botStop` | Sudo, Owner |
-| `botIdle` | botPause, idle | Pause the bot. | `botIdle` | Sudo, Owner |
-| `botChange` | — | Change the bot routine. | `botChange <FlexTrade>` | Sudo, Owner |
-| `botRestart` | — | Restart the bot(s). | `botRestart` | Sudo, Owner |
-| `status` | stats | Get the bot environment status. | `status` | Sudo, Owner |
-| `kill` | shutdown | Shutdown the bot. | `kill` | Owner |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `ping` | — | Hace ping al bot para verificar si está corriendo. | `ping` | Sudo, Owner |
+| `help` | — | Muestra todos los comandos. | `help` | Todos |
+| `info` | about, whoami, owner, bot | Muestra información del bot. | `info` | Todos |
+| `botStatus` | — | Obtené el estado del bot vía logs. | `botStatus` | Sudo, Owner |
+| `botStart` | — | Inicia el bot. | `botStart` | Sudo, Owner |
+| `botStop` | — | Detiene el bot. | `botStop` | Sudo, Owner |
+| `botIdle` | botPause, idle | Pausa el bot. | `botIdle` | Sudo, Owner |
+| `botChange` | — | Cambia la rutina del bot. | `botChange <FlexTrade>` | Sudo, Owner |
+| `botRestart` | — | Reinicia el(los) bot(s). | `botRestart` | Sudo, Owner |
+| `status` | stats | Obtené el estado del entorno del bot. | `status` | Sudo, Owner |
+| `kill` | shutdown | Apaga el bot. | `kill` | Owner |
 
 ## 📢 Echo & Logging
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `announce` | Announce | Send an announcement to Echo channels. | `announce <msg>` | Owner |
-| `dm` | - | Send a DM to a user as the bot. | `dm @user <msg>` | Owner |
-| `addEmbedChannel` | aec | Assign a channel for bot embeds. | `addEmbedChannel #channel` | Sudo, Owner |
-| `echoInfo` | — | Dump echo message settings. | `echoInfo` | Sudo, Owner |
-| `echoClear` | rec | Clear echo settings for current channel. | `echoClear` | Sudo, Owner |
-| `echoClearAll` | raec | Clear echo settings from all channels. | `echoClearAll` | Sudo, Owner |
-| `logHere` | — | Log to current channel. | `logHere` | Sudo, Owner |
-| `logClearAll` | — | Clear all log settings. | `logClearAll` | Sudo, Owner |
-| `logClear` | — | Clear log settings for current channel. | `logClear` | Sudo, Owner |
-| `logInfo` | — | Dump logging settings. | `logInfo` | Sudo, Owner |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `announce` | Announce | Envía un anuncio a los canales de Echo. | `announce <msg>` | Owner |
+| `dm` | - | Envía un DM a un usuario como el bot. | `dm @usuario <msg>` | Owner |
+| `addEmbedChannel` | aec | Asigna un canal para los embeds del bot. | `addEmbedChannel #canal` | Sudo, Owner |
+| `echoInfo` | — | Volca la configuración de mensajes de echo. | `echoInfo` | Sudo, Owner |
+| `echoClear` | rec | Limpia la configuración de echo del canal actual. | `echoClear` | Sudo, Owner |
+| `echoClearAll` | raec | Limpia la configuración de echo de todos los canales. | `echoClearAll` | Sudo, Owner |
+| `logHere` | — | Loggear al canal actual. | `logHere` | Sudo, Owner |
+| `logClearAll` | — | Limpia toda la configuración de logs. | `logClearAll` | Sudo, Owner |
+| `logClear` | — | Limpia la configuración de logs del canal actual. | `logClear` | Sudo, Owner |
+| `logInfo` | — | Volca la configuración de logging. | `logInfo` | Sudo, Owner |
 
-## 🔐 Permissions & Guild
+## 🔐 Permisos y Guild
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `listGuilds` | lg, servers, listservers | List all guilds the bot is in. | `listGuilds` | Sudo, Owner |
-| `leave` | bye | Leave current server. | `leave` | Sudo, Owner |
-| `leaveGuild` | lg | Leave a guild by ID. | `leaveGuild <ID>` | Sudo, Owner |
-| `leaveAll` | — | Leave all servers. | `leaveAll` | Sudo, Owner |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `listGuilds` | lg, servers, listservers | Lista todas las guilds en las que está el bot. | `listGuilds` | Sudo, Owner |
+| `leave` | bye | Salí del servidor actual. | `leave` | Sudo, Owner |
+| `leaveGuild` | lg | Salí de una guild por ID. | `leaveGuild <ID>` | Sudo, Owner |
+| `leaveAll` | — | Salí de todos los servidores. | `leaveAll` | Sudo, Owner |
 
-## 🎲 Misc & Fun
+## 🎲 Varios y Diversión
 
-| Command | Aliases | Summary | Example | Permission |
-|---------|---------|---------|---------|------------|
-| `joke` | lol, insult | Tell a random joke. | `joke` | Everyone |
-| `hello` | hi, hey, yo | Say hello to the bot. | `hello` | Everyone |
-| `profile` | tp | View your profile, badges, trades, trainer info, and Ping Pong stats. | `profile` | Everyone |
+| Comando | Alias | Resumen | Ejemplo | Permiso |
+|---------|-------|---------|---------|---------|
+| `joke` | lol, insult | Cuenta un chiste random. | `joke` | Todos |
+| `hello` | hi, hey, yo | Saludá al bot. | `hello` | Todos |
+| `profile` | tp | Mirá tu perfil, medallas, trades, info de entrenador y stats de Ping Pong. | `profile` | Todos |
 
-## 🧠 Passive Features
+## 🧠 Funciones Pasivas
 
-- Use filename code like `Great Tusk-Tera(Steel)-03760382.pk9` to auto-set trade code.
-- Paste a PKM in chat to receive info + legal formats.
-- Thank the bot and it might reply!
+- Usá un nombre de archivo como `Great Tusk-Tera(Steel)-03760382.pk9` para autoconfigurar el código de trade.
+- Pegá un PKM en el chat para recibir info + formatos legales.
+- ¡Agradecele al bot y puede que te responda!
 
 
 
-## 📝 Batch Commands to Showdown Format
+## 📝 Comandos Batch a Formato Showdown
 
-`FusionBot` supports converting batch commands from Discord messages into official Showdown Set formats. This allows easy bulk Pokémon trading with full customization of stats, moves, ribbons, and other metadata.
+`FusionBot` soporta convertir comandos batch desde mensajes de Discord a formatos oficiales de Showdown Set. Esto permite trading masivo de Pokémon de forma sencilla con personalización completa de stats, movimientos, listones y otra metadata.
 
-### Supported Batch Command Mappings
+### Mapeos de Comandos Batch Soportados
 
-| Batch Command | Showdown Format Equivalent | Notes |
-|---------------|---------------------------|-------|
-| `.Scale=` | `Scale:` or `Size:` | Accepts keywords (XXXS, XXS, XS, S, AV, L, XL, XXL, XXXL) or numeric values 1-255. |
-| `.WeightScalar=` | `Weight:` | Accepts keywords (XS, S, AV, L, XL) or numeric values 1-255. |
-| `.HeightScalar=` | `Height:` | Accepts keywords (XS, S, AV, L, XL) or numeric values 1-255. |
-| `.OriginalTrainerFriendship=` | `OT Friendship:` | Value 1–255. |
-| `.HandlingTrainerFriendship=` | `HT Friendship:` | Value 1–255. |
-| `.MetDate=` | `Met Date:` | Supports flexible date formats. |
-| `.StatNature=` | `Stat Nature:` | Accepts a Nature keyword. |
-| `~=Version=` | `Game:` or `Version:` | Supports full game names or abbreviations. |
-| `.MetLocation=` | `Met Location:` | [Numeric IDs](https://github.com/Secludedly/FusionBot?tab=readme-ov-file#-met-location-reference) & [Location names](https://github.com/Secludedly/FusionBot/blob/f72fded7b30c1c6a03bd1cf22f3366f88ec9b257/SysBot.Pokemon/Helpers/BatchCommandNormalizer.cs#L780) supported. |
+| Comando Batch | Equivalente en Formato Showdown | Notas |
+|---------------|--------------------------------|-------|
+| `.Scale=` | `Scale:` o `Size:` | Acepta keywords (XXXS, XXS, XS, S, AV, L, XL, XXL, XXXL) o valores numéricos 1-255. |
+| `.WeightScalar=` | `Weight:` | Acepta keywords (XS, S, AV, L, XL) o valores numéricos 1-255. |
+| `.HeightScalar=` | `Height:` | Acepta keywords (XS, S, AV, L, XL) o valores numéricos 1-255. |
+| `.OriginalTrainerFriendship=` | `OT Friendship:` | Valor 1–255. |
+| `.HandlingTrainerFriendship=` | `HT Friendship:` | Valor 1–255. |
+| `.MetDate=` | `Met Date:` | Soporta formatos flexibles de fecha. |
+| `.StatNature=` | `Stat Nature:` | Acepta una keyword de Naturaleza. |
+| `~=Version=` | `Game:` o `Version:` | Soporta nombres completos de juegos o abreviaciones. |
+| `.MetLocation=` | `Met Location:` | [IDs numéricos](https://github.com/Secludedly/FusionBot?tab=readme-ov-file#-met-location-reference) y [nombres de ubicaciones](https://github.com/Secludedly/FusionBot/blob/f72fded7b30c1c6a03bd1cf22f3366f88ec9b257/SysBot.Pokemon/Helpers/BatchCommandNormalizer.cs#L780) soportados. |
 | `.HyperTrainFlags=` | `HyperTrain:` | True / False. |
-| `.HT_[STAT]=` | `HT:` | Supports HP, Atk, Def, SpA, SpD, Spe. |
-| `.Moves=` | `Moves:` | “Random” generates random moves. |
-| `.RelearnMoves=` | `Relearn Moves:` | “All” or “None” accepted. |
-| `.Ribbons=` | `Ribbons:` | “All” or “None” supported. |
-| `.RibbonMark[mark]=True` | `Mark:` | Mark names without spaces (e.g., BestFriends). |
-| `.Ribbon[name]=True` | `Ribbon:` | Ribbon names without spaces (e.g., BattleChampion). |
-| `.SetEVs=` | `Set EVs:` | Accepts `Random`, or `Suggest`. |
-| `.SetIVs=` | `Set IVs:` | Accepts `Random`, or presets like `1IV`–`6IV`. |
-| `.GV_[STAT]=` | `GVs:` | Supports HP, Atk, Def, SpA, SpD, Spe. |
-| `.Marking[type]=` | `Markings:` | Diamond, Heart, Square, Star, Triangle, Circle in Red or Blue `Markings: Diamond=Red / Circle=Blue` etc. |
-| `.Characteristic=` | `Characteristic:` | Type out a [characteristic](https://github.com/Secludedly/FusionBot?tab=readme-ov-file#-characteristic-reference). |
-| `.Nickname=` | `Nickname:` | Write "Suggest" for a random nickname pulled from code dictionary. |
-| `.MoveX_PP=` & `MoveX_PPUps=` | `PPUps:` | True / False, or a number from 0-3. Applied to all moves. |
+| `.HT_[STAT]=` | `HT:` | Soporta HP, Atk, Def, SpA, SpD, Spe. |
+| `.Moves=` | `Moves:` | "Random" genera movimientos aleatorios. |
+| `.RelearnMoves=` | `Relearn Moves:` | "All" o "None" aceptados. |
+| `.Ribbons=` | `Ribbons:` | "All" o "None" soportados. |
+| `.RibbonMark[mark]=True` | `Mark:` | Nombres de marca sin espacios (ej. BestFriends). |
+| `.Ribbon[name]=True` | `Ribbon:` | Nombres de listón sin espacios (ej. BattleChampion). |
+| `.SetEVs=` | `Set EVs:` | Acepta `Random` o `Suggest`. |
+| `.SetIVs=` | `Set IVs:` | Acepta `Random` o presets como `1IV`–`6IV`. |
+| `.GV_[STAT]=` | `GVs:` | Soporta HP, Atk, Def, SpA, SpD, Spe. |
+| `.Marking[type]=` | `Markings:` | Diamond, Heart, Square, Star, Triangle, Circle en Red o Blue `Markings: Diamond=Red / Circle=Blue` etc. |
+| `.Characteristic=` | `Characteristic:` | Escribí una [característica](https://github.com/Secludedly/FusionBot?tab=readme-ov-file#-characteristic-reference). |
+| `.Nickname=` | `Nickname:` | Escribí "Suggest" para un nickname aleatorio sacado del diccionario de código. |
+| `.MoveX_PP=` y `MoveX_PPUps=` | `PPUps:` | True / False, o un número del 0-3. Aplicado a todos los movimientos. |
 
 ---
 
-## 🧭 Slash Command Support
+## 🧭 Soporte de Slash Commands
 
-FusionBot supports **modern Discord Slash Commands**.
+FusionBot soporta los **modernos Slash Commands de Discord**.
 
-### 🎮 Available Slash Commands
+### 🎮 Slash Commands Disponibles
 
-| Slash Command | Game |
-|--------------|------|
+| Slash Command | Juego |
+|---------------|-------|
 | `/create-sv` | Scarlet / Violet |
 | `/create-swsh` | Sword / Shield |
 | `/create-bdsp` | Brilliant Diamond / Shining Pearl |
 | `/create-pla` | Legends: Arceus |
 | `/create-plza` | Legends: Z-A |
-| `/create-lgpe` | Let’s Go Pikachu / Eevee |
+| `/create-lgpe` | Let's Go Pikachu / Eevee |
 
-### 🔹 Notes
-- Slash commands provide **guided Pokémon creation** without needing manual Showdown formatting.
-- Fully compatible with **AutoOT** and **language handling**.
-- Ideal for newer users or servers that want a **clean, modern interaction flow**.
-
----
-
-### 📍 Met Location Reference
-- **Gen 2–8 Locations:** [Imgur](https://i.imgur.com/v02WMmL.jpeg)  
-- **SWSH/BDSP/PLA/SV/PLZA Locations:** [Pastebin](https://pastebin.com/NBu14c6q)
-
-> 🔹 `Met Location:` now supports **numeric IDs** AND **location names**. See above references for valid values per generation.
+### 🔹 Notas
+- Los slash commands proveen **creación guiada de Pokémon** sin necesitar formateo manual de Showdown.
+- Totalmente compatibles con **AutoOT** y **manejo de idiomas**.
+- Ideal para usuarios nuevos o servidores que quieren un **flujo de interacción limpio y moderno**.
 
 ---
 
-### 💠 Characteristic Reference
-| Characteristic | IV Set | IV Type |
-|----------------|--------|---------|
+### 📍 Referencia de Met Location
+- **Ubicaciones Gen 2–8:** [Imgur](https://i.imgur.com/v02WMmL.jpeg)  
+- **Ubicaciones SWSH/BDSP/PLA/SV/PLZA:** [Pastebin](https://pastebin.com/NBu14c6q)
+
+> 🔹 `Met Location:` ahora soporta **IDs numéricos** Y **nombres de ubicaciones**. Mirá las referencias de arriba para valores válidos por generación.
+
+---
+
+### 💠 Referencia de Características
+| Característica | Set de IVs | Tipo de IV |
+|----------------|------------|------------|
 | `Likes to eat` | 30, 8, 13, 18, 23, 25 | HP |
 | `Takes plenty of siestas` | 31, 6, 26, 22, 10, 0 | HP |
 | `Scatters things often` | 28, 8, 28, 12, 9, 19 | HP |
 | `Likes to relax` | 29, 16, 3, 7, 26, 13 | HP |
 | `Nods off a lot` | 27, 0, 13, 27, 27, 8 | HP |
-| `Proud of its power` | 18, 30, 10, 11, 26, 3 | Attack |
-| `Likes to thrash about` | 10, 31, 0, 3, 12, 0 | Attack |
-| `A little quick tempered` | 25, 27, 9, 7, 8, 8 | Attack |
-| `Quick tempered` | 0, 29, 6, 23, 4, 17 | Attack |
-| `Likes to fight` | 25, 28, 11, 8, 9, 18 | Attack |
-| `Sturdy body` | 15, 24, 30, 5, 24, 29 | Defense |
-| `Capable of taking hits` | 6, 0, 21, 2, 18, 3 | Defense |
-| `Highly persistent` | 4, 21, 27, 9, 21, 18 | Defense |
-| `Good endurance` | 19, 2, 23, 2, 6, 4 | Defense |
-| `Good perseverance` | 26, 16, 29, 0, 20, 22 | Defense |
-| `Highly curious` | 9, 6, 21, 30, 10, 28 | Special Attack |
-| `Mischievous` | 7, 20, 0, 31, 5, 17 | Special Attack |
-| `Thoroughly cunning` | 5, 4, 20, 27, 12, 26 | Special Attack |
-| `Often lost in thought` | 8, 3, 1, 23, 19, 14 | Special Attack |
-| `Very finicky` | 9, 1, 0, 24, 21, 12 | Special Attack |
-| `Strong willed` | 14, 6, 29, 16, 30, 0 | Special Defense |
-| `Somewhat vain` | 10, 5, 10, 15, 26, 15 | Special Defense |
-| `Strongly defiant` | 10, 10, 12, 3, 12, 10 | Special Defense |
-| `Hates to lose` | 3, 8, 13, 18, 23, 2 | Special Defense |
-| `Somewhat stubborn` | 4, 9, 14, 19, 24, 15 | Special Defense |
-| `Likes to run` | 2, 7, 12, 17, 22, 30 | Speed |
-| `Alert to sounds` | 31, 31, 31, 31, 31, 31 | Speed |
-| `Impetuous and silly` | 2, 7, 12, 17, 22, 27 | Speed |
-| `Somewhat of a clown` | 3, 8, 13, 18, 23, 28 | Speed |
-| `Quick to flee` | 4, 9, 14, 19, 24, 29 | Speed |
+| `Proud of its power` | 18, 30, 10, 11, 26, 3 | Ataque |
+| `Likes to thrash about` | 10, 31, 0, 3, 12, 0 | Ataque |
+| `A little quick tempered` | 25, 27, 9, 7, 8, 8 | Ataque |
+| `Quick tempered` | 0, 29, 6, 23, 4, 17 | Ataque |
+| `Likes to fight` | 25, 28, 11, 8, 9, 18 | Ataque |
+| `Sturdy body` | 15, 24, 30, 5, 24, 29 | Defensa |
+| `Capable of taking hits` | 6, 0, 21, 2, 18, 3 | Defensa |
+| `Highly persistent` | 4, 21, 27, 9, 21, 18 | Defensa |
+| `Good endurance` | 19, 2, 23, 2, 6, 4 | Defensa |
+| `Good perseverance` | 26, 16, 29, 0, 20, 22 | Defensa |
+| `Highly curious` | 9, 6, 21, 30, 10, 28 | Ataque Especial |
+| `Mischievous` | 7, 20, 0, 31, 5, 17 | Ataque Especial |
+| `Thoroughly cunning` | 5, 4, 20, 27, 12, 26 | Ataque Especial |
+| `Often lost in thought` | 8, 3, 1, 23, 19, 14 | Ataque Especial |
+| `Very finicky` | 9, 1, 0, 24, 21, 12 | Ataque Especial |
+| `Strong willed` | 14, 6, 29, 16, 30, 0 | Defensa Especial |
+| `Somewhat vain` | 10, 5, 10, 15, 26, 15 | Defensa Especial |
+| `Strongly defiant` | 10, 10, 12, 3, 12, 10 | Defensa Especial |
+| `Hates to lose` | 3, 8, 13, 18, 23, 2 | Defensa Especial |
+| `Somewhat stubborn` | 4, 9, 14, 19, 24, 15 | Defensa Especial |
+| `Likes to run` | 2, 7, 12, 17, 22, 30 | Velocidad |
+| `Alert to sounds` | 31, 31, 31, 31, 31, 31 | Velocidad |
+| `Impetuous and silly` | 2, 7, 12, 17, 22, 27 | Velocidad |
+| `Somewhat of a clown` | 3, 8, 13, 18, 23, 28 | Velocidad |
+| `Quick to flee` | 4, 9, 14, 19, 24, 29 | Velocidad |
 
 ---
 
-### Example Usage
+### Ejemplo de Uso
 
 ```markdown
 Set EVs: Suggest
@@ -435,46 +409,42 @@ Characteristic: Quick to flee
 Markings: Diamond=Red / Heart=Red / Square=Blue / Star=Blue / Triangle=Red / Circle=Blue
 ```
 
-## ⚙️ Bot Functions
+## ⚙️ Funciones del Bot
 
 ### 🧑‍🎓 AutoOT
-FusionBot automatically applies your **trainer information** based on the save file you’re currently using.  
-- Your **OT / TID / SID / OTGender** are applied automatically.  
-- To keep the trainer info in your own files, attach them with `t true`.  
-- For Showdown Sets, simply include the OT/TID/SID you want and AutoOT will then be disabled.  
+FusionBot aplica automáticamente tu **información de entrenador** basándose en el archivo de save que estás usando actualmente.  
+- Tu **OT / TID / SID / OTGender** se aplican automáticamente.  
+- Para mantener la info de entrenador en tus propios archivos, adjuntalos con `t true`.  
+- Para Showdown Sets, simplemente incluí el OT/TID/SID que querés y AutoOT se desactivará.  
 
-This ensures all trades feel natural and consistent with your game, while still letting you override it if you want custom trainer data.
+Esto asegura que todos los trades se sientan naturales y consistentes con tu juego, mientras te permite sobreescribirlo si querés data de entrenador personalizada.
 
 ---
 
 ### 🔗 Link Trade Codes
-FusionBot assigns you a **personal static Link Trade Code** on your first trade.  
-- This code is **unique to you** and stays the same for all future trades.  
-- To reset it: use `dtc` (your next trade gives you a new random code).  
-- To customize it: use `ctc 12345678` (sets your permanent code to whatever you choose).  
+FusionBot te asigna un **Link Trade Code personal estático** en tu primer trade.  
+- Este código es **único para vos** y se mantiene igual para todos los trades futuros.  
+- Para resetearlo: usá `dtc` (tu próximo trade te da un nuevo código aleatorio).  
+- Para personalizarlo: usá `ctc 12345678` (configura tu código permanente al que vos elijas).  
 
-This makes trading smoother by removing guesswork, making your link code always ready.  
-
----
-
-### 🏅 Medals & Milestones
-Every trade you complete is tracked by FusionBot, and your **trade count** shows up in the footer of the trade embed.  
-- For every **50 trades**, you earn a new medal 🥇.  
-- You can check your medals anytime in your profile card with the `profile` command.  
-- It’s just for fun; a little **progression system** to show off your trading dedication.  
-
-Think of it like leveling up — the more you trade, the more medals you rack up.  
+Esto hace que el trading sea más fluido eliminando las dudas, haciendo que tu link code esté siempre listo.  
 
 ---
 
-### 🤖 Reading DMs Sent to the Bot
-You can now read the DMs a user sends to the bot. This is fun for when people think your bot is a real person and they attempt to speak to it, or get enraged at it because their internet sucks or don't have NSO. As sad as it is, sometimes users will send derogatory/racial/sexist messages to your bot thinking no one can see it, but now you can, and if they speak like that, do you really want them in your server? 
-- Visit the **UserDMsToBotForwarder** option in `Hub -> Discord` and insert a Channel ID, then restart the bot.
-- The DMs that get logged are only those without a command, so you will not get flooded with user command input.
-- You'll also be able to see attachments users send to the bot, but beware, because it can get weird. I learned from experience.
+### 🏅 Medallas e Hitos
+Cada trade que completás es trackeado por FusionBot, y tu **cantidad de trades** aparece en el footer del embed de trade.  
+- Por cada **50 trades**, ganás una nueva medalla 🥇.  
+- Podés ver tus medallas en cualquier momento en tu tarjeta de perfil con el comando `profile`.  
+- Es sólo por diversión; un pequeño **sistema de progresión** para mostrar tu dedicación al trading.  
+
+Pensalo como subir de nivel — cuanto más trades hacés, más medallas acumulás.  
 
 ---
 
-## 🔗 Other Projects
+### 🤖 Leer DMs Enviados al Bot
+Ahora podés leer los DMs que un usuario le envía al bot. Esto es divertido para cuando la gente piensa que tu bot es una persona real e intentan hablarle, o se enojan con él porque su internet es malo o no tienen NSO. Por triste que sea, a veces los usuarios envían mensajes despectivos/racistas/sexistas a tu bot pensando que nadie puede verlo, pero ahora vos podés, y si hablan así, ¿realmente los querés en tu servidor?
+- Visitá la opción **UserDMsToBotForwarder** en `Hub -> Discord` e insertá un Channel ID, luego reiniciá el bot.
+- Los DMs que se loggean son sólo aquellos sin un comando, así que no te vas a inundar con input de comandos de usuarios.
+- También vas a poder ver los adjuntos que los usuarios le envían al bot, pero cuidado, porque puede ponerse raro. Aprendí por experiencia.
 
-- [**PKHeX ALM Releases**](https://github.com/Secludedly/PKHeX-ALM-Releases/releases) — PKHeX + AutoLegalityMod pre-built with config files.
+---

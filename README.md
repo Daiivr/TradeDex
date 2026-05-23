@@ -21,9 +21,9 @@
 
 ## 🧬 Raíces de la Comunidad e Inspiraciones
 
-> **FusionBot es una fusión por diseño — construida a partir de años de ideas compartidas, forks, experimentos y respeto por el ecosistema SysBot.NET.**
+> **TradeDex es una fusión por diseño — construida a partir de años de ideas compartidas, forks, experimentos y respeto por el ecosistema SysBot.NET.**
 
-FusionBot fue creado, inspirado y mejorado a lo largo del tiempo, en piezas, mediante la colaboración de múltiples desarrolladores de todos los niveles de habilidad con ideas brillantes y un pasatiempo. Hay muchos a los que conozco, y muchos a los que no conozco, pero tengo respeto y aprecio por todos ellos. Si no inspiraron o ayudaron, simplemente sumergirme en su código y aprender C# a lo largo de los años a través de sus contribuciones me ayudó a llegar a este punto para continuar refinando FusionBot, y es también lo que permitió que este proyecto creciera hasta convertirse en uno de — si no *el mejor* — programa SysBot hasta la fecha, en gran parte gracias a **[el PokeBot de @hexbyt3](https://github.com/hexbyt3/PokeBot)**, otro contendiente como *el mejor* SysBot.
+TradeDex fue creado, inspirado y mejorado a lo largo del tiempo, en piezas, mediante la colaboración de múltiples desarrolladores de todos los niveles de habilidad con ideas brillantes y un pasatiempo. Hay muchos a los que conozco, y muchos a los que no conozco, pero tengo respeto y aprecio por todos ellos. Si no inspiraron o ayudaron, simplemente sumergirme en su código y aprender C# a lo largo de los años a través de sus contribuciones me ayudó a llegar a este punto para continuar refinando TradeDex, y es también lo que permitió que este proyecto creciera hasta convertirse en uno de — si no *el mejor* — programa SysBot hasta la fecha, en gran parte gracias a **[el PokeBot de @hexbyt3](https://github.com/hexbyt3/PokeBot)**, otro contendiente como *el mejor* SysBot.
 
 Los proyectos a continuación representan **las influencias más fuertes** en el espacio de SysBot.NET y la inspiración detrás de llamar a esto un bot **Fusion**.
 
@@ -289,7 +289,7 @@ Un fork evolucionado de forma independiente que comparte ideas, estructura e ins
 
 ## 📝 Comandos Batch a Formato Showdown
 
-`FusionBot` soporta convertir comandos batch desde mensajes de Discord a formatos oficiales de Showdown Set. Esto permite trading masivo de Pokémon de forma sencilla con personalización completa de stats, movimientos, listones y otra metadata.
+`TradeDex` soporta convertir comandos batch desde mensajes de Discord a formatos oficiales de Showdown Set. Esto permite trading masivo de Pokémon de forma sencilla con personalización completa de stats, movimientos, listones y otra metadata.
 
 ### Mapeos de Comandos Batch Soportados
 
@@ -323,7 +323,7 @@ Un fork evolucionado de forma independiente que comparte ideas, estructura e ins
 
 ## 🧭 Soporte de Slash Commands
 
-FusionBot soporta los **modernos Slash Commands de Discord**.
+TradeDex soporta los **modernos Slash Commands de Discord**.
 
 ### 🎮 Slash Commands Disponibles
 
@@ -412,7 +412,7 @@ Markings: Diamond=Red / Heart=Red / Square=Blue / Star=Blue / Triangle=Red / Cir
 ## ⚙️ Funciones del Bot
 
 ### 🧑‍🎓 AutoOT
-FusionBot aplica automáticamente tu **información de entrenador** basándose en el archivo de save que estás usando actualmente.  
+TradeDex aplica automáticamente tu **información de entrenador** basándose en el archivo de save que estás usando actualmente.  
 - Tu **OT / TID / SID / OTGender** se aplican automáticamente.  
 - Para mantener la info de entrenador en tus propios archivos, adjuntalos con `t true`.  
 - Para Showdown Sets, simplemente incluí el OT/TID/SID que querés y AutoOT se desactivará.  
@@ -422,7 +422,7 @@ Esto asegura que todos los trades se sientan naturales y consistentes con tu jue
 ---
 
 ### 🔗 Link Trade Codes
-FusionBot te asigna un **Link Trade Code personal estático** en tu primer trade.  
+TradeDex te asigna un **Link Trade Code personal estático** en tu primer trade.  
 - Este código es **único para vos** y se mantiene igual para todos los trades futuros.  
 - Para resetearlo: usá `dtc` (tu próximo trade te da un nuevo código aleatorio).  
 - Para personalizarlo: usá `ctc 12345678` (configura tu código permanente al que vos elijas).  
@@ -432,7 +432,7 @@ Esto hace que el trading sea más fluido eliminando las dudas, haciendo que tu l
 ---
 
 ### 🏅 Medallas e Hitos
-Cada trade que completás es trackeado por FusionBot, y tu **cantidad de trades** aparece en el footer del embed de trade.  
+Cada trade que completás es trackeado por TradeDex, y tu **cantidad de trades** aparece en el footer del embed de trade.  
 - Por cada **50 trades**, ganás una nueva medalla 🥇.  
 - Podés ver tus medallas en cualquier momento en tu tarjeta de perfil con el comando `profile`.  
 - Es sólo por diversión; un pequeño **sistema de progresión** para mostrar tu dedicación al trading.  

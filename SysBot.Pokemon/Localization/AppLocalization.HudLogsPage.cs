@@ -28,10 +28,10 @@ public static partial class AppLocalization
                 target[LocalizationKeys.LogsNext] = "SIG.";
                 target[LocalizationKeys.LogsPrevious] = "ANT.";
                 target[LocalizationKeys.LogsClear] = "LIMPIAR";
-                target[LocalizationKeys.LogsNoSearchTerm] = "Sin termino de busqueda.";
+                target[LocalizationKeys.LogsNoSearchTerm] = "Sin término de búsqueda.";
                 target[LocalizationKeys.LogsNoMatches] = "Sin coincidencias.";
                 target[LocalizationKeys.LogsMatchCount] = "Coincidencia {0} de {1}";
-                target[LocalizationKeys.LogsEnterSearchTerm] = "Escribe un termino de busqueda.";
+                target[LocalizationKeys.LogsEnterSearchTerm] = "Escribe un término de búsqueda.";
                 target[LocalizationKeys.ContextCopy] = "Copiar";
                 target[LocalizationKeys.ContextClear] = "Limpiar";
                 target[LocalizationKeys.ContextSelectAll] = "Seleccionar todo";

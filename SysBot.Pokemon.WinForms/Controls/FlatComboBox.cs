@@ -37,7 +37,13 @@ public sealed class FlatComboBox : ComboBox
         DropDownStyle = ComboBoxStyle.DropDownList;
         FlatStyle = FlatStyle.Flat;
         DrawMode = DrawMode.OwnerDrawFixed;
-        ItemHeight = 22;
+        // The collapsed control height ≈ ItemHeight + ~6px of vertical chrome padding.
+        // 24 produces a ~30px tall control matching the FlatTextBox / FlatNumericUpDown
+        // Panel wrappers used elsewhere in the BotsForm row.
+        ItemHeight = 24;
+        // IntegralHeight = false unlocks the dropdown-list height so it can grow past
+        // the multiple-of-ItemHeight default when needed.
+        IntegralHeight = false;
         Font = new Font("Segoe UI", 9F, FontStyle.Regular);
         BackColor = Color.FromArgb(30, 32, 36);
         ForeColor = Color.FromArgb(232, 234, 238);

@@ -1,6 +1,7 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 using System.Windows.Forms;
 using System.Collections.Generic;
 using SysBot.Pokemon.Localization;
@@ -13,10 +14,8 @@ namespace SysBot.Pokemon.WinForms
         [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
         public RichTextBox LogsBox { get; private set; }
 
+        private Panel searchBoxShell = null!;
         private TextBox searchBox = null!;
-#pragma warning disable CS0649 // Field is never assigned
-        private Button? enterButton;
-#pragma warning restore CS0649
         private Button nextButton = null!;
         private Button prevButton = null!;
         private Button clearButton = null!;
@@ -25,6 +24,10 @@ namespace SysBot.Pokemon.WinForms
 
         private List<int> matchIndices = new();
         private int currentMatchIndex = -1;
+        private bool searchPlaceholderActive;
+        private bool suppressSearchTextChanged;
+        private string? resultLocalizationKey;
+        private object[] resultLocalizationArgs = Array.Empty<object>();
 
         public LogsForm()
         {
@@ -102,8 +105,9 @@ namespace SysBot.Pokemon.WinForms
                 prevButton.Text = AppLocalization.Get(LocalizationKeys.LogsPrevious);
             if (clearButton != null)
                 clearButton.Text = AppLocalization.Get(LocalizationKeys.LogsClear);
-            if (searchBox != null && searchBox.ForeColor == Color.Gray)
-                searchBox.Text = AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder);
+            if (searchBox != null && searchPlaceholderActive)
+                ShowSearchPlaceholder();
+            RefreshResultLabel();
             if (LogsBox != null)
                 LogsBox.ContextMenuStrip = CreateContextMenu();
         }
@@ -119,62 +123,45 @@ namespace SysBot.Pokemon.WinForms
             var panel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 30,
+                Height = 36,
                 BackColor = theme.PanelBase
             };
 
-            // Use FontManager for Montserrat with fallback
-            Font searchFont;
-            try
+            searchBoxShell = new Panel
             {
-                searchFont = FontManager.Get("Montserrat", 9, FontStyle.Italic);
-            }
-            catch
-            {
-                searchFont = new Font("Montserrat", 9, FontStyle.Italic);
-            }
+                Location = new Point(6, 5),
+                Size = new Size(204, 26),
+                BackColor = Color.FromArgb(34, 36, 41)
+            };
+            searchBoxShell.Paint += SearchBoxShell_Paint;
 
-            // TextBox inside the border panel
             searchBox = new TextBox
             {
                 BorderStyle = BorderStyle.None,
-                BackColor = theme.Hover,
+                BackColor = searchBoxShell.BackColor,
                 ForeColor = theme.Muted,
                 Font = new Font("Segoe UI", 9F, FontStyle.Italic),
-                Text = AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder),
-                Location = new Point(6, 5),
-                Size = new Size(198, 28),
+                Location = new Point(10, 5),
+                Size = new Size(184, 18),
             };
-
-            // Regular font for active search
-            Font searchFontRegular;
-            try
-            {
-                searchFontRegular = FontManager.Get("Montserrat", 9, FontStyle.Regular);
-            }
-            catch
-            {
-                searchFontRegular = new Font("Montserrat", 9, FontStyle.Regular);
-            }
+            ShowSearchPlaceholder();
 
             searchBox.Enter += (s, e) =>
             {
-                if (searchBox.Text == AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder))
-                {
-                    searchBox.Text = "";
-                    searchBox.ForeColor = theme.ForeColor;
-                    searchBox.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
-                }
+                if (searchPlaceholderActive)
+                    HideSearchPlaceholder();
+
+                searchBoxShell.Invalidate();
             };
 
             searchBox.Leave += (s, e) =>
             {
                 if (string.IsNullOrWhiteSpace(searchBox.Text))
                 {
-                    searchBox.Text = AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder);
-                    searchBox.ForeColor = theme.Muted;
-                    searchBox.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+                    ShowSearchPlaceholder();
                 }
+
+                searchBoxShell.Invalidate();
             };
 
             searchBox.TextChanged += SearchBox_TextChanged;
@@ -193,8 +180,8 @@ namespace SysBot.Pokemon.WinForms
             nextButton = new FancyButton
             {
                 Text = AppLocalization.Get(LocalizationKeys.LogsNext),
-                Location = new Point(210, 2 - 1), // was 210
-                Height = 25,
+                Location = new Point(216, 5),
+                Size = new Size(76, 26),
                 Font = buttonFont
             };
             nextButton.Click += (s, e) => PerformSearch(SearchDirection.Forward);
@@ -202,8 +189,8 @@ namespace SysBot.Pokemon.WinForms
             prevButton = new FancyButton
             {
                 Text = AppLocalization.Get(LocalizationKeys.LogsPrevious),
-                Location = new Point(290, 2 - 1), // was 290
-                Height = 25,
+                Location = new Point(298, 5),
+                Size = new Size(76, 26),
                 Font = buttonFont
             };
             prevButton.Click += (s, e) => PerformSearch(SearchDirection.Backward);
@@ -211,29 +198,29 @@ namespace SysBot.Pokemon.WinForms
             clearButton = new FancyButton
             {
                 Text = AppLocalization.Get(LocalizationKeys.LogsClear),
-                Location = new Point(370, 2 - 1), // was 370
-                Height = 25,
+                Location = new Point(380, 5),
+                Size = new Size(84, 26),
                 Font = buttonFont
             };
             clearButton.Click += (s, e) =>
             {
-                searchBox.Text = string.Empty;
                 ClearHighlights();
                 matchIndices.Clear();
                 currentMatchIndex = -1;
-                resultLabel.Text = string.Empty;
+                SetResultLabel(null);
+                ShowSearchPlaceholder();
             };
 
             resultLabel = new Label
             {
                 AutoSize = true,
-                Location = new Point(470, 6 - 2), // was 550
+                Location = new Point(474, 10),
                 ForeColor = theme.ForeColor,
                 Font = buttonFont
             };
 
-            panel.Controls.Add(searchBox);
-            panel.Controls.Add(enterButton);
+            searchBoxShell.Controls.Add(searchBox);
+            panel.Controls.Add(searchBoxShell);
             panel.Controls.Add(nextButton);
             panel.Controls.Add(prevButton);
             panel.Controls.Add(resultLabel);
@@ -244,8 +231,7 @@ namespace SysBot.Pokemon.WinForms
 
         private void SearchBox_TextChanged(object? sender, EventArgs e)
         {
-            // Don’t trigger when it’s the placeholder text  
-            if (searchBox.Text == AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder))
+            if (suppressSearchTextChanged || searchPlaceholderActive)
                 return;
 
             DoSearch(searchBox.Text);
@@ -259,7 +245,7 @@ namespace SysBot.Pokemon.WinForms
 
             if (string.IsNullOrWhiteSpace(term))
             {
-                resultLabel.Text = AppLocalization.Get(LocalizationKeys.LogsNoSearchTerm);
+                SetResultLabel(LocalizationKeys.LogsNoSearchTerm);
                 return;
             }
 
@@ -273,7 +259,7 @@ namespace SysBot.Pokemon.WinForms
 
             if (matchIndices.Count == 0)
             {
-                resultLabel.Text = AppLocalization.Get(LocalizationKeys.LogsNoMatches);
+                SetResultLabel(LocalizationKeys.LogsNoMatches);
                 return;
             }
 
@@ -304,7 +290,7 @@ namespace SysBot.Pokemon.WinForms
                 LogsBox.Focus();
 
 
-            resultLabel.Text = AppLocalization.Format(LocalizationKeys.LogsMatchCount, currentMatchIndex + 1, matchIndices.Count);
+            SetResultLabel(LocalizationKeys.LogsMatchCount, currentMatchIndex + 1, matchIndices.Count);
         }
 
         private void ClearHighlights()
@@ -318,38 +304,14 @@ namespace SysBot.Pokemon.WinForms
 
         private void SearchBox_Enter(object sender, EventArgs e)
         {
-            if (searchBox.Text == AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder))
-            {
-                searchBox.Text = string.Empty;
-                searchBox.ForeColor = ThemeManager.CurrentColors.ForeColor;
-                // Use existing font or fallback
-                try
-                {
-                    searchBox.Font = FontManager.Get("Montserrat", 8, FontStyle.Regular);
-                }
-                catch
-                {
-                    searchBox.Font = new Font("Montserrat", 8, FontStyle.Regular);
-                }
-            }
+            if (searchPlaceholderActive)
+                HideSearchPlaceholder();
         }
 
         private void SearchBox_Leave(object sender, EventArgs e)
         {
             if (string.IsNullOrWhiteSpace(searchBox.Text))
-            {
-                searchBox.Text = AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder);
-                searchBox.ForeColor = Color.Gray;
-                // Use existing font or fallback
-                try
-                {
-                    searchBox.Font = FontManager.Get("Montserrat", 8, FontStyle.Italic);
-                }
-                catch
-                {
-                    searchBox.Font = new Font("Montserrat", 8, FontStyle.Italic);
-                }
-            }
+                ShowSearchPlaceholder();
         }
         private enum SearchDirection
         {
@@ -363,7 +325,7 @@ namespace SysBot.Pokemon.WinForms
 
             if (string.IsNullOrWhiteSpace(term) || term == AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder))
             {
-                resultLabel.Text = AppLocalization.Get(LocalizationKeys.LogsEnterSearchTerm);
+                SetResultLabel(LocalizationKeys.LogsEnterSearchTerm);
                 return;
             }
 
@@ -376,7 +338,7 @@ namespace SysBot.Pokemon.WinForms
 
             if (matchIndices.Count == 0)
             {
-                resultLabel.Text = AppLocalization.Get(LocalizationKeys.LogsNoMatches);
+                SetResultLabel(LocalizationKeys.LogsNoMatches);
                 return;
             }
 
@@ -396,6 +358,86 @@ namespace SysBot.Pokemon.WinForms
             }));
 
             return contextMenu;
+        }
+
+        private void SearchBoxShell_Paint(object? sender, PaintEventArgs e)
+        {
+            var theme = ThemeManager.CurrentColors;
+            e.Graphics.SmoothingMode = SmoothingMode.AntiAlias;
+
+            var rect = new Rectangle(0, 0, searchBoxShell.Width - 1, searchBoxShell.Height - 1);
+            using var path = RoundedRect(rect, 4);
+            using var fill = new SolidBrush(searchBoxShell.BackColor);
+            using var border = new Pen(searchBox.Focused ? theme.Accent : Color.FromArgb(58, 62, 70), searchBox.Focused ? 1.5f : 1f);
+
+            e.Graphics.FillPath(fill, path);
+            e.Graphics.DrawPath(border, path);
+
+            if (searchBox.Focused)
+            {
+                using var accent = new SolidBrush(theme.Accent);
+                e.Graphics.FillRectangle(accent, 1, 1, 3, searchBoxShell.Height - 2);
+            }
+        }
+
+        private static GraphicsPath RoundedRect(Rectangle bounds, int radius)
+        {
+            var path = new GraphicsPath();
+            int diameter = radius * 2;
+
+            path.AddArc(bounds.X, bounds.Y, diameter, diameter, 180, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Y, diameter, diameter, 270, 90);
+            path.AddArc(bounds.Right - diameter, bounds.Bottom - diameter, diameter, diameter, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - diameter, diameter, diameter, 90, 90);
+            path.CloseFigure();
+
+            return path;
+        }
+
+        private void ShowSearchPlaceholder()
+        {
+            if (searchBox == null)
+                return;
+
+            suppressSearchTextChanged = true;
+            searchPlaceholderActive = true;
+            searchBox.Text = AppLocalization.Get(LocalizationKeys.LogsSearchPlaceholder);
+            searchBox.ForeColor = Color.FromArgb(172, 178, 188);
+            searchBox.Font = new Font("Segoe UI", 9F, FontStyle.Italic);
+            suppressSearchTextChanged = false;
+        }
+
+        private void HideSearchPlaceholder()
+        {
+            suppressSearchTextChanged = true;
+            searchPlaceholderActive = false;
+            searchBox.Text = string.Empty;
+            searchBox.ForeColor = ThemeManager.CurrentColors.ForeColor;
+            searchBox.Font = new Font("Segoe UI", 9F, FontStyle.Regular);
+            suppressSearchTextChanged = false;
+        }
+
+        private void SetResultLabel(string? localizationKey, params object[] args)
+        {
+            resultLocalizationKey = localizationKey;
+            resultLocalizationArgs = args;
+            RefreshResultLabel();
+        }
+
+        private void RefreshResultLabel()
+        {
+            if (resultLabel == null)
+                return;
+
+            if (string.IsNullOrEmpty(resultLocalizationKey))
+            {
+                resultLabel.Text = string.Empty;
+                return;
+            }
+
+            resultLabel.Text = resultLocalizationArgs.Length == 0
+                ? AppLocalization.Get(resultLocalizationKey)
+                : AppLocalization.Format(resultLocalizationKey, resultLocalizationArgs);
         }
     }
 }

@@ -54,6 +54,10 @@ public class FancyButton : Button
     [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
     public int CornerRadius { get; set; } = 4;
 
+    [Browsable(false)]
+    [DesignerSerializationVisibility(DesignerSerializationVisibility.Hidden)]
+    public Point TextOffset { get; set; } = Point.Empty;
+
     private bool _hover;
     private bool _pressed;
 
@@ -63,15 +67,15 @@ public class FancyButton : Button
         FlatAppearance.BorderSize = 0;
         BackColor = Color.Transparent;
         ForeColor = Color.FromArgb(232, 234, 238);
+        Cursor = Cursors.Hand;
 
         try
         {
-            Font = new Font("Segoe UI Variable Display Semib", 9.5F, FontStyle.Regular);
+            Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Regular);
         }
         catch
         {
-            try { Font = new Font("Segoe UI Semibold", 9.5F, FontStyle.Regular); }
-            catch { Font = new Font(FontFamily.GenericSansSerif, 9.5F, FontStyle.Bold); }
+            Font = new Font(FontFamily.GenericSansSerif, 9.5F, FontStyle.Bold);
         }
 
         DoubleBuffered = true;
@@ -109,11 +113,13 @@ public class FancyButton : Button
             using (var pen = new Pen(GetBorder(), 1)) g.DrawPath(pen, path);
         }
 
-        // Left accent stripe — drawn inside the border, used as a quiet category cue.
+        // Top accent strip — horizontal band that brightens slightly on hover.
         if (GlowColor != Color.Empty && GlowColor.A > 0)
         {
-            var stripe = new Rectangle(1, 1, 3, Height - 3);
-            using var sb = new SolidBrush(GlowColor);
+            Color stripeColor = _hover ? Lighten(GlowColor, 0.15f) : GlowColor;
+            int stripeHeight = 3;
+            var stripe = new Rectangle(2, 2, Width - 4, stripeHeight);
+            using var sb = new SolidBrush(stripeColor);
             g.FillRectangle(sb, stripe);
         }
 
@@ -130,8 +136,10 @@ public class FancyButton : Button
         if (!string.IsNullOrEmpty(Text))
         {
             var textColor = Enabled ? ForeColor : Color.FromArgb(120, ForeColor);
-            TextRenderer.DrawText(g, Text, Font, ClientRectangle, textColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis);
+            var textRect = ClientRectangle;
+            textRect.Offset(TextOffset);
+            TextRenderer.DrawText(g, Text, Font, textRect, textColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis | TextFormatFlags.NoPadding);
         }
     }
 
@@ -159,5 +167,14 @@ public class FancyButton : Button
             (int)(c.R * (1f - amount)),
             (int)(c.G * (1f - amount)),
             (int)(c.B * (1f - amount)));
+    }
+
+    private static Color Lighten(Color c, float amount)
+    {
+        amount = Math.Clamp(amount, 0f, 1f);
+        return Color.FromArgb(c.A,
+            (int)(c.R + (255 - c.R) * amount),
+            (int)(c.G + (255 - c.G) * amount),
+            (int)(c.B + (255 - c.B) * amount));
     }
 }

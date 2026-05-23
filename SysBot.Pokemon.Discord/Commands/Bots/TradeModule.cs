@@ -79,10 +79,13 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Alias("t")]
     [Summary("Makes the bot trade you the provided Pokémon file.")]
     [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
-    public Task TradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
+    public async Task TradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
     {
         var sig = Context.User.GetFavor();
-        return ProcessTradeAttachmentAsync(code, sig, Context.User, ignoreAutoOT: ignoreAutoOT);
+        await ProcessTradeAttachmentAsync(code, sig, Context.User, ignoreAutoOT: ignoreAutoOT).ConfigureAwait(false);
+
+        if (Context.Message is IUserMessage userMessage)
+            _ = Helpers<T>.DeleteMessagesAfterDelayAsync(userMessage, null, 2);
     }
 
     [Command("trade")]
@@ -126,10 +129,13 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Alias("ht")]
     [Summary("Makes the bot trade you the provided file without showing trade embed details.")]
     [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
-    public Task HideTradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
+    public async Task HideTradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
     {
         var sig = Context.User.GetFavor();
-        return ProcessTradeAttachmentAsync(code, sig, Context.User, isHiddenTrade: true, ignoreAutoOT: ignoreAutoOT);
+        await ProcessTradeAttachmentAsync(code, sig, Context.User, isHiddenTrade: true, ignoreAutoOT: ignoreAutoOT).ConfigureAwait(false);
+
+        if (Context.Message is IUserMessage userMessage)
+            _ = Helpers<T>.DeleteMessagesAfterDelayAsync(userMessage, null, 2);
     }
 
     [Command("hidetrade")]

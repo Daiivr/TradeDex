@@ -28,8 +28,10 @@ namespace SysBot.Pokemon.WinForms
         public Button RebootStopButton => _B_RebootStop;
         public Button UpdateButton => _updater;
         public Button AddBotButton => _B_New;
-        public TextBox IPBox => _TB_IP;
-        public NumericUpDown PortBox => _NUD_Port;
+        public TextBox IPBox => _TB_IP.Inner;
+        // FlatNumericUpDown now exposes Value/Minimum/Maximum directly, so callers that
+        // used to talk to a NumericUpDown can talk to the wrapper unchanged.
+        public FlatNumericUpDown PortBox => _NUD_Port;
 
         public ComboBox ProtocolBox => _CB_Protocol;
         public ComboBox RoutineBox => _CB_Routine;
@@ -44,8 +46,8 @@ namespace SysBot.Pokemon.WinForms
         private FancyButton _B_Reload = null!;
         private ToolTip _toolTips = null!;
 
-        private TextBox _TB_IP = null!;
-        private NumericUpDown _NUD_Port = null!;
+        private FlatTextBox _TB_IP = null!;
+        private FlatNumericUpDown _NUD_Port = null!;
 
         private ComboBox _CB_Protocol = null!;
         private ComboBox _CB_Routine = null!;
@@ -79,7 +81,7 @@ namespace SysBot.Pokemon.WinForms
             };
 
             // Buttons — GlowColor is rendered as a quiet 3px left-edge stripe by the modernized FancyButton.
-            _B_Start = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsStart), Location = new Point(11, 7), Size = new Size(100, 40) };
+            _B_Start = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsStart), Location = new Point(11, 7), Size = new Size(108, 44) };
             _B_Start.GlowColor = Color.FromArgb(74, 222, 128);
             _toolTips.SetToolTip(_B_Start, AppLocalization.Get(LocalizationKeys.BotsStartTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
@@ -87,7 +89,7 @@ namespace SysBot.Pokemon.WinForms
             _toolTips.ReshowDelay = 1000;        // Delay between tooltips
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
-            _B_Stop = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsStop), Location = new Point(126, 7), Size = new Size(100, 40) };
+            _B_Stop = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsStop), Location = new Point(126, 7), Size = new Size(108, 44) };
             _B_Stop.GlowColor = Color.FromArgb(248, 113, 113);
             _toolTips.SetToolTip(_B_Stop, AppLocalization.Get(LocalizationKeys.BotsStopTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
@@ -95,7 +97,7 @@ namespace SysBot.Pokemon.WinForms
             _toolTips.ReshowDelay = 1000;        // Delay between tooltips
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
-            _B_RebootStop = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsReboot), Location = new Point(241, 7), Size = new Size(100, 40) };
+            _B_RebootStop = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsReboot), Location = new Point(241, 7), Size = new Size(108, 44) };
             _B_RebootStop.GlowColor = Color.FromArgb(192, 132, 252);
             _toolTips.SetToolTip(_B_RebootStop, AppLocalization.Get(LocalizationKeys.BotsRebootTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
@@ -103,25 +105,26 @@ namespace SysBot.Pokemon.WinForms
             _toolTips.ReshowDelay = 1000;        // Delay between tooltips
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
-            _updater = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsUpdate), Location = new Point(356, 7), Size = new Size(100, 40) };
+            _updater = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsUpdate), Location = new Point(356, 7), Size = new Size(108, 44) };
             _toolTips.SetToolTip(_updater, AppLocalization.Get(LocalizationKeys.BotsUpdateTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 2000;       // Delay before it shows up
             _toolTips.ReshowDelay = 1000;        // Delay between tooltips
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
-            // Positioned with deliberate spacing so it doesn't overlap the routine combo or the game-mode combo.
-            // Routine combo: x=301, w=130 → ends at 431. Game-mode combo: x=487.
-            _B_New = new FancyButton { Text = "+", Location = new Point(446, 56), Size = new Size(32, 30) };
+            // Positioned with 12px gaps from both the routine combo and the game-mode combo.
+            // Routine combo: x=318..448. + button: x=460..492. GameMode: x=504.
+            _B_New = new FancyButton { Text = "+", Location = new Point(460, 56), Size = new Size(32, 30) };
             _B_New.GlowColor = Color.Empty;
             _B_New.Font = new Font("Segoe UI", 12, FontStyle.Bold);
+            _B_New.TextOffset = new Point(0, 1);
             _toolTips.SetToolTip(_B_New, AppLocalization.Get(LocalizationKeys.BotsNewTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 2000;       // Delay before it shows up
             _toolTips.ReshowDelay = 1000;        // Delay between tooltips
             _toolTips.ShowAlways = true;        // Show even if the form isn’t active
 
-            _B_Reload = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsReload), Location = new Point(471, 7), Size = new Size(100, 40) };
+            _B_Reload = new FancyButton { Text = AppLocalization.Get(LocalizationKeys.BotsReload), Location = new Point(471, 7), Size = new Size(108, 44) };
             _B_Reload.GlowColor = Color.FromArgb(251, 191, 36);
             _toolTips.SetToolTip(_B_Reload, AppLocalization.Get(LocalizationKeys.BotsReloadTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
@@ -188,11 +191,15 @@ namespace SysBot.Pokemon.WinForms
             Color inputBg = theme.Hover;
             Color whiteText = theme.ForeColor;
 
-            // Controls
-            _TB_IP = new TextBox { Location = new Point(12, 57), Width = 120, BackColor = inputBg, ForeColor = whiteText, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Segoe UI", 9F) };
-            _NUD_Port = new NumericUpDown { Location = new Point(144, 57), Width = 65, Maximum = 65535, Minimum = 0, Value = 6000, BackColor = inputBg, ForeColor = whiteText, BorderStyle = BorderStyle.FixedSingle, Font = new Font("Segoe UI", 9F) };
+            // Controls — themed FlatTextBox / FlatNumericUpDown match the FlatComboBox styling.
+            // Row laid out with uniform 12px gaps and a shared 30px height so everything
+            // aligns to the same baseline.
+            // IP(12..142) gap NUD(154..224) gap Protocol(236..306) gap Routine(318..448) gap +(460..492) gap GameMode(504..600)
+            const int rowHeight = 30;
+            _TB_IP = new FlatTextBox { Location = new Point(12, 57), Size = new Size(130, rowHeight), BackColor = inputBg, ForeColor = whiteText };
+            _NUD_Port = new FlatNumericUpDown { Location = new Point(154, 57), Size = new Size(70, rowHeight), Maximum = 65535, Minimum = 0, Value = 6000, BackColor = inputBg, ForeColor = whiteText };
 
-            _CB_Protocol = new FlatComboBox { Location = new Point(221, 57), Width = 70, BackColor = inputBg, ForeColor = whiteText };
+            _CB_Protocol = new FlatComboBox { Location = new Point(236, 57), Size = new Size(70, rowHeight), BackColor = inputBg, ForeColor = whiteText };
             var protocols = ((SwitchProtocol[])Enum.GetValues(typeof(SwitchProtocol)))
                 .Select(z => new { Text = z.ToString(), Value = (int)z }).ToArray();
             _CB_Protocol.DisplayMember = "Text";
@@ -200,7 +207,7 @@ namespace SysBot.Pokemon.WinForms
             _CB_Protocol.DataSource = protocols;
             _CB_Protocol.SelectedValue = (int)SwitchProtocol.WiFi;
 
-            _CB_Routine = new FlatComboBox { Location = new Point(301, 57), Width = 130, BackColor = inputBg, ForeColor = whiteText };
+            _CB_Routine = new FlatComboBox { Location = new Point(318, 57), Size = new Size(130, rowHeight), BackColor = inputBg, ForeColor = whiteText };
             var routines = ((PokeRoutineType[])Enum.GetValues(typeof(PokeRoutineType)))
                 .Select(z => new { Text = z.ToString(), Value = (int)z }).ToArray();
             _CB_Routine.DisplayMember = "Text";
@@ -208,7 +215,7 @@ namespace SysBot.Pokemon.WinForms
             _CB_Routine.DataSource = routines;
             _CB_Routine.SelectedValue = (int)PokeRoutineType.FlexTrade;
 
-            _CB_GameMode = new FlatComboBox { Location = new Point(490, 57), Size = new Size(96, 28), BackColor = inputBg, ForeColor = whiteText };
+            _CB_GameMode = new FlatComboBox { Location = new Point(504, 57), Size = new Size(96, rowHeight), BackColor = inputBg, ForeColor = whiteText };
             _CB_GameMode.Items.AddRange(new object[] { "SWSH", "BDSP", "PLA", "SV", "LGPE", "PLZA" });
             _CB_GameMode.SelectedIndex = -1;
             _CB_GameMode.SelectedIndexChanged += CB_GameMode_SelectedIndexChanged;
@@ -445,21 +452,10 @@ namespace SysBot.Pokemon.WinForms
                 return;
             }
 
-            if (isUpdateAvailable && !string.IsNullOrWhiteSpace(newVersion))
-            {
-                _availableUpdateVersion = newVersion;
-                _updateVersionLabel.Text = AppLocalization.Format(LocalizationKeys.BotsUpdateNowTo, newVersion);
-                _updateVersionLabel.Visible = true;
-                _updateVersionLabel.BringToFront();
-                _updateNotificationImage.Visible = true;
-                _updateNotificationImage.BringToFront();
-            }
-            else
-            {
-                _availableUpdateVersion = string.Empty;
-                _updateVersionLabel.Visible = false;
-                _updateNotificationImage.Visible = false;
-            }
+            _availableUpdateVersion = string.Empty;
+            _updateVersionLabel.Visible = false;
+            _updateNotificationImage.Visible = false;
+            Main.Instance?.SetUpdateNotification(isUpdateAvailable, newVersion);
         }
     }
 }

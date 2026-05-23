@@ -28,7 +28,9 @@ public sealed class ThemedMessageBox : Form
         FormBorderStyle = FormBorderStyle.None;
         StartPosition = FormStartPosition.CenterParent;
         ShowInTaskbar = false;
-        BackColor = theme.PanelBase;
+        // Form's BackColor is set to the theme accent so it shows through the 1px Padding
+        // ring as a neon outline — same trick used on the main window.
+        BackColor = theme.Accent;
         ForeColor = theme.ForeColor;
         Font = new Font("Segoe UI", 9.5F, FontStyle.Regular);
         MinimumSize = new Size(360, 160);
@@ -170,12 +172,8 @@ public sealed class ThemedMessageBox : Form
             lblMessage.Size = new Size(width - (icon == ThemedMessageIcon.None ? 44 : 90), height - 40 - 64 - 30);
         }
 
-        // Outer 1px border so the borderless form has a defined edge.
-        Paint += (_, e) =>
-        {
-            using var pen = new Pen(theme.Shadow, 1);
-            e.Graphics.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
-        };
+        // Neon outline is now produced by Form.BackColor (=theme.Accent) showing through
+        // the 1px Padding ring — no Paint handler needed.
 
         // Drag-to-move on the title bar.
         Drag.Attach(this, titleBar);

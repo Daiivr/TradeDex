@@ -67,6 +67,10 @@
     <EmbeddedResource Include="Resources\pikachu_running.gif" />
     <EmbeddedResource Include="Resources\pla_mode_image.png" />
     <EmbeddedResource Include="Resources\picture_logo.png" />
+    <EmbeddedResource Include="Resources\title_bots.png" />
+    <EmbeddedResource Include="Resources\title_hub.png" />
+    <EmbeddedResource Include="Resources\title_logs.png" />
+    <EmbeddedResource Include="Resources\title_registros.png" />
     <EmbeddedResource Include="Resources\pla_mode_upper.png" />
     <EmbeddedResource Include="Resources\plza_mode_upper.png" />
     <EmbeddedResource Include="Resources\RightJoyCon.png" />

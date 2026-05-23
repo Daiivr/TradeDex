@@ -56,10 +56,12 @@ namespace SysBot.Pokemon.WinForms
         // Currently active button in the left panel, for setting Bots as default
         private IconButton currentBtn = null!;
         private IconButton btnLanguage = null!;
+        private PictureBox childFormTitleImage = null!;
         private ToolTip languageToolTip = null!;
 
         private Panel leftBorderBtn = null!;
         private Dictionary<IconButton, Timer> hoverTimers = new();
+        private readonly Dictionary<string, Image> childFormTitleImages = new();
 
 #pragma warning disable CS0414 // Field is assigned but never used
         private bool _isFormLoading = true;               // Flag to indicate if the form is still loading (reserved for future use)
@@ -81,15 +83,6 @@ namespace SysBot.Pokemon.WinForms
         private readonly List<Sparkle> logoSparkles = new();
         private readonly Random glitterRng = new Random();
         private Timer glitterTimer = null!;
-
-        // Neon pink + neon blue palette for the logo panel sparkles
-        private static readonly Color[] NeonLogoPalette = new[]
-        {
-            Color.FromArgb(255, 255, 20, 200),   // neon pink
-            Color.FromArgb(255, 255, 80, 220),   // lighter neon pink
-            Color.FromArgb(255, 0, 200, 255),    // neon blue / cyan
-            Color.FromArgb(255, 90, 140, 255),   // lighter neon blue
-        };
 
         // Per-mode palettes for the title-bar sparkles
         private static readonly Color[] TitleBarPalette_PLZA = new[]
@@ -136,35 +129,6 @@ namespace SysBot.Pokemon.WinForms
             ProgramMode.SWSH => TitleBarPalette_SWSH,
             _ => null, // null falls back to Sparkle's default white/yellow
         };
-
-        // Parse "R, G, B" / "R G B" / "R;G;B" into a Color. Returns null on bad/empty input.
-        private static Color? ParseRgbColor(string? input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return null;
-            var parts = input.Split(new[] { ',', ' ', ';' },
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (parts.Length != 3)
-                return null;
-            if (!byte.TryParse(parts[0], out var r)) return null;
-            if (!byte.TryParse(parts[1], out var g)) return null;
-            if (!byte.TryParse(parts[2], out var b)) return null;
-            return Color.FromArgb(255, r, g, b);
-        }
-
-        // Returns the user's overridden logo sparkle palette, or the default neon palette.
-        // One blank + one valid = single-color palette; both blank/invalid = default.
-        private Color[] GetLogoPalette()
-        {
-            var hub = Config?.Hub;
-            var c1 = ParseRgbColor(hub?.BotLogoSparkleColor1);
-            var c2 = ParseRgbColor(hub?.BotLogoSparkleColor2);
-
-            if (c1.HasValue && c2.HasValue) return new[] { c1.Value, c2.Value };
-            if (c1.HasValue) return new[] { c1.Value };
-            if (c2.HasValue) return new[] { c2.Value };
-            return NeonLogoPalette;
-        }
 
         ////////////////////////////////////////////////////////////
         // Initialize custom fonts for UI controls with fallbacks //
@@ -257,6 +221,7 @@ namespace SysBot.Pokemon.WinForms
             Instance = this;
             InitializeLeftSideImage(); // Initialize the left side BG image in panelLeftSide
             InitializeUpperImage();    // Initialize the upper image in panelTitleBar
+            InitializeChildFormTitleImage();
 
             // Force load FontAwesome font
             btnBots.IconChar = IconChar.Robot;
@@ -894,6 +859,11 @@ namespace SysBot.Pokemon.WinForms
 
         // Initialize the method for the left side image in the panelLeftSide
         private PictureBox leftSideImage = null!;
+        private PictureBox updateNotificationImage = null!;
+        private Label updateVersionLabel = null!;
+        private ToolTip updateNotificationToolTip = null!;
+        private string availableUpdateVersion = string.Empty;
+        private bool updateNotificationVisible;
 
         // Font download link in title bar
         private LinkLabel downloadFontsLink = null!;
@@ -913,9 +883,66 @@ namespace SysBot.Pokemon.WinForms
                 Anchor = AnchorStyles.Top,
             };
 
+            updateNotificationToolTip = new ToolTip
+            {
+                AutoPopDelay = 2500,
+                InitialDelay = 500,
+                ReshowDelay = 500,
+                ShowAlways = true
+            };
+
+            updateVersionLabel = new Label
+            {
+                AutoSize = false,
+                Size = new Size(180, 14),
+                Font = new Font("Segoe UI", 7F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(245, 247, 250),
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+
+            updateNotificationImage = new PictureBox
+            {
+                Size = new Size(132, 23),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                BorderStyle = BorderStyle.None,
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+            LoadUpdateNotificationImage();
+
+            updateVersionLabel.Click += (_, _) => Updater_Click(updateVersionLabel, EventArgs.Empty);
+            updateNotificationImage.Click += (_, _) => Updater_Click(updateNotificationImage, EventArgs.Empty);
+            updateNotificationToolTip.SetToolTip(updateVersionLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+            updateNotificationToolTip.SetToolTip(updateNotificationImage, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+
             panelLeftSide.Controls.Add(leftSideImage);
+            panelLeftSide.Controls.Add(updateVersionLabel);
+            panelLeftSide.Controls.Add(updateNotificationImage);
             panelLeftSide.Resize += (s, e) => PositionLeftSideImage();
             PositionLeftSideImage();
+        }
+
+        private void LoadUpdateNotificationImage()
+        {
+            try
+            {
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                const string resourceName = "SysBot.Pokemon.WinForms.Resources.new-release-update.png";
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                    return;
+
+                using var source = Image.FromStream(stream);
+                updateNotificationImage.Image = new Bitmap(source);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load update notification image: {ex.Message}");
+            }
         }
 
         // Position the left side image in the panelLeftSide.
@@ -931,9 +958,53 @@ namespace SysBot.Pokemon.WinForms
             int horizontalCenter = panelLeftSide.Padding.Left
                                    + (usableWidth - leftSideImage.Width) / 2;
 
-            int verticalOffsetBelowTheme = CB_Themes.Bottom + 24;
+            int verticalOffsetBelowTheme = CB_Themes.Bottom + (updateNotificationVisible ? 6 : 24);
+            if (updateNotificationVisible && lblTitle != null)
+            {
+                int updateBlockHeight = updateVersionLabel.Height + updateNotificationImage.Height + 2;
+                int latestModeTop = lblTitle.Top - leftSideImage.Height - updateBlockHeight - 2;
+                verticalOffsetBelowTheme = Math.Min(verticalOffsetBelowTheme, latestModeTop);
+            }
 
             leftSideImage.Location = new Point(horizontalCenter, verticalOffsetBelowTheme);
+            PositionUpdateNotification();
+        }
+
+        private void PositionUpdateNotification()
+        {
+            if (updateVersionLabel == null || updateNotificationImage == null || panelLeftSide == null || leftSideImage == null)
+                return;
+
+            int usableWidth = panelLeftSide.ClientSize.Width
+                              - panelLeftSide.Padding.Left
+                              - panelLeftSide.Padding.Right;
+
+            int labelX = panelLeftSide.Padding.Left + (usableWidth - updateVersionLabel.Width) / 2;
+            int imageX = panelLeftSide.Padding.Left + (usableWidth - updateNotificationImage.Width) / 2;
+            updateVersionLabel.Location = new Point(labelX, leftSideImage.Bottom + 1);
+            updateNotificationImage.Location = new Point(imageX, updateVersionLabel.Bottom - 1);
+
+            updateVersionLabel.BringToFront();
+            updateNotificationImage.BringToFront();
+        }
+
+        public void SetUpdateNotification(bool isUpdateAvailable, string newVersion = "")
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => SetUpdateNotification(isUpdateAvailable, newVersion)));
+                return;
+            }
+
+            updateNotificationVisible = isUpdateAvailable && !string.IsNullOrWhiteSpace(newVersion);
+            availableUpdateVersion = updateNotificationVisible ? newVersion : string.Empty;
+
+            if (updateNotificationVisible)
+                updateVersionLabel.Text = AppLocalization.Format(LocalizationKeys.BotsUpdateNowTo, newVersion);
+
+            updateVersionLabel.Visible = updateNotificationVisible;
+            updateNotificationImage.Visible = updateNotificationVisible;
+            PositionLeftSideImage();
         }
 
         // Initialize the method for the upper panel image in the upperPanelImage
@@ -1270,6 +1341,96 @@ namespace SysBot.Pokemon.WinForms
             return _botsForm?.BotPanel.Controls.OfType<BotController>().Any(c => c.IsRunning()) == true;
         }
 
+        private void InitializeChildFormTitleImage()
+        {
+            childFormTitleImage = new PictureBox
+            {
+                BackColor = Color.Transparent,
+                BorderStyle = BorderStyle.None,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Location = new Point(22, 8),
+                Size = new Size(170, 38),
+                Visible = false
+            };
+
+            childFormIcon.Visible = false;
+            lblTitleChildForm.Visible = false;
+            panelTitleBar.Controls.Add(childFormTitleImage);
+            childFormTitleImage.BringToFront();
+        }
+
+        private Image? GetChildFormTitleImage(IconButton? btn)
+        {
+            var resourceFile = btn switch
+            {
+                var b when b == btnBots => "title_bots.png",
+                var b when b == btnHub => "title_hub.png",
+                var b when b == btnLogs && AppLocalization.Language == AppLanguage.Spanish => "title_registros.png",
+                var b when b == btnLogs => "title_logs.png",
+                _ => null
+            };
+
+            if (resourceFile == null)
+                return null;
+
+            if (childFormTitleImages.TryGetValue(resourceFile, out var cached))
+                return cached;
+
+            var resourceName = $"SysBot.Pokemon.WinForms.Resources.{resourceFile}";
+            using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+            if (stream == null)
+                return null;
+
+            var image = Image.FromStream(stream);
+            childFormTitleImages[resourceFile] = image;
+            return image;
+        }
+
+        private void UpdateChildFormTitle(IconButton? btn)
+        {
+            if (lblTitleChildForm == null || childFormIcon == null)
+                return;
+
+            if (btn != null)
+            {
+                lblTitleChildForm.Text = btn.Text.Trim();
+                childFormIcon.IconChar = btn.IconChar;
+                childFormIcon.IconColor = ThemeManager.CurrentColors.Muted;
+            }
+            else
+            {
+                lblTitleChildForm.Text = AppLocalization.Get(LocalizationKeys.Loading);
+            }
+
+            if (childFormTitleImage == null)
+                return;
+
+            var image = GetChildFormTitleImage(btn);
+            if (image == null)
+            {
+                childFormTitleImage.Visible = false;
+                childFormIcon.Visible = btn != null;
+                lblTitleChildForm.Visible = true;
+                return;
+            }
+
+            int titleHeight = btn switch
+            {
+                var b when b == btnBots => 34,
+                var b when b == btnHub => 34,
+                _ => 38
+            };
+            const int maxTitleWidth = 210;
+            int width = Math.Min(maxTitleWidth, Math.Max(120, (int)Math.Round(image.Width * (titleHeight / (double)image.Height))));
+            childFormTitleImage.Image = image;
+            childFormTitleImage.Size = new Size(width, titleHeight);
+            childFormTitleImage.Location = new Point(20, Math.Max(0, (panelTitleBar.Height - titleHeight) / 2));
+            childFormTitleImage.Visible = true;
+            childFormTitleImage.BringToFront();
+            childFormIcon.Visible = false;
+            lblTitleChildForm.Visible = false;
+        }
+
         private void ApplyLocalization()
         {
             // Three-space prefix keeps the label visually separated from the icon
@@ -1293,14 +1454,20 @@ namespace SysBot.Pokemon.WinForms
             if (downloadFontsLink != null)
                 downloadFontsLink.Text = AppLocalization.Get(LocalizationKeys.DownloadFonts);
 
+            if (updateVersionLabel != null && updateNotificationVisible && !string.IsNullOrWhiteSpace(availableUpdateVersion))
+                updateVersionLabel.Text = AppLocalization.Format(LocalizationKeys.BotsUpdateNowTo, availableUpdateVersion);
+
+            if (updateNotificationToolTip != null && updateVersionLabel != null && updateNotificationImage != null)
+            {
+                updateNotificationToolTip.SetToolTip(updateVersionLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+                updateNotificationToolTip.SetToolTip(updateNotificationImage, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+            }
+
             _botsForm?.ApplyLocalization();
             _logsForm?.ApplyLocalization();
             _hubForm?.ApplyLocalization();
 
-            if (currentBtn != null && lblTitleChildForm != null)
-                lblTitleChildForm.Text = currentBtn.Text;
-            else if (lblTitleChildForm != null)
-                lblTitleChildForm.Text = AppLocalization.Get(LocalizationKeys.Loading);
+            UpdateChildFormTitle(currentBtn);
         }
 
         private void Bots_Click(object sender, EventArgs e)
@@ -1449,10 +1616,7 @@ namespace SysBot.Pokemon.WinForms
                 leftBorderBtn.Visible = true;
             }
 
-            // Update top panel
-            lblTitleChildForm.Text = btn.Text.Trim();
-            childFormIcon.IconChar = btn.IconChar;
-            childFormIcon.IconColor = ThemeManager.CurrentColors.Muted;
+            UpdateChildFormTitle(btn);
         }
 
 

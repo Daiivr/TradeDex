@@ -20,14 +20,6 @@ public sealed class PokeTradeHubConfig : BaseConfig
     [Description("URL de imagen o directorio de archivo para un logo de 208x101 que se mostrará en la esquina superior izquierda. Requiere reiniciar el programa.")]
     public string BotLogoImage { get; set; } = string.Empty;
 
-    [Category(BotTrade)]
-    [Description("Primer color de brillo detrás del logo. Ingresar como RGB (ej. \"255, 20, 200\"). Dejar en blanco para usar la paleta neón predeterminada. Requiere reiniciar el programa.")]
-    public string BotLogoSparkleColor1 { get; set; } = string.Empty;
-
-    [Category(BotTrade)]
-    [Description("Segundo color de brillo detrás del logo. Ingresar como RGB (ej. \"0, 200, 255\"). Dejar en blanco para usar la paleta neón predeterminada. Requiere reiniciar el programa.")]
-    public string BotLogoSparkleColor2 { get; set; } = string.Empty;
-
     [Category(Integration)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public DiscordSettings Discord { get; set; } = new();

@@ -60,6 +60,7 @@ public static class LocalizationKeys
     public const string BotStatusUnknown = nameof(BotStatusUnknown);
     public const string BotStatusError = nameof(BotStatusError);
     public const string BotUnknownConnection = nameof(BotUnknownConnection);
+    public const string BotActions = nameof(BotActions);
     public const string BotMenuStart = nameof(BotMenuStart);
     public const string BotMenuStop = nameof(BotMenuStop);
     public const string BotMenuIdle = nameof(BotMenuIdle);

@@ -1,9 +1,13 @@
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.IO;
+using System.Net;
 using System.Net.Http;
 using System.Runtime.InteropServices;
+using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using FontAwesome.Sharp;
@@ -17,7 +21,7 @@ namespace SysBot.Pokemon.WinForms
         private Button buttonDownload = null!;
         private Label labelUpdateInfo = null!;
         private Label labelChangelogTitle = null!;
-        private TextBox textBoxChangelog = null!;
+        private WebBrowser changelogBrowser = null!;
         private readonly bool isUpdateRequired;
         private readonly bool isUpdateAvailable;
         private readonly string newVersion;
@@ -31,7 +35,8 @@ namespace SysBot.Pokemon.WinForms
             InitializeComponent();
             ConfigureDynamicUpdateInfo();
             labelChangelogTitle.Text = $"{L("Changelog")} ({newVersion}):";
-            DarkScrollHelper.Apply(textBoxChangelog);
+            DarkScrollHelper.Apply(changelogBrowser);
+            DarkScrollHelper.ApplyNativeTree(changelogBrowser);
             Load += async (sender, e) => await FetchAndDisplayChangelog();
             UpdateFormText();
         }
@@ -68,7 +73,7 @@ namespace SysBot.Pokemon.WinForms
 
             labelUpdateInfo = new Label();
             buttonDownload = new Button();
-            textBoxChangelog = new TextBox();
+            changelogBrowser = new WebBrowser();
             labelChangelogTitle = new Label();
             SuspendLayout();
 
@@ -181,20 +186,23 @@ namespace SysBot.Pokemon.WinForms
             labelChangelogTitle.TabIndex = 3;
             labelChangelogTitle.Text = L("Changelog:").ToUpperInvariant();
             //
-            // textBoxChangelog — anchored to all four sides, original size preserved.
+            // changelogBrowser — GitHub-style rendered markdown, anchored to all four sides.
             //
-            textBoxChangelog.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            textBoxChangelog.BackColor = theme.Hover;
-            textBoxChangelog.BorderStyle = BorderStyle.None;
-            textBoxChangelog.Font = new Font("Consolas", 9.5F, FontStyle.Regular);
-            textBoxChangelog.ForeColor = Color.FromArgb(200, 204, 210);
-            textBoxChangelog.Location = new Point(20, 41 + 78);
-            textBoxChangelog.Multiline = true;
-            textBoxChangelog.Name = "textBoxChangelog";
-            textBoxChangelog.ReadOnly = true;
-            textBoxChangelog.ScrollBars = ScrollBars.Vertical;
-            textBoxChangelog.Size = new Size(666, 180);
-            textBoxChangelog.TabIndex = 2;
+            changelogBrowser.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            changelogBrowser.AllowWebBrowserDrop = false;
+            changelogBrowser.BackColor = theme.Hover;
+            changelogBrowser.IsWebBrowserContextMenuEnabled = false;
+            changelogBrowser.Location = new Point(20, 41 + 78);
+            changelogBrowser.MinimumSize = new Size(20, 20);
+            changelogBrowser.Name = "changelogBrowser";
+            changelogBrowser.ScriptErrorsSuppressed = true;
+            changelogBrowser.ScrollBarsEnabled = true;
+            changelogBrowser.Size = new Size(666, 180);
+            changelogBrowser.TabIndex = 2;
+            changelogBrowser.WebBrowserShortcutsEnabled = true;
+            changelogBrowser.DocumentText = BuildChangelogHtml(L("Loading changelog..."));
+            changelogBrowser.DocumentCompleted += (_, _) => DarkScrollHelper.ApplyNativeTree(changelogBrowser);
+            changelogBrowser.Navigating += ChangelogBrowser_Navigating;
             //
             // buttonDownload — same Dock=Bottom as the original layout.
             //
@@ -220,7 +228,7 @@ namespace SysBot.Pokemon.WinForms
             Controls.Add(buttonDownload);
             Controls.Add(labelUpdateInfo);
             Controls.Add(labelChangelogTitle);
-            Controls.Add(textBoxChangelog);
+            Controls.Add(changelogBrowser);
             Controls.Add(titleHair);
             Controls.Add(titleBar);
 
@@ -266,7 +274,376 @@ namespace SysBot.Pokemon.WinForms
         {
             _ = new UpdateChecker();
             string changelog = await UpdateChecker.FetchChangelogAsync();
-            textBoxChangelog.Text = changelog;
+            changelogBrowser.DocumentText = BuildChangelogHtml(changelog);
+        }
+
+        private void ChangelogBrowser_Navigating(object? sender, WebBrowserNavigatingEventArgs e)
+        {
+            if (e.Url == null || e.Url.AbsoluteUri == "about:blank")
+                return;
+
+            e.Cancel = true;
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = e.Url.AbsoluteUri,
+                    UseShellExecute = true
+                });
+            }
+            catch (Exception ex)
+            {
+                Debug.WriteLine($"Unable to open changelog link: {ex.Message}");
+            }
+        }
+
+        private static string BuildChangelogHtml(string markdown)
+        {
+            var theme = ThemeManager.CurrentColors;
+            string body = MarkdownToHtml(markdown);
+            string background = ToHex(theme.Hover);
+            string surface = ToHex(theme.PanelBase);
+            string border = ToHex(theme.Shadow);
+            string text = ToHex(theme.ForeColor);
+            string muted = ToHex(theme.Muted);
+            string accent = ToHex(theme.Accent);
+            string scrollTrack = ToHex(Mix(theme.Hover, theme.PanelBase, 0.45));
+            string scrollButton = ToHex(Mix(theme.PanelBase, theme.Shadow, 0.30));
+            string scrollThumb = ToHex(Mix(theme.Shadow, theme.Accent, 0.38));
+            string scrollThumbHover = ToHex(Mix(theme.Accent, theme.ForeColor, 0.16));
+            string scrollArrow = ToHex(Mix(theme.Muted, theme.Accent, 0.22));
+
+            return $$"""
+                <!doctype html>
+                <html>
+                <head>
+                    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+                    <meta charset="utf-8" />
+                    <style>
+                        html, body {
+                            margin: 0;
+                            padding: 0;
+                            background: {{background}};
+                            color: {{text}};
+                            font-family: "Segoe UI", Arial, sans-serif;
+                            font-size: 13px;
+                            line-height: 1.48;
+                            overflow-x: hidden;
+                            scrollbar-base-color: {{scrollButton}};
+                            scrollbar-face-color: {{scrollThumb}};
+                            scrollbar-track-color: {{scrollTrack}};
+                            scrollbar-arrow-color: {{scrollArrow}};
+                            scrollbar-highlight-color: {{scrollThumbHover}};
+                            scrollbar-shadow-color: {{surface}};
+                            scrollbar-3dlight-color: {{scrollButton}};
+                            scrollbar-darkshadow-color: {{background}};
+                        }
+
+                        * {
+                            scrollbar-base-color: {{scrollButton}};
+                            scrollbar-face-color: {{scrollThumb}};
+                            scrollbar-track-color: {{scrollTrack}};
+                            scrollbar-arrow-color: {{scrollArrow}};
+                            scrollbar-highlight-color: {{scrollThumbHover}};
+                            scrollbar-shadow-color: {{surface}};
+                            scrollbar-3dlight-color: {{scrollButton}};
+                            scrollbar-darkshadow-color: {{background}};
+                        }
+
+                        ::-webkit-scrollbar {
+                            width: 10px;
+                            height: 10px;
+                            background: {{scrollTrack}};
+                        }
+
+                        ::-webkit-scrollbar-track {
+                            background: {{scrollTrack}};
+                            border-left: 1px solid {{surface}};
+                        }
+
+                        ::-webkit-scrollbar-thumb {
+                            min-height: 32px;
+                            background: linear-gradient(180deg, {{scrollThumbHover}}, {{scrollThumb}});
+                            border: 2px solid {{scrollTrack}};
+                            border-radius: 999px;
+                        }
+
+                        ::-webkit-scrollbar-thumb:hover {
+                            background: {{scrollThumbHover}};
+                        }
+
+                        ::-webkit-scrollbar-button {
+                            background: {{scrollButton}};
+                            height: 10px;
+                        }
+
+                        body {
+                            padding: 14px 16px;
+                            box-sizing: border-box;
+                        }
+
+                        h1, h2, h3, h4, h5, h6 {
+                            color: {{text}};
+                            font-weight: 650;
+                            line-height: 1.25;
+                            margin: 18px 0 8px;
+                        }
+
+                        h1:first-child, h2:first-child, h3:first-child {
+                            margin-top: 0;
+                        }
+
+                        h1 { font-size: 22px; padding-bottom: 9px; border-bottom: 1px solid {{border}}; }
+                        h2 { font-size: 18px; padding-bottom: 7px; border-bottom: 1px solid {{border}}; }
+                        h3 { font-size: 15px; }
+                        h4, h5, h6 { font-size: 13px; color: {{muted}}; }
+                        p { margin: 8px 0; }
+                        ul, ol { margin: 8px 0 12px; padding-left: 24px; }
+                        li { margin: 3px 0; }
+                        a { color: {{accent}}; text-decoration: none; }
+                        a:hover { text-decoration: underline; }
+                        strong { font-weight: 700; }
+                        em { color: {{muted}}; }
+                        code {
+                            font-family: Consolas, "Courier New", monospace;
+                            font-size: 12px;
+                            color: {{text}};
+                            background: {{surface}};
+                            border: 1px solid {{border}};
+                            border-radius: 3px;
+                            padding: 1px 4px;
+                        }
+
+                        pre {
+                            margin: 10px 0;
+                            padding: 10px 12px;
+                            overflow-x: auto;
+                            background: {{surface}};
+                            border: 1px solid {{border}};
+                            border-radius: 4px;
+                        }
+
+                        pre code {
+                            padding: 0;
+                            border: 0;
+                            background: transparent;
+                            white-space: pre;
+                        }
+
+                        blockquote {
+                            margin: 10px 0;
+                            padding: 0 0 0 12px;
+                            color: {{muted}};
+                            border-left: 3px solid {{border}};
+                        }
+
+                        hr {
+                            height: 3px;
+                            margin: 20px 0 24px;
+                            background: {{border}};
+                            border: 0;
+                            border-radius: 999px;
+                        }
+                    </style>
+                </head>
+                <body>{{body}}</body>
+                </html>
+                """;
+        }
+
+        private static string MarkdownToHtml(string markdown)
+        {
+            if (string.IsNullOrWhiteSpace(markdown))
+                return "<p>No changelog available.</p>";
+
+            var html = new StringBuilder();
+            var paragraph = new List<string>();
+            bool inCodeBlock = false;
+            bool inUnorderedList = false;
+            bool inOrderedList = false;
+            string codeLanguage = string.Empty;
+
+            foreach (var rawLine in markdown.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n'))
+            {
+                string line = rawLine.TrimEnd();
+                string trimmed = line.Trim();
+
+                if (trimmed.StartsWith("```", StringComparison.Ordinal))
+                {
+                    FlushParagraph();
+                    CloseLists();
+
+                    if (!inCodeBlock)
+                    {
+                        inCodeBlock = true;
+                        codeLanguage = WebUtility.HtmlEncode(trimmed.Length > 3 ? trimmed[3..].Trim() : string.Empty);
+                        html.Append("<pre><code");
+                        if (!string.IsNullOrEmpty(codeLanguage))
+                            html.Append($" class=\"language-{codeLanguage}\"");
+                        html.Append('>');
+                    }
+                    else
+                    {
+                        html.Append("</code></pre>");
+                        inCodeBlock = false;
+                        codeLanguage = string.Empty;
+                    }
+
+                    continue;
+                }
+
+                if (inCodeBlock)
+                {
+                    html.Append(WebUtility.HtmlEncode(line));
+                    html.Append('\n');
+                    continue;
+                }
+
+                if (string.IsNullOrWhiteSpace(trimmed))
+                {
+                    FlushParagraph();
+                    CloseLists();
+                    continue;
+                }
+
+                if (Regex.IsMatch(trimmed, @"^([-*_])(?:\s*\1){2,}$"))
+                {
+                    FlushParagraph();
+                    CloseLists();
+                    html.Append("<hr>");
+                    continue;
+                }
+
+                if (trimmed.StartsWith("> ", StringComparison.Ordinal))
+                {
+                    FlushParagraph();
+                    CloseLists();
+                    html.Append("<blockquote>");
+                    html.Append(RenderInline(trimmed[2..].Trim()));
+                    html.Append("</blockquote>");
+                    continue;
+                }
+
+                var heading = Regex.Match(trimmed, @"^(#{1,6})\s+(.+)$");
+                if (heading.Success)
+                {
+                    FlushParagraph();
+                    CloseLists();
+
+                    int level = heading.Groups[1].Value.Length;
+                    html.Append($"<h{level}>");
+                    html.Append(RenderInline(heading.Groups[2].Value.Trim()));
+                    html.Append($"</h{level}>");
+                    continue;
+                }
+
+                var unordered = Regex.Match(trimmed, @"^[-*+]\s+(.+)$");
+                if (unordered.Success)
+                {
+                    FlushParagraph();
+                    if (inOrderedList)
+                    {
+                        html.Append("</ol>");
+                        inOrderedList = false;
+                    }
+                    if (!inUnorderedList)
+                    {
+                        html.Append("<ul>");
+                        inUnorderedList = true;
+                    }
+
+                    html.Append("<li>");
+                    html.Append(RenderInline(unordered.Groups[1].Value));
+                    html.Append("</li>");
+                    continue;
+                }
+
+                var ordered = Regex.Match(trimmed, @"^\d+\.\s+(.+)$");
+                if (ordered.Success)
+                {
+                    FlushParagraph();
+                    if (inUnorderedList)
+                    {
+                        html.Append("</ul>");
+                        inUnorderedList = false;
+                    }
+                    if (!inOrderedList)
+                    {
+                        html.Append("<ol>");
+                        inOrderedList = true;
+                    }
+
+                    html.Append("<li>");
+                    html.Append(RenderInline(ordered.Groups[1].Value));
+                    html.Append("</li>");
+                    continue;
+                }
+
+                CloseLists();
+                paragraph.Add(trimmed);
+            }
+
+            FlushParagraph();
+            CloseLists();
+
+            if (inCodeBlock)
+                html.Append("</code></pre>");
+
+            return html.ToString();
+
+            void FlushParagraph()
+            {
+                if (paragraph.Count == 0)
+                    return;
+
+                html.Append("<p>");
+                html.Append(RenderInline(string.Join(" ", paragraph)));
+                html.Append("</p>");
+                paragraph.Clear();
+            }
+
+            void CloseLists()
+            {
+                if (inUnorderedList)
+                {
+                    html.Append("</ul>");
+                    inUnorderedList = false;
+                }
+
+                if (inOrderedList)
+                {
+                    html.Append("</ol>");
+                    inOrderedList = false;
+                }
+            }
+        }
+
+        private static string RenderInline(string value)
+        {
+            string encoded = WebUtility.HtmlEncode(value);
+
+            encoded = Regex.Replace(encoded, @"`([^`]+)`", "<code>$1</code>");
+            encoded = Regex.Replace(encoded, @"\*\*(.+?)\*\*", "<strong>$1</strong>");
+            encoded = Regex.Replace(encoded, @"__(.+?)__", "<strong>$1</strong>");
+            encoded = Regex.Replace(encoded, @"(?<!\*)\*(?!\*)(.+?)(?<!\*)\*(?!\*)", "<em>$1</em>");
+            encoded = Regex.Replace(encoded, @"(?<!_)_(?!_)(.+?)(?<!_)_(?!_)", "<em>$1</em>");
+            encoded = Regex.Replace(encoded, @"\[(.+?)\]\((https?:\/\/[^\s)]+)\)", "<a href=\"$2\">$1</a>");
+            encoded = Regex.Replace(encoded, @"(?<![""=])(https?:\/\/[^\s<]+)", "<a href=\"$1\">$1</a>");
+
+            return encoded;
+        }
+
+        private static string ToHex(Color color)
+            => $"#{color.R:X2}{color.G:X2}{color.B:X2}";
+
+        private static Color Mix(Color from, Color to, double amount)
+        {
+            amount = Math.Clamp(amount, 0, 1);
+            return Color.FromArgb(
+                (int)Math.Round(from.R + ((to.R - from.R) * amount)),
+                (int)Math.Round(from.G + ((to.G - from.G) * amount)),
+                (int)Math.Round(from.B + ((to.B - from.B) * amount)));
         }
 
         private async void ButtonDownload_Click(object? sender, EventArgs e)

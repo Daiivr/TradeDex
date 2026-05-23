@@ -11,8 +11,13 @@ namespace SysBot.Pokemon.WinForms.Helpers;
 // (RichTextBox, FlowLayoutPanel) where the global setting sometimes doesn't propagate.
 internal static class DarkScrollHelper
 {
+    private delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
+
     [DllImport("uxtheme.dll", CharSet = CharSet.Unicode)]
     private static extern int SetWindowTheme(IntPtr hWnd, string? pszSubAppName, string? pszSubIdList);
+
+    [DllImport("user32.dll")]
+    private static extern bool EnumChildWindows(IntPtr hWndParent, EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
     public static void Apply(Control? control)
     {
@@ -23,6 +28,17 @@ internal static class DarkScrollHelper
             return;
         }
         ApplyCore(control);
+    }
+
+    public static void ApplyNativeTree(Control? control)
+    {
+        if (control == null) return;
+        if (!control.IsHandleCreated)
+        {
+            control.HandleCreated += (_, _) => ApplyNativeTreeCore(control.Handle);
+            return;
+        }
+        ApplyNativeTreeCore(control.Handle);
     }
 
     // Walks every descendant and applies DarkMode_Explorer. Useful for composite controls
@@ -55,11 +71,26 @@ internal static class DarkScrollHelper
 
     private static void ApplyCore(Control control)
     {
+        ApplyHandle(control.Handle);
+    }
+
+    private static void ApplyNativeTreeCore(IntPtr handle)
+    {
+        ApplyHandle(handle);
+        EnumChildWindows(handle, (child, _) =>
+        {
+            ApplyHandle(child);
+            return true;
+        }, IntPtr.Zero);
+    }
+
+    private static void ApplyHandle(IntPtr handle)
+    {
         try
         {
             // "DarkMode_Explorer" is undocumented but standard since Win10 1809. Quietly
             // ignored on older runtimes — no need to gate on the OS version.
-            SetWindowTheme(control.Handle, "DarkMode_Explorer", null);
+            SetWindowTheme(handle, "DarkMode_Explorer", null);
         }
         catch
         {

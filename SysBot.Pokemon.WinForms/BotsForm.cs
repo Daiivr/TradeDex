@@ -117,7 +117,7 @@ namespace SysBot.Pokemon.WinForms
             _B_New = new FancyButton { Text = "+", Location = new Point(460, 56), Size = new Size(32, 30) };
             _B_New.GlowColor = Color.Empty;
             _B_New.Font = new Font("Segoe UI", 12, FontStyle.Bold);
-            _B_New.TextOffset = new Point(0, 1);
+            _B_New.TextOffset = new Point(0, -3);
             _toolTips.SetToolTip(_B_New, AppLocalization.Get(LocalizationKeys.BotsNewTooltip));
             _toolTips.AutoPopDelay = 2500;      // How long it stays visible
             _toolTips.InitialDelay = 2000;       // Delay before it shows up

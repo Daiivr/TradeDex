@@ -63,6 +63,7 @@ public partial class BotController : UserControl
         InitializeComponent();
         InitializeContextMenu();
         AppLocalization.LanguageChanged += (_, _) => ApplyLocalization();
+        ApplyLocalization();
 
         this.Margin = new Padding(0);
         this.Padding = new Padding(0);
@@ -399,6 +400,7 @@ public partial class BotController : UserControl
 
     private void ApplyLocalization()
     {
+        btnActions.Text = $"{AppLocalization.Get(LocalizationKeys.BotActions)}  ▾";
         InitializeContextMenu();
         UpdateStatusUI(_status);
         if (lblConnectionName.Text == AppLocalization.Get(LocalizationKeys.BotUnknownConnection) ||

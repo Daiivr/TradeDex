@@ -22,6 +22,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordPreconditionQueueClosed] = "Sorry {0}, I am not currently accepting queue requests!";
                 target[LocalizationKeys.DiscordPreconditionRoleRequired] = "{0} You do not have the required role to run this command.";
                 target[LocalizationKeys.DiscordPreconditionSudoRequired] = "{0} You are not permitted to run this command.";
+                target[LocalizationKeys.DiscordPreconditionOwnerRequired] = "⚠️ {0} only the owner of the bot can run this command.";
+                target[LocalizationKeys.DiscordCommandTooFewParameters] = "⚠️ {0}, this command is missing required parameters. Include the required value and try again.";
                 break;
             case AppLanguage.Spanish:
                 // Discord: Slash commands
@@ -39,6 +41,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordPreconditionQueueClosed] = "Lo siento {0}, actualmente no acepto solicitudes para entrar en la cola.";
                 target[LocalizationKeys.DiscordPreconditionRoleRequired] = "{0} No tienes el rol requerido para ejecutar este comando.";
                 target[LocalizationKeys.DiscordPreconditionSudoRequired] = "{0} no estas autorizado a ejecutar este comando.";
+                target[LocalizationKeys.DiscordPreconditionOwnerRequired] = "⚠️ {0} solo el dueno del bot puede ejecutar este comando.";
+                target[LocalizationKeys.DiscordCommandTooFewParameters] = "⚠️ {0}, a este comando le faltan parametros requeridos. Incluye el valor necesario e intentalo de nuevo.";
                 break;
         }
     }

@@ -23,6 +23,7 @@ namespace SysBot.Pokemon.Discord;
 public static class QueueHelper<T> where T : PKM, new()
 {
     private const uint MaxTradeCode = 9999_9999;
+    private const string MysteryTradeImageUrl = "https://i.imgur.com/FdESYAv.png";
 
     private static readonly Dictionary<int, string> MilestoneImages = new()
     {
@@ -230,7 +231,7 @@ public static class QueueHelper<T> where T : PKM, new()
                 ? (string.Empty, DiscordColor.Gold)
                 : await PrepareEmbedDetails(pk, isMysteryEgg);
 
-            embedData.EmbedImageUrl = isMysteryTrade ? "https://i.imgur.com/FdESYAv.png" :
+            embedData.EmbedImageUrl = isMysteryTrade ? MysteryTradeImageUrl :
             type == PokeRoutineType.Dump ? "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/Dumping.png?raw=true&width=300&height=300" :
             type == PokeRoutineType.Clone ? "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/Cloning.png?raw=true&width=300&height=300" :
             type == PokeRoutineType.SeedCheck ? "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/Seeding.png?raw=true&width=300&height=300" :
@@ -370,17 +371,17 @@ public static class QueueHelper<T> where T : PKM, new()
         return new TradeQueueResult(true);
     }
 
-    public static async Task AddBatchContainerToQueueAsync(SocketCommandContext context, int code, string trainer, T firstTrade, List<T> allTrades, RequestSignificance sig, SocketUser trader, int totalBatchTrades, string? customAuthorTitle = null)
+    public static async Task AddBatchContainerToQueueAsync(SocketCommandContext context, int code, string trainer, T firstTrade, List<T> allTrades, RequestSignificance sig, SocketUser trader, int totalBatchTrades, string? customAuthorTitle = null, bool isMysteryTrade = false)
     {
         var userID = trader.Id;
         var name = trader.Username;
         var trainer_info = new PokeTradeTrainerInfo(trainer, userID);
-        var notifier = new DiscordTradeNotifier<T>(firstTrade, trainer_info, code, trader, 1, totalBatchTrades, false, lgcode: []);
+        var notifier = new DiscordTradeNotifier<T>(firstTrade, trainer_info, code, trader, 1, totalBatchTrades, false, lgcode: [], isMysteryTrade);
 
         int uniqueTradeID = GenerateUniqueTradeID();
 
         var detail = new PokeTradeDetail<T>(firstTrade, trainer_info, notifier, PokeTradeType.Batch, code,
-            sig == RequestSignificance.Favored, null, 1, totalBatchTrades, false)
+            sig == RequestSignificance.Favored, null, 1, totalBatchTrades, false, isMysteryTrade: isMysteryTrade)
         {
             BatchTrades = allTrades
         };
@@ -438,28 +439,39 @@ public static class QueueHelper<T> where T : PKM, new()
         }
 
         // Send initial batch summary message
-        await context.Channel.SendMessageAsync(AppLocalization.Format(LocalizationKeys.DiscordBatchAddedSummary, trader.Mention, totalBatchTrades, position.Position, baseEta)).ConfigureAwait(false);
+        var queueSummaryKey = isMysteryTrade
+            ? LocalizationKeys.DiscordMysteryMonBatchAddedSummary
+            : LocalizationKeys.DiscordBatchAddedSummary;
+        await context.Channel.SendMessageAsync(AppLocalization.Format(queueSummaryKey, trader.Mention, totalBatchTrades, position.Position, baseEta)).ConfigureAwait(false);
 
         // Create and send one compact embed for the full batch instead of one embed per Pokemon.
         if (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.UseEmbeds)
         {
             try
             {
-                var batchImagePath = await CreateBatchPreviewImageAsync(allTrades).ConfigureAwait(false);
-                (string firstImageUrl, DiscordColor embedColor) = await PrepareEmbedDetails(firstTrade).ConfigureAwait(false);
-                if (File.Exists(firstImageUrl))
-                    await ScheduleFileDeletion(firstImageUrl, 0).ConfigureAwait(false);
+                string? batchImagePath = null;
+                var embedColor = DiscordColor.Gold;
+                if (!isMysteryTrade)
+                {
+                    batchImagePath = await CreateBatchPreviewImageAsync(allTrades).ConfigureAwait(false);
+                    (string firstImageUrl, embedColor) = await PrepareEmbedDetails(firstTrade).ConfigureAwait(false);
+                    if (File.Exists(firstImageUrl))
+                        await ScheduleFileDeletion(firstImageUrl, 0).ConfigureAwait(false);
+                }
 
                 var authorName = string.IsNullOrWhiteSpace(customAuthorTitle)
                     ? AppLocalization.Format(LocalizationKeys.DiscordBatchSummaryAuthor, trader.Username)
                     : $"{trader.Username}'s {customAuthorTitle}";
 
                 var footerText = BuildBatchSummaryFooter(totalTradeCount, tradeDetails, trader.Mention, position.Position, baseEta, totalBatchTrades);
+                var description = isMysteryTrade
+                    ? AppLocalization.Format(LocalizationKeys.DiscordMysteryMonBatchDescription, totalBatchTrades)
+                    : BuildBatchSummaryDescription(allTrades);
 
                 var embedBuilder = new EmbedBuilder()
                     .WithColor(embedColor)
-                    .WithDescription(BuildBatchSummaryDescription(allTrades))
-                    .WithImageUrl($"attachment://{Path.GetFileName(batchImagePath)}")
+                    .WithDescription(description)
+                    .WithImageUrl(isMysteryTrade ? MysteryTradeImageUrl : $"attachment://{Path.GetFileName(batchImagePath)}")
                     .WithFooter(footerText)
                     .WithAuthor(new EmbedAuthorBuilder()
                         .WithName(authorName)
@@ -468,14 +480,21 @@ public static class QueueHelper<T> where T : PKM, new()
 
                 DetailsExtractor<T>.AddAdditionalText(embedBuilder);
 
-                if (allTrades.OfType<IHomeTrack>().Any(z => z.HasTracker))
+                if (!isMysteryTrade && allTrades.OfType<IHomeTrack>().Any(z => z.HasTracker))
                 {
                     embedBuilder.Footer.IconUrl = "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/exclamation.gif";
                     embedBuilder.AddField($"{AppLocalization.Get(LocalizationKeys.DiscordNotice)}: {AppLocalization.Get(LocalizationKeys.DiscordHomeTrackerNotice)}", AppLocalization.Get(LocalizationKeys.DiscordAutoOtNotApplied));
                 }
 
-                await context.Channel.SendFileAsync(batchImagePath, embed: embedBuilder.Build()).ConfigureAwait(false);
-                await ScheduleFileDeletion(batchImagePath, 0).ConfigureAwait(false);
+                if (isMysteryTrade)
+                {
+                    await context.Channel.SendMessageAsync(embed: embedBuilder.Build()).ConfigureAwait(false);
+                }
+                else
+                {
+                    await context.Channel.SendFileAsync(batchImagePath!, embed: embedBuilder.Build()).ConfigureAwait(false);
+                    await ScheduleFileDeletion(batchImagePath!, 0).ConfigureAwait(false);
+                }
             }
             catch (HttpException ex)
             {

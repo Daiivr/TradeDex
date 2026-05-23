@@ -20,7 +20,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordTextTradeHowToTradeValue] = "â€¢ Single trade: `{0}tt 1`\nâ€¢ Multiple trades (batch): `{0}tt 1 2 3`\nâ€¢ Max: **{1} Pokemon** per batch";
                 target[LocalizationKeys.DiscordTextTradeFooter] = "Shiny | Fishy | No Held Item | Has OT/TID/SID | Egg\nMake a selection within 60s or the TextTrade is canceled automatically.";
                 target[LocalizationKeys.DiscordTextTradeExpired] = "⌛ {0}, your TextTrade request expired after 80 seconds.";
-                target[LocalizationKeys.DiscordTextTradeNoFile] = "You haven't uploaded a file yet or it expired. Attach a text-based file first.";
+                target[LocalizationKeys.DiscordTextTradeNoFile] = "⚠️ {0}, you haven't uploaded a file yet or it expired. Attach a text-based file first.";
                 target[LocalizationKeys.DiscordTextTradeInvalidSelection] = "Invalid selection. Use `{0}tt 1` for single trade or `{0}tt 1 2 3` for batch.";
                 target[LocalizationKeys.DiscordTextTradeSelectionLimit] = "You can only trade up to {0} Pokemon at a time. You selected {1}.";
                 target[LocalizationKeys.DiscordTextTradeProcessing] = "{0} Processing your text trade with {1} Pokemon...";
@@ -65,7 +65,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordTextTradeHowToTradeValue] = "â€¢ Trade individual: `{0}tt 1`\nâ€¢ Varios trades (lote): `{0}tt 1 2 3`\nâ€¢ Maximo: **{1} Pokemon** por lote";
                 target[LocalizationKeys.DiscordTextTradeFooter] = "Shiny | Sospechoso | Sin item | Tiene OT/TID/SID | Huevo\nHaz una seleccion en 60s o TextTrade se cancelara automaticamente.";
                 target[LocalizationKeys.DiscordTextTradeExpired] = "⌛ {0}, tu solicitud TextTrade expiro despues de 80 segundos.";
-                target[LocalizationKeys.DiscordTextTradeNoFile] = "Todavia no has subido un archivo o ya expiro. Adjunta primero un archivo de texto.";
+                target[LocalizationKeys.DiscordTextTradeNoFile] = "⚠️ {0}, todavia no has subido un archivo o ya expiro. Adjunta primero un archivo de texto.";
                 target[LocalizationKeys.DiscordTextTradeInvalidSelection] = "Seleccion invalida. Usa `{0}tt 1` para trade individual o `{0}tt 1 2 3` para lote.";
                 target[LocalizationKeys.DiscordTextTradeSelectionLimit] = "Solo puedes tradear hasta {0} Pokemon a la vez. Seleccionaste {1}.";
                 target[LocalizationKeys.DiscordTextTradeProcessing] = "{0} Procesando tu text trade con {1} Pokemon...";

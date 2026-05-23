@@ -251,7 +251,7 @@ public static class CreatePokemonHelper
         var etaMessage = AppLocalization.Format(LocalizationKeys.DiscordWaitEstimateTrade, baseEta);
         string footerText = AppLocalization.Format(LocalizationKeys.DiscordCurrentQueuePosition, position.Position == -1 ? 1 : position.Position);
         footerText += $"\n{etaMessage}";
-        footerText += $"\nFusionBot {TradeBot.Version}";
+        footerText += $"\nTradeDex {TradeBot.Version}";
 
         var embedBuilder = new EmbedBuilder()
             .WithColor(embedColor)

@@ -1035,7 +1035,7 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
                 return false;
 
             if (!result.IsSuccess)
-                await SafeSendMessageAsync(msg.Channel, result.ErrorReason).ConfigureAwait(false);
+                await SafeSendMessageAsync(msg.Channel, FormatCommandErrorMessage(msg, result)).ConfigureAwait(false);
 
             return true;
         }
@@ -1059,6 +1059,20 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         return command is not null &&
                (command.Equals("profile", StringComparison.OrdinalIgnoreCase) ||
                 command.Equals("tp", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string FormatCommandErrorMessage(SocketUserMessage msg, global::Discord.Commands.IResult result)
+    {
+        if (IsTooFewParametersError(result))
+            return AppLocalization.Format(LocalizationKeys.DiscordCommandTooFewParameters, msg.Author.Mention);
+
+        return result.ErrorReason;
+    }
+
+    private static bool IsTooFewParametersError(global::Discord.Commands.IResult result)
+    {
+        return result.Error == CommandError.BadArgCount &&
+               result.ErrorReason.Contains("too few parameters", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task SafeSendMessageAsync(IMessageChannel channel, string message)

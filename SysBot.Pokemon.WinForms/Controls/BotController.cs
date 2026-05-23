@@ -563,9 +563,19 @@ public partial class BotController : UserControl
         UpdateStatusUI(status);
 
         lblConnectionName.Text = bot.Connection?.Label ?? AppLocalization.Get(LocalizationKeys.BotUnknownConnection);
-        lblConnectionInfo.Text = bot.LastLogged ?? string.Empty;
+        lblConnectionInfo.Text = FormatActivityText(bot.LastLogged);
         SetBotMetaDisplay(State.InitialRoutine.ToString(), bot.LastTime);
     }
+
+    private static string FormatActivityText(string? activity)
+    {
+        if (string.IsNullOrWhiteSpace(activity))
+            return string.Empty;
+
+        activity = activity.Trim();
+        return activity.StartsWith("↪", StringComparison.Ordinal) ? activity : $"↪ {activity}";
+    }
+
     private void SetBotMetaDisplay(string routine, DateTime lastTime)
     {
         // Single-color label so the row aligns pixel-perfect with the IP above and the

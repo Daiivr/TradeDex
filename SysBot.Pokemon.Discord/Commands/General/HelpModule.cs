@@ -49,7 +49,7 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         var result = _commandService.Search(Context, command);
         if (!result.IsSuccess)
         {
-            await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordHelpCommandNotFound, command)).ConfigureAwait(false);
+            await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordHelpCommandNotFound, Context.User.Mention, command)).ConfigureAwait(false);
             return;
         }
 
@@ -105,20 +105,27 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
     {
         var embeds = new List<Embed>();
         var builder = MakeBaseHelpEmbed(prefix, botUser);
+        var inlineColumn = 0;
 
         foreach (var (module, commands) in modules)
         {
             var chunks = ChunkCommandLines(commands, prefix);
             for (int i = 0; i < chunks.Count; i++)
             {
-                if (builder.Fields.Count >= 24)
-                {
-                    embeds.Add(builder.Build());
-                    builder = MakeBaseHelpEmbed(prefix, botUser);
-                }
+                if (!EnsureCapacityOrNew(ref builder, embeds, prefix, botUser, 1))
+                    inlineColumn = 0;
 
                 var moduleName = chunks.Count == 1 ? module : $"{module} {i + 1}/{chunks.Count}";
-                builder.AddField(AppLocalization.Format(LocalizationKeys.DiscordHelpModuleField, moduleName), chunks[i], false);
+                builder.AddField(AppLocalization.Format(LocalizationKeys.DiscordHelpModuleField, moduleName), chunks[i], true);
+                inlineColumn++;
+
+                if (inlineColumn == 2)
+                {
+                    if (EnsureCapacityOrNew(ref builder, embeds, prefix, botUser, 1))
+                        builder.AddField("\u200B", "\u200B", false);
+
+                    inlineColumn = 0;
+                }
             }
         }
 
@@ -139,12 +146,23 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         return embeds;
     }
 
+    private static bool EnsureCapacityOrNew(ref EmbedBuilder builder, List<Embed> embeds, string prefix, IUser botUser, int neededSlots)
+    {
+        const int MaxFields = 25;
+        if (builder.Fields.Count + neededSlots <= MaxFields)
+            return true;
+
+        embeds.Add(builder.Build());
+        builder = MakeBaseHelpEmbed(prefix, botUser);
+        return false;
+    }
+
     private Embed BuildCommandHelpEmbed(IEnumerable<CommandInfo> commands, string searchedCommand, string prefix)
     {
         var embed = new EmbedBuilder()
             .WithColor(HelpColor)
             .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordHelpCommandAuthor), Context.Client.CurrentUser.GetAvatarUrl() ?? Context.Client.CurrentUser.GetDefaultAvatarUrl())
-            .WithTitle(AppLocalization.Format(LocalizationKeys.DiscordHelpCommandTitle, $"{prefix}{searchedCommand}"))
+            .WithTitle($"{prefix}{searchedCommand}")
             .WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl() ?? Context.Client.CurrentUser.GetDefaultAvatarUrl())
             .WithFooter(AppLocalization.Format(LocalizationKeys.DiscordHelpCommandFooter, prefix))
             .WithCurrentTimestamp();
@@ -153,7 +171,7 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         {
             var summary = AppLocalization.GetCommandSummary(command.Summary);
             var parameters = command.Parameters.Count == 0
-                ? AppLocalization.Get(LocalizationKeys.DiscordHelpNoParameters)
+                ? $"_{AppLocalization.Get(LocalizationKeys.DiscordHelpNoParameters)}_"
                 : string.Join("\n", command.Parameters.Select(FormatParameter));
 
             embed.AddField(
@@ -245,13 +263,17 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
     {
         var optional = parameter.IsOptional ? $" {AppLocalization.Get(LocalizationKeys.DiscordHelpOptionalParameter)}" : string.Empty;
         var summary = AppLocalization.GetCommandSummary(parameter.Summary);
-        return $"`{parameter.Name}`{optional} - {summary}";
+        return $"• `{AppLocalization.GetCommandSummary(parameter.Name)}`{optional} - {summary}";
     }
 
     private static string BuildExample(CommandInfo command, string prefix)
     {
         var alias = command.Aliases.FirstOrDefault() ?? command.Name;
-        var args = string.Join(" ", command.Parameters.Select(p => p.IsOptional ? $"[{p.Name}]" : $"<{p.Name}>"));
+        var args = string.Join(" ", command.Parameters.Select(p =>
+        {
+            var name = AppLocalization.GetCommandSummary(p.Name);
+            return p.IsOptional ? $"[{name}]" : $"<{name}>";
+        }));
         return $"{prefix}{alias} {args}".TrimEnd();
     }
 

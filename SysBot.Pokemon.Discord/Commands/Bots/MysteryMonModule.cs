@@ -159,7 +159,8 @@ namespace SysBot.Pokemon.Discord
                     await QueueHelper<T>.AddBatchContainerToQueueAsync(
                         Context, batchTradeCode, Context.User.Username,
                         batchList[0], batchList, sig, Context.User, batchList.Count,
-                        customAuthorTitle: AppLocalization.Get(LocalizationKeys.DiscordMysteryMonBatchAuthor)
+                        customAuthorTitle: AppLocalization.Get(LocalizationKeys.DiscordMysteryMonBatchAuthor),
+                        isMysteryTrade: true
                     ).ConfigureAwait(false);
                 }
                 catch (Exception ex)

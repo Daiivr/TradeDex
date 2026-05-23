@@ -21,14 +21,14 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
     private static readonly HttpClient Http = new();
 
     [Command("profile")]
-    [Alias("tp")]
+    [Alias("tp", "perfil")]
     [Summary("Muestra la informacion del perfil de un usuario, con detalles sensibles visibles solo para el propietario del perfil.")]
     public async Task ProfileAsync(IUser? user = null)
     {
         var targetUser = user ?? Context.User;
         var isSelfProfile = targetUser.Id == Context.User.Id;
         var embed = await BuildProfileEmbedAsync(targetUser, isSelfProfile).ConfigureAwait(false);
-        var components = BuildProfileComponents("view_badges");
+        var components = BuildProfileComponents("profile");
 
         if (isSelfProfile)
         {
@@ -36,10 +36,14 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
             {
                 var dmChannel = await targetUser.CreateDMChannelAsync().ConfigureAwait(false);
                 var message = await dmChannel.SendMessageAsync(embed: embed, components: components).ConfigureAwait(false);
-                var confirmation = await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordProfileSentDm, targetUser.Mention)).ConfigureAwait(false);
-                _ = DeleteAfterDelayAsync(confirmation, TimeSpan.FromSeconds(10));
+                if (Context.Guild != null)
+                {
+                    var confirmation = await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordProfileSentDm, targetUser.Mention)).ConfigureAwait(false);
+                    _ = DeleteAfterDelayAsync(confirmation, TimeSpan.FromSeconds(10));
+                }
+
                 _ = DeleteAfterDelayAsync(Context.Message, TimeSpan.Zero);
-                _ = HandleSelectMenuInteractionsAsync(message, Context.User.Id, TimeSpan.FromMinutes(1), targetUser.Id);
+                _ = HandleProfileInteractionsAsync(message, Context.User.Id, TimeSpan.FromMinutes(1), targetUser.Id);
             }
             catch
             {
@@ -52,7 +56,7 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
         }
 
         var publicMessage = await ReplyAsync(embed: embed, components: components).ConfigureAwait(false);
-        _ = HandleSelectMenuInteractionsAsync(publicMessage, Context.User.Id, TimeSpan.FromMinutes(1), targetUser.Id);
+        _ = HandleProfileInteractionsAsync(publicMessage, Context.User.Id, TimeSpan.FromMinutes(1), targetUser.Id);
     }
 
     private async Task<Embed> BuildProfileEmbedAsync(IUser targetUser, bool includePrivateInfo)
@@ -66,27 +70,37 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
         var xpProgress = requiredXp <= 0 ? 0 : Math.Clamp((double)xp / requiredXp * 100, 0, 100);
         var accountCreated = $"<t:{targetUser.CreatedAt.ToUnixTimeSeconds()}:R>";
         var tradeDetails = new TradeCodeStorage().GetTradeDetails(targetUser.Id);
+        var updatedAt = DateTimeOffset.UtcNow.ToUnixTimeSeconds();
+        var overview = string.Join("\n",
+            FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileTrades), tradeCount.ToString("N0")),
+            FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileLevel), $"{level}  XP {xp:N0}/{requiredXp:N0}"),
+            FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileCreated), accountCreated));
+        var activity = string.Join("\n",
+            FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileCurrentTitle), currentStatus),
+            FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileLastTrade), GetLastTradeText(tradeDetails), false));
+        var progress = $"{GetProgressBar(xpProgress)}\n`XP` **{xp:N0}/{requiredXp:N0}**";
 
         var embed = new EmbedBuilder()
             .WithAuthor(targetUser)
             .WithTitle(AppLocalization.Format(LocalizationKeys.DiscordProfileTitle, targetUser.Username))
-            .WithDescription(AppLocalization.Get(LocalizationKeys.DiscordProfileDescription))
+            .WithDescription($"{AppLocalization.Get(LocalizationKeys.DiscordProfileDescription)}\n{FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileUpdated), $"<t:{updatedAt}:f>")}")
             .WithThumbnailUrl(avatarUrl)
             .WithColor(await GetDominantColorAsync(avatarUrl).ConfigureAwait(false))
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileTrades), tradeCount.ToString("N0"), true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileLevel), $"{level} (XP: {xp}/{requiredXp})", true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileCreated), accountCreated, true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileCurrentTitle), currentStatus, true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileLastTrade), GetLastTradeText(tradeDetails), true)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileOverview), overview, true)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileActivity), activity, true)
+            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileProgress), progress, false)
             .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileBadges), badges, false)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileProgress), GetProgressBar(xpProgress))
             .WithCurrentTimestamp();
 
         if (includePrivateInfo)
         {
             var (ot, sid, tid) = GetTrainerInfo(targetUser.Id);
-            embed.AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileTrainerInfo), $"**OT**: {ot}\n**SID**: {sid}\n**TID**: {tid}", true)
-                 .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileTradeCode), GetTradeCodeForUser(targetUser.Id) ?? AppLocalization.Get(LocalizationKeys.DiscordProfileNoTradeCode), true);
+            var privateInfo = string.Join("\n",
+                FormatProfileLine("OT", ot),
+                FormatProfileLine("SID", sid),
+                FormatProfileLine("TID", tid),
+                FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileTradeCode), GetTradeCodeForUser(targetUser.Id) ?? AppLocalization.Get(LocalizationKeys.DiscordProfileNoTradeCode)));
+            embed.AddField(AppLocalization.Get(LocalizationKeys.DiscordProfilePrivateInfo), privateInfo, false);
         }
 
         embed.WithFooter(footer =>
@@ -137,44 +151,51 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
         }
     }
 
-    private static MessageComponent BuildProfileComponents(string option)
+    private static MessageComponent BuildProfileComponents(string activeView)
     {
-        var menu = new SelectMenuBuilder()
-            .WithCustomId("profile_badges")
-            .WithPlaceholder(AppLocalization.Get(LocalizationKeys.DiscordProfileSelectPlaceholder));
+        var profileButton = new ButtonBuilder()
+            .WithLabel(AppLocalization.Get(LocalizationKeys.DiscordProfileProfileTab))
+            .WithCustomId("profile_back_to_profile")
+            .WithStyle(activeView == "profile" ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .WithEmote(new Emoji("🪪"))
+            .WithDisabled(activeView == "profile");
+        var badgesButton = new ButtonBuilder()
+            .WithLabel(AppLocalization.Get(LocalizationKeys.DiscordProfileBadgesTab))
+            .WithCustomId("profile_view_badges")
+            .WithStyle(activeView == "badges" ? ButtonStyle.Success : ButtonStyle.Secondary)
+            .WithEmote(new Emoji("🎖️"))
+            .WithDisabled(activeView == "badges");
 
-        if (option == "back_to_profile")
-            menu.AddOption(AppLocalization.Get(LocalizationKeys.DiscordProfileBackToProfile), "back_to_profile", AppLocalization.Get(LocalizationKeys.DiscordProfileBackToProfileDescription), new Emoji("🪪"));
-        else
-            menu.AddOption(AppLocalization.Get(LocalizationKeys.DiscordProfileViewBadges), "view_badges", AppLocalization.Get(LocalizationKeys.DiscordProfileViewBadgesDescription), new Emoji("🎖️"));
-
-        return new ComponentBuilder().WithSelectMenu(menu).Build();
+        return new ComponentBuilder()
+            .WithButton(profileButton)
+            .WithButton(badgesButton)
+            .Build();
     }
 
-    private async Task HandleSelectMenuInteractionsAsync(IUserMessage message, ulong userId, TimeSpan timeout, ulong targetUserId)
+    private async Task HandleProfileInteractionsAsync(IUserMessage message, ulong userId, TimeSpan timeout, ulong targetUserId)
     {
         using var timeoutCts = new CancellationTokenSource(timeout);
 
         while (!timeoutCts.IsCancellationRequested)
         {
-            var interaction = await WaitForSelectMenuResponseAsync(message, userId, timeoutCts.Token).ConfigureAwait(false);
+            var interaction = await WaitForProfileComponentAsync(message, userId, timeoutCts.Token).ConfigureAwait(false);
             if (interaction == null)
                 break;
 
             timeoutCts.CancelAfter(timeout);
             await interaction.DeferAsync().ConfigureAwait(false);
-            var selectedOption = interaction.Data.Values.FirstOrDefault();
+            var selectedOption = interaction.Data.CustomId;
 
-            if (selectedOption == "view_badges")
+            if (selectedOption == "profile_view_badges")
                 await ShowBadgesAsync(message, targetUserId).ConfigureAwait(false);
-            else if (selectedOption == "back_to_profile")
+            else if (selectedOption == "profile_back_to_profile")
             {
                 var targetUser = GetUser(targetUserId) ?? Context.User;
                 var embed = await BuildProfileEmbedAsync(targetUser, targetUser.Id == Context.User.Id).ConfigureAwait(false);
                 await message.ModifyAsync(msg =>
                 {
                     msg.Embed = embed;
-                    msg.Components = BuildProfileComponents("view_badges");
+                    msg.Components = BuildProfileComponents("profile");
                 }).ConfigureAwait(false);
             }
         }
@@ -186,6 +207,7 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
     {
         var targetUser = GetUser(targetUserId) ?? Context.User;
         var tradeCount = GetTradeCountForUser(targetUserId);
+        var avatarUrl = targetUser.GetAvatarUrl(size: 128) ?? targetUser.GetDefaultAvatarUrl();
         var badgeList = SysCordSettings.Settings.CustomBadgeEmojis.OrderBy(b => b.TradeCount).ToList();
         var nextBadge = badgeList.FirstOrDefault(b => b.TradeCount > tradeCount);
         var nextBadgeInfo = nextBadge != null
@@ -194,11 +216,15 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
         var nextTitle = nextBadge != null ? GetCurrentStatus(nextBadge.TradeCount) : AppLocalization.Get(LocalizationKeys.DiscordProfileMaxTitle);
 
         var badgesEmbed = new EmbedBuilder()
+            .WithAuthor(targetUser)
             .WithTitle(AppLocalization.Format(LocalizationKeys.DiscordProfileBadgesTitle, targetUser.Username))
-            .WithDescription(GetEarnedBadgesWithDescriptions(tradeCount))
-            .WithColor(Color.Gold)
-            .WithThumbnailUrl(targetUser.GetAvatarUrl() ?? targetUser.GetDefaultAvatarUrl())
-            .AddField("\u200B", "\u200B")
+            .WithDescription($"{AppLocalization.Get(LocalizationKeys.DiscordProfileDescription)}\n{FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileTrades), tradeCount.ToString("N0"))}")
+            .WithColor(await GetDominantColorAsync(avatarUrl).ConfigureAwait(false))
+            .WithThumbnailUrl(avatarUrl);
+        foreach (var (title, value) in GetBadgeRouteFields(tradeCount))
+            badgesEmbed.AddField(title, value, false);
+
+        var builtBadgesEmbed = badgesEmbed
             .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileNextBadge), nextBadgeInfo, true)
             .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileNextTitle), nextTitle, true)
             .WithFooter(footer => footer.WithText(AppLocalization.Format(LocalizationKeys.DiscordProfileBadgesFooter, tradeCount))
@@ -208,12 +234,12 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
 
         await message.ModifyAsync(msg =>
         {
-            msg.Embed = badgesEmbed;
-            msg.Components = BuildProfileComponents("back_to_profile");
+            msg.Embed = builtBadgesEmbed;
+            msg.Components = BuildProfileComponents("badges");
         }).ConfigureAwait(false);
     }
 
-    private async Task<SocketMessageComponent?> WaitForSelectMenuResponseAsync(IUserMessage message, ulong userId, CancellationToken token)
+    private async Task<SocketMessageComponent?> WaitForProfileComponentAsync(IUserMessage message, ulong userId, CancellationToken token)
     {
         var tcs = new TaskCompletionSource<SocketMessageComponent?>(TaskCreationOptions.RunContinuationsAsynchronously);
         Context.Client.InteractionCreated += OnInteractionCreated;
@@ -233,7 +259,7 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
             if (interaction is SocketMessageComponent component &&
                 component.User.Id == userId &&
                 component.Message.Id == message.Id &&
-                component.Data.CustomId == "profile_badges")
+                (component.Data.CustomId == "profile_view_badges" || component.Data.CustomId == "profile_back_to_profile"))
             {
                 tcs.TrySetResult(component);
             }
@@ -241,6 +267,9 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
             return Task.CompletedTask;
         }
     }
+
+    private static string FormatProfileLine(string label, string value, bool boldValue = true) =>
+        boldValue ? $"`{label}` **{value}**" : $"`{label}` {value}";
 
     private static string GetProgressBar(double percentage)
     {
@@ -345,6 +374,54 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
 
         var text = string.Join("\n", earnedBadges);
         return string.IsNullOrWhiteSpace(text) ? AppLocalization.Get(LocalizationKeys.DiscordProfileNoBadges) : text;
+    }
+
+    private static IReadOnlyList<(string Title, string Value)> GetBadgeRouteFields(int tradeCount)
+    {
+        const int maxFieldLength = 1000;
+        var routeTitle = AppLocalization.Get(LocalizationKeys.DiscordProfileBadgeRoute);
+        var badgeLines = SysCordSettings.Settings.CustomBadgeEmojis
+            .OrderBy(b => b.TradeCount)
+            .Select((b, index) =>
+            {
+                var state = tradeCount >= b.TradeCount ? "✅" : "⬛";
+                var requirement = b.TradeCount == 1
+                    ? AppLocalization.Format(LocalizationKeys.DiscordProfileBadgeSingular, b.Emoji, b.TradeCount)
+                    : AppLocalization.Format(LocalizationKeys.DiscordProfileBadgePlural, b.Emoji, b.TradeCount);
+
+                return $"{state} **{index + 1}.** {requirement}";
+            })
+            .ToList();
+
+        if (badgeLines.Count == 0)
+            return new List<(string Title, string Value)> { (routeTitle, AppLocalization.Get(LocalizationKeys.DiscordProfileNoBadges)) };
+
+        var fields = new List<(string Title, string Value)>();
+        var currentLines = new List<string>();
+        var currentLength = 0;
+
+        foreach (var line in badgeLines)
+        {
+            var nextLength = currentLength == 0 ? line.Length : currentLength + 1 + line.Length;
+            if (currentLines.Count > 0 && nextLength > maxFieldLength)
+            {
+                var title = fields.Count == 0 ? routeTitle : $"{routeTitle} {fields.Count + 1}";
+                fields.Add((title, string.Join("\n", currentLines)));
+                currentLines.Clear();
+                currentLength = 0;
+            }
+
+            currentLines.Add(line);
+            currentLength = currentLength == 0 ? line.Length : currentLength + 1 + line.Length;
+        }
+
+        if (currentLines.Count > 0)
+        {
+            var title = fields.Count == 0 ? routeTitle : $"{routeTitle} {fields.Count + 1}";
+            fields.Add((title, string.Join("\n", currentLines)));
+        }
+
+        return fields;
     }
 
     private static int GetTradeCountForUser(ulong userId) => new TradeCodeStorage().GetTradeCount(userId);

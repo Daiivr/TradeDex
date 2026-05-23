@@ -1,6 +1,7 @@
 using Discord;
 using PKHeX.Core;
 using SysBot.Base;
+using SysBot.Pokemon.Localization;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -183,13 +184,38 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
         public class EmbedTxTOptions
         {
+            private const string LegacySpanishNonNativeText = "*Puede que no pueda ir a HOME y AutoOT no fue aplicado.*";
+            private const string PreviousEnglishNonNativeText = "*Cannot enter HOME & AutoOT not applied.*";
+            private const string PreviousSpanishNonNativeText = "*No puede entrar a HOME y AutoOT no fue aplicado.*";
+            private const string DefaultEnglishNonNativeText = "*It may not be able to enter HOME and AutoOT was not applied.*";
+
+            private string _nonNativeTexT = string.Empty;
+
             public override string ToString() => "(Collection)";
 
             [Category(EmbedSettings), Description("URL que aparece al hacer click en el titulo de embed."), DisplayName("URL del título del Embed")]
             public string TradingBotUrl { get; set; } = string.Empty;
 
             [Category(EmbedSettings), Description("Mensaje que aparece en el embed cuando el Pokémon solicitado no es nativo del juego actual."), DisplayName("Texto para Pokémon no nativo")]
-            public string NonNativeTexT { get; set; } = "*Puede que no pueda ir a HOME y AutoOT no fue aplicado.*";
+            public string NonNativeTexT
+            {
+                get => IsDefaultNonNativeText(_nonNativeTexT)
+                    ? AppLocalization.Get(LocalizationKeys.DiscordCannotEnterHomeAutoOt)
+                    : _nonNativeTexT;
+                set => _nonNativeTexT = IsDefaultNonNativeText(value) ? string.Empty : value;
+            }
+
+            private static bool IsDefaultNonNativeText(string? value)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    return true;
+
+                var trimmed = value.Trim();
+                return trimmed.Equals(LegacySpanishNonNativeText, StringComparison.Ordinal) ||
+                       trimmed.Equals(PreviousEnglishNonNativeText, StringComparison.Ordinal) ||
+                       trimmed.Equals(PreviousSpanishNonNativeText, StringComparison.Ordinal) ||
+                       trimmed.Equals(DefaultEnglishNonNativeText, StringComparison.Ordinal);
+            }
         }
 
         [Category(EmbedSettings), Description("Mostrará los iconos de tipo de movimiento junto a los movimientos en el Embed Trade (sólo Discord). Requiere que el usuario suba los emojis a su servidor."), DisplayName("¿Mostrar Emojis de Movimientos?")]

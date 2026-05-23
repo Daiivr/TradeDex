@@ -16,7 +16,7 @@ namespace SysBot.Pokemon.Discord
     {
         private const string OriginalRepo = "https://github.com/kwsch/SysBot.NET";
         private const string PokeBotRepo = "https://github.com/hexbyt3/PokeBot";
-        private const string FusionBotRepo = "https://github.com/Secludedly/FusionBot";
+        private const string TradeDexRepo = "https://github.com/Daiivr/TradeDex";
         private const string ProjectPokemon = "https://projectpokemon.org";
         private const string ThumbnailUrl = "https://i.imgur.com/jYp2WsN.png";
 
@@ -31,7 +31,7 @@ namespace SysBot.Pokemon.Discord
             var builder = new EmbedBuilder()
                 .WithAuthor(author =>
                 {
-                    author.Name = me?.Username ?? "FusionBot";
+                    author.Name = me?.Username ?? "TradeDex";
                     author.IconUrl = me?.GetAvatarUrl() ?? me?.GetDefaultAvatarUrl();
                 })
                 .WithTitle($"ℹ️ {AppLocalization.Get(LocalizationKeys.DiscordInfoTitle)}")
@@ -44,7 +44,7 @@ namespace SysBot.Pokemon.Discord
             builder.AddField($"__**📦 {AppLocalization.Get(LocalizationKeys.DiscordInfoProjectTitle)}**__",
                 $"- {Format.Bold(AppLocalization.Get(LocalizationKeys.DiscordInfoOriginalRepo))}: {Format.Url("SysBot.NET", OriginalRepo)}\n" +
                 $"- {Format.Bold(AppLocalization.Get(LocalizationKeys.DiscordInfoForkedFrom))}: {Format.Url("PokeBot", PokeBotRepo)}\n" +
-                $"- {Format.Bold(AppLocalization.Get(LocalizationKeys.DiscordInfoThisBot))}: {Format.Url("FusionBot", FusionBotRepo)}\n" +
+                $"- {Format.Bold(AppLocalization.Get(LocalizationKeys.DiscordInfoThisBot))}: {Format.Url("TradeDex", TradeDexRepo)}\n" +
                 $"- {Format.Bold(AppLocalization.Get(LocalizationKeys.DiscordInfoOwner))}: {app.Owner} (`{app.Owner.Id}`)\n" +
                 $"- {Format.Bold(AppLocalization.Get(LocalizationKeys.DiscordInfoLibrary))}: Discord.Net (`{DiscordConfig.Version}`)",
                 inline: false);

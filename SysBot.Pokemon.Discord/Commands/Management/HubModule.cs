@@ -17,21 +17,37 @@ public class HubModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new(
     [Summary("Gets the status of the bot environment.")]
     public async Task GetStatusAsync()
     {
-        var me = SysCord<T>.Runner;
-        var hub = me.Hub;
-
-        var builder = new EmbedBuilder
-        {
-            Color = Color.Gold,
-        };
-
         var runner = SysCord<T>.Runner;
+        var hub = runner.Hub;
         var allBots = runner.Bots.ConvertAll(z => z.Bot);
         var botCount = allBots.Count;
+
+        var noBots = botCount == 0;
+        var queues = hub.Queues.AllQueues;
+        var queuesEmpty = queues.All(q => q.Count == 0);
+        var (statusEmoji, statusLabel, embedColor) = GetGlobalStatus(noBots, queuesEmpty);
+
+        var builder = new EmbedBuilder()
+            .WithTitle($"{statusEmoji} {AppLocalization.Get(LocalizationKeys.DiscordHubStatusTitle)}")
+            .WithColor(embedColor)
+            .WithCurrentTimestamp();
+
+        var currentUser = Context.Client.CurrentUser;
+        builder.WithAuthor(author =>
+        {
+            author.Name = currentUser?.Username ?? "SysBot";
+            author.IconUrl = currentUser?.GetAvatarUrl() ?? currentUser?.GetDefaultAvatarUrl();
+        });
+
+        var botsSummary = SummarizeBotsWithBadges(allBots);
+        var botsSection = string.IsNullOrWhiteSpace(botsSummary)
+            ? string.Empty
+            : $"\n```{Environment.NewLine}{botsSummary}{Environment.NewLine}```";
+
         builder.AddField(x =>
         {
             x.Name = AppLocalization.Get(LocalizationKeys.DiscordHubSummaryTitle);
-            x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubSummaryValue, botCount, SummarizeBots(allBots), hub.Ledy.Pool.Count);
+            x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubSummaryValue, botCount, botsSection, statusLabel, hub.Ledy.Pool.Count);
             x.IsInline = false;
         });
 
@@ -47,25 +63,8 @@ public class HubModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new(
             x.IsInline = false;
         });
 
-        var queues = hub.Queues.AllQueues;
-        int count = 0;
-        foreach (var q in queues)
-        {
-            var c = q.Count;
-            if (c == 0)
-                continue;
-
-            var nextMsg = GetNextName(q);
-            builder.AddField(x =>
-            {
-                x.Name = AppLocalization.Format(LocalizationKeys.DiscordHubQueueTitle, q.Type);
-                x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubQueueValue, nextMsg, c);
-                x.IsInline = false;
-            });
-            count += c;
-        }
-
-        if (count == 0)
+        var totalQueued = queues.Sum(q => q.Count);
+        if (totalQueued == 0)
         {
             builder.AddField(x =>
             {
@@ -74,8 +73,38 @@ public class HubModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new(
                 x.IsInline = false;
             });
         }
+        else
+        {
+            builder.AddField(x =>
+            {
+                x.Name = AppLocalization.Get(LocalizationKeys.DiscordHubQueueSummaryTitle);
+                x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubQueueSummaryValue, totalQueued, queues.Count(q => q.Count > 0));
+                x.IsInline = false;
+            });
 
-        await ReplyAsync(AppLocalization.Get(LocalizationKeys.DiscordHubStatusTitle), false, builder.Build()).ConfigureAwait(false);
+            foreach (var q in queues.Where(q => q.Count > 0))
+            {
+                var queueEmoji = q.Count > 5 ? "🔥" : "⏳";
+
+                builder.AddField(x =>
+                {
+                    x.Name = AppLocalization.Format(LocalizationKeys.DiscordHubQueueTitle, queueEmoji, q.Type);
+                    x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubQueueValue, GetNextName(q), q.Count);
+                    x.IsInline = false;
+                });
+            }
+        }
+
+        await ReplyAsync(embed: builder.Build()).ConfigureAwait(false);
+    }
+
+    private static (string Emoji, string Label, Color Color) GetGlobalStatus(bool noBots, bool queuesEmpty)
+    {
+        if (noBots)
+            return ("🟥", AppLocalization.Get(LocalizationKeys.DiscordHubHealthNoBots), Color.DarkRed);
+        if (queuesEmpty)
+            return ("🟩", AppLocalization.Get(LocalizationKeys.DiscordHubHealthStable), Color.Green);
+        return ("🟧", AppLocalization.Get(LocalizationKeys.DiscordHubHealthOperational), Color.Orange);
     }
 
     private static string GetNextName(PokeTradeQueue<T> q)
@@ -93,11 +122,31 @@ public class HubModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new(
         return name;
     }
 
-    private static string SummarizeBots(IReadOnlyCollection<RoutineExecutor<PokeBotState>> bots)
+    private static string SummarizeBotsWithBadges(IReadOnlyCollection<RoutineExecutor<PokeBotState>> bots)
     {
         if (bots.Count == 0)
-            return AppLocalization.Get(LocalizationKeys.DiscordBotNoConfigured);
-        var summaries = bots.Select(z => $"- {z.GetSummary()}");
-        return Environment.NewLine + string.Join(Environment.NewLine, summaries);
+            return string.Empty;
+
+        var lines = bots.Select(z =>
+        {
+            var summary = z.GetSummary();
+            var emoji = GetStatusEmojiFromSummary(summary);
+            return $"{emoji} {summary}";
+        });
+
+        return string.Join(Environment.NewLine, lines);
+    }
+
+    private static string GetStatusEmojiFromSummary(string? summary)
+    {
+        var text = summary?.ToLowerInvariant() ?? string.Empty;
+
+        if (text.Contains("idle") || text.Contains("inactivo"))
+            return "✅";
+        if (text.Contains("busy") || text.Contains("running") || text.Contains("trading") || text.Contains("ejecut"))
+            return "🔄";
+        if (text.Contains("error") || text.Contains("stopped") || text.Contains("unknown") || text.Contains("deten") || text.Contains("desconoc"))
+            return "⚠️";
+        return "ℹ️";
     }
 }

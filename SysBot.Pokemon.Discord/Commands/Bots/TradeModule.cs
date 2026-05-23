@@ -777,7 +777,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         // ===== JOB 2: Selection =====
         if (!_pendingTextTrades.TryGetValue(userId, out var sets))
         {
-            await ReplyAsync(AppLocalization.Get(LocalizationKeys.DiscordTextTradeNoFile));
+            await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordTextTradeNoFile, user.Mention));
             return;
         }
 
@@ -1189,7 +1189,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
                 AppLocalization.Format(LocalizationKeys.DiscordBatchZipProcessing, Context.User.Mention)
             );
 
-            tempDir = Path.Combine(Path.GetTempPath(), $"FusionBot_BTZ_{Guid.NewGuid()}");
+            tempDir = Path.Combine(Path.GetTempPath(), $"TradeDex_BTZ_{Guid.NewGuid()}");
             Directory.CreateDirectory(tempDir);
 
             var safeName = Path.GetFileName(attachment.Filename);

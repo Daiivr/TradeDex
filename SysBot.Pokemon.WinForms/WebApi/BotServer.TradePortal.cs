@@ -239,6 +239,60 @@ public partial class BotServer
         }, JsonOptions);
     }
 
+    private string GetRecentTradeFiles(HttpListenerRequest request)
+    {
+        if (!TryGetTradeSession(request, out var session))
+            return CreateErrorResponse("Please login with Discord first.");
+
+        var files = new TradeCodeStorage().GetRecentTradeFiles(session.DiscordId)
+            .Select(file => new
+            {
+                file.Id,
+                file.FileName,
+                file.Pokemon,
+                file.ReceivedAt
+            });
+
+        return JsonSerializer.Serialize(new { success = true, files }, JsonOptions);
+    }
+
+    private (int statusCode, object? content, string contentType) DownloadRecentTradeFile(
+        HttpListenerRequest request,
+        HttpListenerResponse response,
+        string path)
+    {
+        if (!TryGetTradeSession(request, out var session))
+            return (401, CreateErrorResponse("Please login with Discord first."), "application/json");
+
+        var id = path["/api/trade/files/".Length..].Trim('/');
+        if (id.Length != 32 || id.Any(character => !Uri.IsHexDigit(character)))
+            return (404, CreateErrorResponse("Trade file not found."), "application/json");
+
+        var file = new TradeCodeStorage().GetRecentTradeFile(session.DiscordId, id);
+        if (file == null || string.IsNullOrWhiteSpace(file.DataBase64))
+            return (404, CreateErrorResponse("Trade file not found."), "application/json");
+
+        byte[] data;
+        try
+        {
+            data = Convert.FromBase64String(file.DataBase64);
+        }
+        catch (FormatException)
+        {
+            return (404, CreateErrorResponse("Trade file not found."), "application/json");
+        }
+
+        var fileName = new string(Path.GetFileName(file.FileName)
+            .Where(character => character >= ' ' && character <= '~' && character != '"' && character != '\\')
+            .ToArray());
+        if (string.IsNullOrWhiteSpace(fileName))
+            fileName = $"trade-{id}.pkm";
+
+        response.Headers.Add("Content-Disposition", $"attachment; filename=\"{fileName}\"");
+        response.Headers.Add("Cache-Control", "no-store");
+        return (200, data, "application/octet-stream");
+    }
+
     private async Task<string> SaveTradeCode(HttpListenerRequest request)
     {
         if (!TryGetTradeSession(request, out var session))
@@ -1006,6 +1060,17 @@ public partial class BotServer
 
         public void TradeFinished(PokeRoutineExecutor<T> routine, PokeTradeDetail<T> info, T result)
         {
+            if (result.Species > 0)
+            {
+                var partyBytes = new byte[result.SIZE_PARTY];
+                result.WriteDecryptedDataParty(partyBytes);
+                new TradeCodeStorage().RecordReceivedTradeFile(
+                    session.DiscordId,
+                    result.FileName,
+                    CleanPokemonDisplayName(GameInfo.Strings.Species[result.Species]),
+                    partyBytes);
+            }
+
             Update("finished", $"Trade finished. Enjoy your {pokemonName}.");
             OnFinish?.Invoke(routine);
         }

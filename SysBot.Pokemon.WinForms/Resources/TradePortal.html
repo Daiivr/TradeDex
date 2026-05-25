@@ -1,14 +1,12 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="light">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="TradeDex web trades">
+    <meta name="theme-color" content="#16171a">
     <title data-i18n="pageTitle">TradeDex Trades</title>
     <link rel="icon" type="image/x-icon" href="/icon.ico">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,600;12..96,700;12..96,800&family=Geist:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap">
     <link rel="stylesheet" href="/TradePortal.css">
 </head>
 <body>
@@ -18,6 +16,21 @@
         <span class="bg-blob bg-blob-1"></span>
         <span class="bg-blob bg-blob-2"></span>
         <span class="bg-blob bg-blob-3"></span>
+    </div>
+
+    <div class="bg-hexgrid" aria-hidden="true"></div>
+
+    <div class="bg-orbits" aria-hidden="true">
+        <span class="bg-orbit bg-orbit-1"><img class="pokeball" src="/Pokeball1SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-2"><img class="pokeball" src="/Pokeball9SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-3"><img class="pokeball" src="/Pokeball3SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-4"><img class="pokeball" src="/Pokeball8SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-5"><img class="pokeball" src="/Pokeball7SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-6"><img class="pokeball" src="/Pokeball5SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-7"><img class="pokeball" src="/Pokeball6SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-8"><img class="pokeball" src="/Pokeball4SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-9"><img class="pokeball" src="/Pokeball2SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-10"><img class="pokeball" src="/NormalPokeball.svg" alt="" aria-hidden="true" loading="lazy"></span>
     </div>
 
     <header class="topbar">
@@ -220,6 +233,23 @@
         </section>
     </main>
 
+    <div id="download-widget" class="download-widget" hidden>
+        <button id="download-button" class="download-button" type="button" data-i18n-title="downloadsButtonTitle" title="Recent trade files" aria-expanded="false" aria-controls="download-popover">
+            <svg class="download-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v11m0 0 4-4m-4 4-4-4M4.5 18.5v2h15v-2"></path>
+            </svg>
+        </button>
+        <section id="download-popover" class="download-popover" hidden>
+            <header class="panel-header">
+                <div>
+                    <p class="eyebrow" data-i18n="downloads">Files</p>
+                    <h2 class="display-3" data-i18n="recentFiles">Recent trades</h2>
+                </div>
+            </header>
+            <p id="download-empty" class="download-empty" data-i18n="noRecentFiles">No received Pokemon files yet.</p>
+            <ol id="download-list" class="download-list"></ol>
+        </section>
+    </div>
     <div id="guide-widget" class="guide-widget">
         <button id="guide-button" class="guide-button" type="button" data-i18n-title="guideButtonTitle" title="Trade guide" aria-expanded="false" aria-controls="guide-popover">
             <span id="console-led" class="console-led" aria-hidden="true"></span>

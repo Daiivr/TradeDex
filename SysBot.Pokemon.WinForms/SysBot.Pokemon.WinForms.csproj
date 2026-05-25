@@ -60,6 +60,16 @@
     <EmbeddedResource Include="Resources\TradePortal.css" />
     <EmbeddedResource Include="Resources\TradePortal.html" />
     <EmbeddedResource Include="Resources\TradePortal.js" />
+    <EmbeddedResource Include="Resources\NormalPokeball.svg" />
+    <EmbeddedResource Include="Resources\Pokeball1SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball2SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball3SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball4SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball5SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball6SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball7SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball8SVG.svg" />
+    <EmbeddedResource Include="Resources\Pokeball9SVG.svg" />
     <EmbeddedResource Include="Resources\LeftJoyCon.png" />
     <EmbeddedResource Include="Resources\lgpe_mode_image.png" />
     <EmbeddedResource Include="Resources\lgpe_mode_upper.png" />

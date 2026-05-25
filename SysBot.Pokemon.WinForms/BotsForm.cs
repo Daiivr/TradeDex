@@ -196,7 +196,7 @@ namespace SysBot.Pokemon.WinForms
             // aligns to the same baseline.
             // IP(12..142) gap NUD(154..224) gap Protocol(236..306) gap Routine(318..448) gap +(460..492) gap GameMode(504..600)
             const int rowHeight = 30;
-            _TB_IP = new FlatTextBox { Location = new Point(12, 57), Size = new Size(130, rowHeight), BackColor = inputBg, ForeColor = whiteText };
+            _TB_IP = new FlatTextBox { Location = new Point(12, 57), Size = new Size(130, rowHeight), BackColor = inputBg, ForeColor = whiteText, Text = "192.168.0.1" };
             _NUD_Port = new FlatNumericUpDown { Location = new Point(154, 57), Size = new Size(70, rowHeight), Maximum = 65535, Minimum = 0, Value = 6000, BackColor = inputBg, ForeColor = whiteText };
 
             _CB_Protocol = new FlatComboBox { Location = new Point(236, 57), Size = new Size(70, rowHeight), BackColor = inputBg, ForeColor = whiteText };

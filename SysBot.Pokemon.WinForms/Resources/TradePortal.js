@@ -12,6 +12,7 @@ const state = {
     terminalTypingQueue: Promise.resolve(),
     confettiTradeKey: '',
     profileRefreshTradeKey: '',
+    recentFiles: [],
 };
 
 const $ = (id) => document.getElementById(id);
@@ -61,6 +62,11 @@ const ES = {
     guide: 'Guia',
     tradeConsole: 'Guia del website',
     guideButtonTitle: 'Abrir guia de trade',
+    downloads: 'Archivos',
+    recentFiles: 'Ultimos recibidos',
+    downloadsButtonTitle: 'Abrir archivos recientes',
+    noRecentFiles: 'Aun no hay Pokemon recibidos para descargar.',
+    downloadFile: 'Descargar',
     linkCode: 'Codigo',
     requestAnotherTrade: 'Solicitar otro trade',
     profile: 'Perfil',
@@ -210,6 +216,11 @@ const EN = {
     guide: 'Guide',
     tradeConsole: 'Website guide',
     guideButtonTitle: 'Open trade guide',
+    downloads: 'Files',
+    recentFiles: 'Recently received',
+    downloadsButtonTitle: 'Open recent trade files',
+    noRecentFiles: 'No received Pokemon files to download yet.',
+    downloadFile: 'Download',
     linkCode: 'Link code',
     requestAnotherTrade: 'Request another trade',
     profile: 'Profile',
@@ -479,6 +490,8 @@ async function initAuth() {
     $('trade-panel').hidden = !state.authenticated;
     $('trade-terminal').hidden = true;
     $('user-actions').hidden = !state.authenticated;
+    $('download-widget').hidden = !state.authenticated;
+    toggleDownloads(false);
     toggleCodePopover(false);
     $('session-state').textContent = state.authenticated ? t('loggedIn') : t('guest');
 
@@ -488,9 +501,11 @@ async function initAuth() {
             $('user-avatar').src = me.user.avatar;
             $('user-avatar').hidden = false;
         }
-        await refreshProfile();
+        await Promise.all([refreshProfile(), refreshRecentFiles()]);
         startPolling();
     } else {
+        state.recentFiles = [];
+        renderRecentFiles([]);
         renderConsole(null);
         const config = await api('/api/trade/auth/config');
         if (!config.discordConfigured) {
@@ -542,6 +557,57 @@ async function refreshProfile() {
     $('profile-count').textContent = profile.tradeCount ?? 0;
     setTrainerProfile(profile);
     $('profile-last').textContent = cleanPokemonName(profile.lastTrade) || '-';
+}
+
+async function refreshRecentFiles() {
+    if (!state.authenticated) {
+        state.recentFiles = [];
+        renderRecentFiles([]);
+        return;
+    }
+
+    const result = await api('/api/trade/files');
+    state.recentFiles = result.success && Array.isArray(result.files)
+        ? result.files.slice(0, 5)
+        : [];
+    renderRecentFiles(state.recentFiles);
+}
+
+function renderRecentFiles(files) {
+    const list = $('download-list');
+    const empty = $('download-empty');
+    list.replaceChildren();
+    empty.hidden = files.length > 0;
+
+    for (const file of files) {
+        const item = document.createElement('li');
+        item.className = 'download-item';
+
+        const copy = document.createElement('div');
+        copy.className = 'download-copy';
+
+        const name = document.createElement('strong');
+        name.textContent = cleanPokemonName(file.pokemon) || cleanPokemonName(file.fileName) || 'Pokemon';
+
+        const details = document.createElement('span');
+        const when = file.receivedAt ? new Date(file.receivedAt) : null;
+        const timestamp = when && !Number.isNaN(when.getTime())
+            ? when.toLocaleString(isSpanish() ? 'es' : 'en', { dateStyle: 'short', timeStyle: 'short' })
+            : '';
+        details.textContent = [file.fileName, timestamp].filter(Boolean).join(' / ');
+
+        const link = document.createElement('a');
+        link.className = 'download-action';
+        link.href = `/api/trade/files/${encodeURIComponent(file.id)}`;
+        link.download = file.fileName || 'pokemon.pkm';
+        link.setAttribute('aria-label', `${t('downloadFile')} ${name.textContent}`);
+        link.title = t('downloadFile');
+        link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"></path></svg>';
+
+        copy.append(name, details);
+        item.append(copy, link);
+        list.append(item);
+    }
 }
 
 function setTrainerProfile(profile) {
@@ -796,7 +862,7 @@ async function maybeRefreshProfileAfterCompletedTrade(trade) {
     if (!tradeKey || state.profileRefreshTradeKey === tradeKey) return;
 
     state.profileRefreshTradeKey = tradeKey;
-    await refreshProfile();
+    await Promise.all([refreshProfile(), refreshRecentFiles()]);
     scheduleProfileRefreshRetry(tradeKey, 1500);
     scheduleProfileRefreshRetry(tradeKey, 4000);
 }
@@ -804,7 +870,7 @@ async function maybeRefreshProfileAfterCompletedTrade(trade) {
 function scheduleProfileRefreshRetry(tradeKey, delayMs) {
     window.setTimeout(async () => {
         if (!state.authenticated || state.profileRefreshTradeKey !== tradeKey) return;
-        await refreshProfile();
+        await Promise.all([refreshProfile(), refreshRecentFiles()]);
     }, delayMs);
 }
 
@@ -1031,30 +1097,88 @@ function launchTerminalConfetti() {
     burst.setAttribute('aria-hidden', 'true');
 
     const colors = ['#e94e3b', '#ff7d3a', '#f4ecdc', '#f5c557', '#67d39a', '#7aa9ff'];
-    const pieces = 54;
-    for (let i = 0; i < pieces; i++) {
-        const piece = document.createElement('span');
-        const angle = -118 + Math.random() * 96;
-        const distance = 120 + Math.random() * 250;
-        const drift = -80 + Math.random() * 160;
-        const size = 6 + Math.random() * 7;
-        const duration = 900 + Math.random() * 900;
-        const delay = Math.random() * 160;
+    const piecesPerSide = 36;
+    // Two cannons firing inward and up from the bottom corners.
+    const sides = [
+        { left: 0, baseAngle: -65, drift: 1 },   // bottom-left -> up and to the right
+        { left: 100, baseAngle: -115, drift: -1 }, // bottom-right -> up and to the left
+    ];
 
-        piece.style.setProperty('--x', `${Math.cos(angle * Math.PI / 180) * distance + drift}px`);
-        piece.style.setProperty('--y', `${Math.sin(angle * Math.PI / 180) * distance - 40}px`);
-        piece.style.setProperty('--r', `${Math.random() * 720 - 360}deg`);
-        piece.style.setProperty('--s', `${size}px`);
-        piece.style.setProperty('--d', `${duration}ms`);
-        piece.style.setProperty('--delay', `${delay}ms`);
-        piece.style.background = colors[i % colors.length];
-        piece.style.left = `${42 + Math.random() * 18}%`;
-        piece.style.top = `${36 + Math.random() * 14}%`;
-        burst.append(piece);
-    }
+    sides.forEach((side, sideIndex) => {
+        for (let i = 0; i < piecesPerSide; i++) {
+            const piece = document.createElement('span');
+            const spread = -28 + Math.random() * 56;
+            const angle = side.baseAngle + spread;
+            const distance = 260 + Math.random() * 320;
+            const drift = side.drift * (40 + Math.random() * 80);
+            const size = 6 + Math.random() * 7;
+            const duration = 1200 + Math.random() * 900;
+            const delay = Math.random() * 220;
+
+            piece.style.setProperty('--x', `${Math.cos(angle * Math.PI / 180) * distance + drift}px`);
+            piece.style.setProperty('--y', `${Math.sin(angle * Math.PI / 180) * distance}px`);
+            piece.style.setProperty('--r', `${Math.random() * 720 - 360}deg`);
+            piece.style.setProperty('--s', `${size}px`);
+            piece.style.setProperty('--d', `${duration}ms`);
+            piece.style.setProperty('--delay', `${delay}ms`);
+            piece.style.background = colors[(i + sideIndex) % colors.length];
+            piece.style.left = `${side.left}%`;
+            piece.style.top = '100%';
+            burst.append(piece);
+        }
+    });
 
     terminal.append(burst);
-    setTimeout(() => burst.remove(), 2100);
+    playCelebrationChime();
+    setTimeout(() => burst.remove(), 2400);
+}
+
+function playCelebrationChime() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!state.audioCtx) state.audioCtx = new Ctx();
+        const ctx = state.audioCtx;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+        const now = ctx.currentTime;
+        const master = ctx.createGain();
+        master.gain.value = 0.0001;
+        master.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+        master.connect(ctx.destination);
+
+        // Quick rising arpeggio: C5, E5, G5, C6
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, i) => {
+            const start = now + i * 0.08;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.6, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+            osc.connect(gain).connect(master);
+            osc.start(start);
+            osc.stop(start + 0.4);
+        });
+
+        // Soft pop / shimmer on top
+        const pop = ctx.createOscillator();
+        const popGain = ctx.createGain();
+        pop.type = 'sine';
+        pop.frequency.setValueAtTime(1760, now);
+        pop.frequency.exponentialRampToValueAtTime(2640, now + 0.18);
+        popGain.gain.setValueAtTime(0.0001, now);
+        popGain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+        popGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+        pop.connect(popGain).connect(master);
+        pop.start(now);
+        pop.stop(now + 0.5);
+    } catch {
+        // Audio is non-critical; ignore failures (autoplay blocked, no device, etc.)
+    }
 }
 
 function getTerminalLines(trade) {
@@ -1183,6 +1307,19 @@ function toggleGuide(forceOpen = null) {
     const open = forceOpen ?? popover.hidden;
     popover.hidden = !open;
     button.setAttribute('aria-expanded', String(open));
+    if (open) toggleDownloads(false);
+}
+
+function toggleDownloads(forceOpen = null) {
+    const popover = $('download-popover');
+    const button = $('download-button');
+    const open = forceOpen ?? popover.hidden;
+    popover.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    if (open) {
+        toggleGuide(false);
+        refreshRecentFiles();
+    }
 }
 
 function toggleTrainerPopover(forceOpen = null) {
@@ -1271,9 +1408,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         pollQueue();
     });
     $('guide-button').addEventListener('click', () => toggleGuide());
+    $('download-button').addEventListener('click', () => toggleDownloads());
     document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape') {
             toggleGuide(false);
+            toggleDownloads(false);
             toggleTrainerPopover(false);
             toggleCodePopover(false);
         }
@@ -1282,6 +1421,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         const widget = $('guide-widget');
         if (!widget.contains(event.target)) {
             toggleGuide(false);
+        }
+        const downloadWidget = $('download-widget');
+        if (!downloadWidget.contains(event.target)) {
+            toggleDownloads(false);
         }
         const trainerPopover = $('trainer-popover');
         const trainerButton = $('profile-trainer');
@@ -1299,60 +1442,5 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.stopPropagation();
         clearPkmFile();
     });
-    initSpotlightCards();
-    initMagneticButtons();
     await initAuth();
 });
-
-function initSpotlightCards() {
-    const cards = document.querySelectorAll('.composer');
-    if (!cards.length || matchMedia('(hover: none)').matches) return;
-
-    for (const card of cards) {
-        let frame = null;
-        card.addEventListener('pointermove', (event) => {
-            if (frame) return;
-            frame = requestAnimationFrame(() => {
-                const rect = card.getBoundingClientRect();
-                card.style.setProperty('--mx', `${event.clientX - rect.left}px`);
-                card.style.setProperty('--my', `${event.clientY - rect.top}px`);
-                frame = null;
-            });
-        });
-        card.addEventListener('pointerleave', () => {
-            card.style.removeProperty('--mx');
-            card.style.removeProperty('--my');
-        });
-    }
-}
-
-function initMagneticButtons() {
-    if (matchMedia('(hover: none)').matches) return;
-
-    const buttons = document.querySelectorAll('.primary-button');
-    for (const button of buttons) {
-        let frame = null;
-        const reset = () => {
-            button.style.setProperty('--mag-x', '0px');
-            button.style.setProperty('--mag-y', '0px');
-        };
-
-        button.addEventListener('pointermove', (event) => {
-            if (frame) return;
-            frame = requestAnimationFrame(() => {
-                const rect = button.getBoundingClientRect();
-                const strength = 0.22;
-                const cx = rect.left + rect.width / 2;
-                const cy = rect.top + rect.height / 2;
-                const dx = (event.clientX - cx) * strength;
-                const dy = (event.clientY - cy) * strength;
-                button.style.setProperty('--mag-x', `${dx}px`);
-                button.style.setProperty('--mag-y', `${dy}px`);
-                frame = null;
-            });
-        });
-
-        button.addEventListener('pointerleave', reset);
-        button.addEventListener('blur', reset);
-    }
-}

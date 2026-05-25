@@ -228,9 +228,9 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
 
             var (statusCode, content, contentType) = await ProcessRequestAsync(request, response);
 
-            if ((contentType == "image/x-icon" || contentType == "image/png") && content is byte[] imageBytes)
+            if (content is byte[] binaryContent)
             {
-                await SendBinaryResponseAsync(response, 200, imageBytes, contentType);
+                await SendBinaryResponseAsync(response, statusCode, binaryContent, contentType);
             }
             else
             {
@@ -278,7 +278,10 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             "/api/trade/auth/me" => (200, GetCurrentTradeUser(request), "application/json"),
             "/api/trade/auth/logout" => (200, LogoutTradeUser(response), "application/json"),
             "/api/trade/profile" => (200, GetTradeProfile(request), "application/json"),
+            "/api/trade/files" => (200, GetRecentTradeFiles(request), "application/json"),
             "/api/trade/queue" => (200, GetWebTradeQueueStatus(request), "application/json"),
+            var p when p.StartsWith("/api/trade/files/", StringComparison.Ordinal) && request.HttpMethod == "GET" =>
+                DownloadRecentTradeFile(request, response, p),
             var p when p == "/api/trade/code" && request.HttpMethod == "POST" =>
                 (200, await SaveTradeCode(request), "application/json"),
             var p when p == "/api/trade/code/delete" && request.HttpMethod == "POST" =>
@@ -314,6 +317,16 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             "/sv_mode_image.png" => (200, LoadEmbeddedResourceBinary("sv_mode_image.png"), "image/png"),
             "/plza_mode_image.png" => (200, LoadEmbeddedResourceBinary("plza_mode_image.png"), "image/png"),
             "/swsh_mode_image.png" => (200, LoadEmbeddedResourceBinary("swsh_mode_image.png"), "image/png"),
+            "/NormalPokeball.svg" => (200, LoadEmbeddedResourceBinary("NormalPokeball.svg"), "image/svg+xml"),
+            "/Pokeball1SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball1SVG.svg"), "image/svg+xml"),
+            "/Pokeball2SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball2SVG.svg"), "image/svg+xml"),
+            "/Pokeball3SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball3SVG.svg"), "image/svg+xml"),
+            "/Pokeball4SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball4SVG.svg"), "image/svg+xml"),
+            "/Pokeball5SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball5SVG.svg"), "image/svg+xml"),
+            "/Pokeball6SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball6SVG.svg"), "image/svg+xml"),
+            "/Pokeball7SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball7SVG.svg"), "image/svg+xml"),
+            "/Pokeball8SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball8SVG.svg"), "image/svg+xml"),
+            "/Pokeball9SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball9SVG.svg"), "image/svg+xml"),
             _ => (404, null, "text/plain")
         };
     }

@@ -117,6 +117,7 @@ const ES = {
     tradeAdded: 'Trade agregado a la cola.',
     cancelFailed: 'No se pudo cancelar el trade.',
     tradeCancelled: 'Trade cancelado.',
+    tradeFinishedFileSaved: 'Trade completado. Tu archivo esta disponible en la bandeja de Archivos recientes.',
     positionLine: 'Posicion {position} de {total}',
     waitingLatest: 'Esperando el ultimo estado.',
     noTradeConsole: 'Pega un set, entra a la cola y esta consola te dira cuando buscar el codigo.',
@@ -209,6 +210,7 @@ const EN = {
     tradeAdded: 'Trade added to the queue.',
     cancelFailed: 'Could not cancel the trade.',
     tradeCancelled: 'Trade cancelled.',
+    tradeFinishedFileSaved: 'Trade complete. Your file is now available in the Recent files tray.',
     liveStatus: 'Live status',
     currentTrade: 'Current trade',
     cancel: 'Cancel',
@@ -311,7 +313,12 @@ async function initLocalization() {
         node.placeholder = t(node.dataset.i18nPlaceholder);
     });
     document.querySelectorAll('[data-i18n-title]').forEach((node) => {
-        node.title = t(node.dataset.i18nTitle);
+        const label = t(node.dataset.i18nTitle);
+        // Use a styled custom tooltip (data-tooltip + ::after in CSS) instead of
+        // the browser-native title chip. aria-label keeps it accessible.
+        node.removeAttribute('title');
+        node.setAttribute('aria-label', label);
+        node.setAttribute('data-tooltip', label);
     });
     document.title = t('pageTitle');
     renderSiteGuide();
@@ -1086,6 +1093,7 @@ function maybeCelebrateTrade(trade, stateKey) {
 
     state.confettiTradeKey = tradeKey;
     launchTerminalConfetti();
+    showToast(t('tradeFinishedFileSaved'), { type: 'info', duration: 6500, className: 'toast-anchor-left' });
 }
 
 function launchTerminalConfetti() {

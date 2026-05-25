@@ -1874,6 +1874,79 @@ textarea:focus {
     padding-top: 3px;
 }
 
+/* ============ Custom tooltip (replaces native title chips) ============ */
+
+[data-tooltip] {
+    position: relative;
+}
+
+[data-tooltip]::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    padding: 8px 12px;
+    background: var(--surface-2);
+    color: var(--ink);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-md);
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 500;
+    line-height: 1.2;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+    opacity: 0;
+    pointer-events: none;
+    transform: translate(-50%, 4px);
+    transition: opacity 140ms var(--ease-out, ease-out), transform 140ms var(--ease-out, ease-out);
+    z-index: 90;
+}
+
+[data-tooltip]:hover::after,
+[data-tooltip]:focus-visible::after {
+    opacity: 1;
+    transform: translate(-50%, 0);
+}
+
+/* Hide the tooltip while the popover this button controls is open. */
+[data-tooltip][aria-expanded="true"]::after {
+    opacity: 0 !important;
+    transform: translate(-50%, 4px) !important;
+}
+
+/* Left-anchored variant for buttons docked to the left edge of the viewport */
+.download-button[data-tooltip]::after {
+    left: 0;
+    transform: translate(0, 4px);
+}
+
+.download-button[data-tooltip]:hover::after,
+.download-button[data-tooltip]:focus-visible::after {
+    transform: translate(0, 0);
+}
+
+.download-button[data-tooltip][aria-expanded="true"]::after {
+    transform: translate(0, 4px) !important;
+}
+
+/* Right-anchored variant for buttons docked to the right edge of the viewport */
+.guide-button[data-tooltip]::after {
+    left: auto;
+    right: 0;
+    transform: translate(0, 4px);
+}
+
+.guide-button[data-tooltip]:hover::after,
+.guide-button[data-tooltip]:focus-visible::after {
+    transform: translate(0, 0);
+}
+
+.guide-button[data-tooltip][aria-expanded="true"]::after {
+    transform: translate(0, 4px) !important;
+}
+
 /* ============ Toast ============ */
 
 .toast {
@@ -3015,6 +3088,14 @@ textarea:focus {
     width: min(420px, calc(100vw - clamp(16px, 3vw, 32px) - 84px));
 }
 
+/* Mirror toast to the left edge, anchored next to the download button. */
+.toast.toast-anchor-left {
+    right: auto;
+    left: calc(clamp(16px, 3vw, 32px) + 60px);
+    bottom: clamp(16px, 3vw, 32px);
+    width: min(420px, calc(100vw - clamp(16px, 3vw, 32px) - 84px));
+}
+
 .legality-toast {
     width: min(500px, calc(100vw - clamp(16px, 3vw, 32px) - 84px));
 }
@@ -3248,6 +3329,13 @@ textarea:focus {
     .toast,
     .legality-toast {
         right: 74px;
+        bottom: 14px;
+        width: min(420px, calc(100vw - 88px));
+    }
+
+    .toast.toast-anchor-left {
+        right: auto;
+        left: 74px;
         bottom: 14px;
         width: min(420px, calc(100vw - 88px));
     }

@@ -101,6 +101,49 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
         return memoryStream.ToArray();
     }
 
+    // Content-hash of the static assets, computed once per process start.
+    // Used as a cache-busting query string (?v=<hash>) so Cloudflare and
+    // browsers automatically pick up new JS/CSS on every rebuild without
+    // requiring a manual purge.
+    private static string? _assetVersion;
+    private static readonly object _assetVersionLock = new();
+
+    private static string AssetVersion
+    {
+        get
+        {
+            if (_assetVersion != null) return _assetVersion;
+            lock (_assetVersionLock)
+            {
+                if (_assetVersion != null) return _assetVersion;
+                try
+                {
+                    var js = LoadEmbeddedResourceBinary("TradePortal.js");
+                    var css = LoadEmbeddedResourceBinary("TradePortal.css");
+                    var html = LoadEmbeddedResourceBinary("TradePortal.html");
+                    var combined = new byte[js.Length + css.Length + html.Length];
+                    Buffer.BlockCopy(js, 0, combined, 0, js.Length);
+                    Buffer.BlockCopy(css, 0, combined, js.Length, css.Length);
+                    Buffer.BlockCopy(html, 0, combined, js.Length + css.Length, html.Length);
+                    var hash = System.Security.Cryptography.SHA1.HashData(combined);
+                    _assetVersion = Convert.ToHexString(hash).Substring(0, 10).ToLowerInvariant();
+                }
+                catch
+                {
+                    // Fallback: timestamp-based token so we still bust caches
+                    // even if hashing fails for some reason.
+                    _assetVersion = DateTime.UtcNow.Ticks.ToString("x");
+                }
+                return _assetVersion;
+            }
+        }
+    }
+
+    private static string LoadTradePortalHtml()
+    {
+        return LoadEmbeddedResource("TradePortal.html").Replace("__ASSET_VER__", AssetVersion);
+    }
+
     public void Start()
     {
         if (_running) return;
@@ -266,7 +309,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
         return path switch
         {
             "/" => (200, HtmlTemplate, "text/html"),
-            "/trade" or "/trade/" => (200, LoadEmbeddedResource("TradePortal.html"), "text/html"),
+            "/trade" or "/trade/" => (200, LoadTradePortalHtml(), "text/html"),
             "/BotControlPanel.css" => (200, LoadEmbeddedResource("BotControlPanel.css"), "text/css"),
             "/BotControlPanel.js" => (200, LoadEmbeddedResource("BotControlPanel.js"), "text/javascript"),
             "/TradePortal.css" => (200, LoadEmbeddedResource("TradePortal.css"), "text/css"),

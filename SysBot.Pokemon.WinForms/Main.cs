@@ -57,7 +57,7 @@ namespace SysBot.Pokemon.WinForms
         // "NEW RELEASE" banner appears without requiring a restart.
         private System.Threading.Timer? _updateCheckTimer;
         private string _lastSeenUpdateVersion = string.Empty;
-        private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromMinutes(30);
+        private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(1);
 
         // Currently active button in the left panel, for setting Bots as default
         private IconButton currentBtn = null!;

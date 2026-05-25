@@ -243,6 +243,9 @@ public static class LocalizationKeys
     public const string DiscordGenerateTimeout = nameof(DiscordGenerateTimeout);
     public const string DiscordCreateSomethingFailed = nameof(DiscordCreateSomethingFailed);
     public const string DiscordBestAttemptDitto = nameof(DiscordBestAttemptDitto);
+    public const string DiscordDittoInvalidIVSpread = nameof(DiscordDittoInvalidIVSpread);
+    public const string DiscordDittoUnknownArguments = nameof(DiscordDittoUnknownArguments);
+    public const string DiscordDittoAdAttempt = nameof(DiscordDittoAdAttempt);
     public const string DiscordItemNotRecognized = nameof(DiscordItemNotRecognized);
     public const string DiscordBestAttemptSpecies = nameof(DiscordBestAttemptSpecies);
     public const string DiscordBatchValidationFailedTitle = nameof(DiscordBatchValidationFailedTitle);

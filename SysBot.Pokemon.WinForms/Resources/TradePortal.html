@@ -94,7 +94,7 @@
                             <img id="user-avatar" alt="" hidden>
                             <span id="user-name"></span>
                         </div>
-                        <button id="logout-button" class="icon-button" title="Logout" aria-label="Logout">
+                        <button id="logout-button" class="icon-button" type="button" data-i18n-title="logoutButtonTitle" data-tooltip="Log out" aria-label="Log out">
                             <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
                                 <path d="M12.5 4.5L17 9m0 0l-4.5 4.5M17 9H7M9 16H4.5A1.5 1.5 0 013 14.5v-9A1.5 1.5 0 014.5 4H9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
                             </svg>
@@ -232,6 +232,18 @@
             </aside>
         </section>
     </main>
+
+    <section id="activity-bar" class="activity-bar" aria-live="polite" aria-atomic="true" hidden>
+        <span class="activity-label">
+            <span class="activity-dot" aria-hidden="true"></span>
+            <span data-i18n="liveActivity">Live activity</span>
+        </span>
+        <p class="activity-message">
+            <strong id="activity-user"></strong>
+            <span data-i18n="activityFinished">just traded a</span>
+            <strong id="activity-pokemon"></strong>
+        </p>
+    </section>
 
     <div id="download-widget" class="download-widget" hidden>
         <button id="download-button" class="download-button" type="button" data-i18n-title="downloadsButtonTitle" data-tooltip="Recent trade files" aria-label="Recent trade files" aria-expanded="false" aria-controls="download-popover">

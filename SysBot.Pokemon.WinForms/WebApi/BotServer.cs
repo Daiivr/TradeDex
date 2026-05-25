@@ -321,6 +321,7 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             "/api/trade/auth/me" => (200, GetCurrentTradeUser(request), "application/json"),
             "/api/trade/auth/logout" => (200, LogoutTradeUser(response), "application/json"),
             "/api/trade/profile" => (200, GetTradeProfile(request), "application/json"),
+            "/api/trade/activity" => (200, GetRecentTradeActivity(), "application/json"),
             "/api/trade/files" => (200, GetRecentTradeFiles(request), "application/json"),
             "/api/trade/queue" => (200, GetWebTradeQueueStatus(request), "application/json"),
             var p when p.StartsWith("/api/trade/files/", StringComparison.Ordinal) && request.HttpMethod == "GET" =>

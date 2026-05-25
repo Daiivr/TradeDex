@@ -21,8 +21,6 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
     private const string Miscellaneous = nameof(Miscellaneous);
 
-    private const string RequestFolders = nameof(RequestFolders);
-
     private const string EmbedSettings = nameof(EmbedSettings);
 
     public override string ToString() => "Ajustes de configuración de Trade";
@@ -47,9 +45,6 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
     [Category(EmbedSettings), Description("Ajustes relacionados con el Trade Embed en Discord."), DisplayName("Configuración del Embed Trade"), Browsable(true)]
     public TradeEmbedSettingsCategory TradeEmbedSettings { get; set; } = new();
-
-    [Category(RequestFolders), Description("Ajustes relacionados con las carpetas de solicitud."), DisplayName("Configuración de las carpetas de solicitud."), Browsable(true)]
-    public RequestFolderSettingsCategory RequestFolderSettings { get; set; } = new();
 
     [Category(CountStats), Description("Ajustes relacionados con las estadísticas de recuento de trades."), DisplayName("Configuración de las estadísticas de recuento de trades"), Browsable(true)]
     public CountStatsSettingsCategory CountStatsSettings { get; set; } = new();
@@ -399,18 +394,6 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
         [Category(VGCPastesConfig), Description("GID de la pestaña de la hoja de cálculo de la que desea extraer datos. Sugerencia: https://docs.google.com/spreadsheets/d/ID/gid=1837599752"), DisplayName("GID de la hoja de cálculo")]
         public int GID { get; set; } = 1837599752;
-    }
-
-    [Category(RequestFolders), TypeConverter(typeof(CategoryConverter<RequestFolderSettingsCategory>))]
-    public class RequestFolderSettingsCategory
-    {
-        public override string ToString() => "Configuración de las carpetas de solicitud";
-
-        [Category("RequestFolders"), Description("Ruta a su carpeta de eventos. Crea una nueva carpeta llamada 'eventos' y copia la ruta aquí."), DisplayName("Ruta de la carpeta de eventos")]
-        public string EventsFolder { get; set; } = string.Empty;
-
-        [Category("RequestFolders"), Description("Ruta a tu carpeta BattleReady. Crea una nueva carpeta llamada 'battleready' y copia la ruta aquí."), DisplayName("Ruta de la carpeta Battle-Ready")]
-        public string BattleReadyPKMFolder { get; set; } = string.Empty;
     }
 
     [Category(Miscellaneous), Description("Apaga la pantalla de la Switch durante las operaciones"), DisplayName("Apagar Pantalla")]

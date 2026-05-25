@@ -217,6 +217,7 @@ internal static class LocalizedPropertyGrid
             .Replace("PK Ms", "PKMs", StringComparison.Ordinal)
             .Replace("P K M", "PKM", StringComparison.Ordinal)
             .Replace("PKHe X", "PKHeX", StringComparison.Ordinal)
+            .Replace("PK He X", "PKHeX", StringComparison.Ordinal)
             .Replace("U R L", "URL", StringComparison.Ordinal)
             .Replace("I D", "ID", StringComparison.Ordinal);
 
@@ -243,8 +244,6 @@ internal static class LocalizedPropertyGrid
         ["Comprobar legalidad en dump trade"] = "Dump Trade Legality Check",
         ["Bloquear evolución por trade"] = "Disallow Trade Evolve",
         ["Retraso máximo de animación de trade"] = "Trade Animation Max Delay Seconds",
-        ["Configuración de las carpetas de solicitud."] = "Request Folder Settings",
-        ["Configuración de las carpetas de solicitud"] = "Request Folder Settings",
         ["Configuración de las estadísticas de recuento de trades"] = "Trade Count Statistics Settings",
         ["Estadísticas del recuento de trades"] = "Trade Count Statistics",
         ["Configuración de VGCPastes"] = "VGCPastes Settings",
@@ -262,6 +261,7 @@ internal static class LocalizedPropertyGrid
         ["Configuracion de recuperacion de bots"] = "Bot Recovery Settings",
         ["Configuración comercial de distribución"] = "Distribution Trade Settings",
         ["Configuración de carpeta/dump"] = "Folder/Dump Settings",
+        ["Archivos"] = "Files",
         ["Configuración de generación de legalidad"] = "Legality Generation Settings",
         ["Configuración de verificación de semillas"] = "Seed Check Settings",
         ["Configuración de condición de parada"] = "Stop Condition Settings",
@@ -298,7 +298,6 @@ internal static class LocalizedPropertyGrid
         ["Synchronize"] = "Synchronize",
         ["TradeConfig"] = "Trade Config",
         ["EmbedSettings"] = "Embed Settings",
-        ["RequestFolders"] = "Request Folders",
         ["CountStats"] = "Count Stats",
         ["VGCPastesConfig"] = "VGCPastes Config",
 
@@ -499,7 +498,6 @@ internal static class LocalizedPropertyGrid
         ["Determina cuándo se activa y desactiva la cola."] = "Determines when the queue turns on and off.",
         ["Ajustes relacionados con la configuración del trade."] = "Settings related to trade configuration.",
         ["Ajustes relacionados con el Trade Embed en Discord."] = "Settings related to the Discord trade embed.",
-        ["Ajustes relacionados con las carpetas de solicitud."] = "Settings related to request folders.",
         ["Ajustes relacionados con las estadísticas de recuento de trades."] = "Settings related to trade count statistics.",
         ["Ajustes relacionados con la Configuración de VGCPastes."] = "Settings related to VGCPastes configuration.",
     };
@@ -513,9 +511,9 @@ internal static class LocalizedPropertyGrid
         ["Skip Console Bot Creation"] = "Omitir creación de bots en consola",
         ["Use Keyboard"] = "Usar teclado",
 
-        ["Distribute Folder"] = "Carpeta de distribución",
+        ["Distribute Folder"] = "Carpeta de Distribución",
         ["Dump"] = "Dump",
-        ["Dump Folder"] = "Carpeta de dump",
+        ["Dump Folder"] = "Carpeta de Dump",
         ["HOME Ready PKM Folder"] = "Carpeta PKM lista para HOME",
         ["PKHeX Directory"] = "Directorio de PKHeX",
         ["PKHe X Directory"] = "Directorio de PKHeX",
@@ -735,6 +733,7 @@ internal static class LocalizedPropertyGrid
         ["Trade Animation Max Delay Seconds"] = "Retraso máximo de animación de trade",
         ["Preferred Image Size"] = "Tamaño preferido de imagen",
         ["Extra Embed Options"] = "Opciones extra del embed",
+        ["Use Embeds"] = "Usar embeds",
         ["Trading Bot URL"] = "URL del bot de trade",
         ["Trading Bot Url"] = "URL del bot de trade",
         ["Non Native Tex T"] = "Texto para Pokémon no nativo",
@@ -776,7 +775,8 @@ internal static class LocalizedPropertyGrid
         ["Show Tracker"] = "Mostrar tracker",
         ["Allow Requests"] = "Permitir solicitudes",
         ["GID"] = "GID",
-        ["Events Folder"] = "Carpeta de eventos",
+        ["Events Folder"] = "Carpeta de Eventos",
+        ["Battle-Ready Folder"] = "Carpeta Battle-Ready",
         ["Battle Ready PKM Folder"] = "Carpeta PKM Battle Ready",
         ["Screen Off"] = "Apagar pantalla",
         ["Emit Counts On Status Check"] = "Emitir conteos al consultar estado",
@@ -785,8 +785,14 @@ internal static class LocalizedPropertyGrid
         ["Emoji String"] = "Texto del emoji",
         ["Trade Configuration"] = "Configuración del trade",
         ["Trade Embed Settings"] = "Ajustes del embed de trade",
-        ["Request Folder Settings"] = "Ajustes de carpetas de solicitud",
         ["Count Stats Settings"] = "Ajustes de estadísticas de conteo",
+        ["Completed Surprise"] = "Trades sorpresa completados",
+        ["Completed Distribution"] = "Trades de distribución completados",
+        ["Completed Trades"] = "Trades completados",
+        ["Completed Fix O Ts"] = "Trades FixOT completados",
+        ["Completed Seed Checks"] = "Comprobaciones de semilla completadas",
+        ["Completed Clones"] = "Clonaciones completadas",
+        ["Completed Dumps"] = "Dumps completados",
         ["VGCPastes Configuration"] = "Configuración de VGCPastes",
     };
 
@@ -1220,7 +1226,8 @@ internal static class LocalizedPropertyGrid
             ["Synchronize"] = "Sincronización",
             ["Trade Config"] = "Configuración de trade",
             ["Embed Settings"] = "Configuración del embed",
-            ["Request Folders"] = "Carpetas de solicitud",
+            ["Path to your Events Folder. Create a new folder called 'events' and copy the path here."] = "Ruta a tu carpeta de eventos. Crea una carpeta nueva llamada 'events' y copia la ruta aquí.",
+            ["Path to your BattleReady Folder. Create a new folder called 'battleready' and copy the path here."] = "Ruta a tu carpeta BattleReady. Crea una carpeta nueva llamada 'battleready' y copia la ruta aquí.",
             ["Count Stats"] = "Estadísticas de conteo",
             ["VGCPastes Config"] = "Configuración de VGCPastes",
             ["Anyone allowed"] = "Cualquiera permitido",

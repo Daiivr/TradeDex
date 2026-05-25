@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 namespace SysBot.Pokemon.Localization;
 public static partial class AppLocalization
 {
@@ -47,7 +47,10 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordLegalizeTimeout] = "Set took too long to legalize.";
                 target[LocalizationKeys.DiscordGenerateTimeout] = "That set took too long to generate.";
                 target[LocalizationKeys.DiscordCreateSomethingFailed] = "I wasn't able to create something from that.";
-                target[LocalizationKeys.DiscordBestAttemptDitto] = "Oops! {0} Here's my best attempt for that Ditto!";
+                target[LocalizationKeys.DiscordBestAttemptDitto] = "⚠️ {1}, oops! {0} Here's my best attempt for that Ditto!";
+                target[LocalizationKeys.DiscordDittoInvalidIVSpread] = "Invalid IV spread: `{0}`. Each value must be between 0 and 31.";
+                target[LocalizationKeys.DiscordDittoUnknownArguments] = "{1}, unrecognized Ditto argument(s): `{0}`. Use IVs (for example, 31/31/31/31/31/31), language, nature, Shiny, OT/TID/SID or origin game.";
+                target[LocalizationKeys.DiscordDittoAdAttempt] = "{0} tried to generate a Pokemon containing advertising on {1}.\nEveryone laugh at them and call them stupid.";
                 target[LocalizationKeys.DiscordItemNotRecognized] = "{0}, the item you entered wasn't recognized.";
                 target[LocalizationKeys.DiscordBestAttemptSpecies] = "{0}\nHere's my best attempt for that {1}!";
                 break;
@@ -92,7 +95,10 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordLegalizeTimeout] = "El set tomo demasiado tiempo en legalizarse.";
                 target[LocalizationKeys.DiscordGenerateTimeout] = "Ese set tomo demasiado tiempo en generarse.";
                 target[LocalizationKeys.DiscordCreateSomethingFailed] = "No pude crear algo con eso.";
-                target[LocalizationKeys.DiscordBestAttemptDitto] = "Ups! {0} Aqui esta mi mejor intento para ese Ditto!";
+                target[LocalizationKeys.DiscordBestAttemptDitto] = "⚠️ {1}, ups! {0} Aqui esta mi mejor intento para ese Ditto!";
+                target[LocalizationKeys.DiscordDittoInvalidIVSpread] = "Spread de IV invalido: `{0}`. Cada valor debe estar entre 0 y 31.";
+                target[LocalizationKeys.DiscordDittoUnknownArguments] = "{1}, argumento(s) de Ditto no reconocido(s): `{0}`. Usa IVs (por ejemplo, 31/31/31/31/31/31), idioma, naturaleza, Shiny, OT/TID/SID o juego de origen.";
+                target[LocalizationKeys.DiscordDittoAdAttempt] = "{0} intento generar un Pokemon con publicidad en {1}.\nTodos rianse de el y llamenlo estupido.";
                 target[LocalizationKeys.DiscordItemNotRecognized] = "{0}, no se reconocio el item que escribiste.";
                 target[LocalizationKeys.DiscordBestAttemptSpecies] = "{0}\nAqui esta mi mejor intento para ese {1}!";
                 break;

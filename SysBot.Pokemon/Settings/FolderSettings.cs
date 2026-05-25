@@ -21,6 +21,12 @@ public class FolderSettings : IDumper
     [Category(Files), Description("Directorio donde se encuentran tus Pokemon con HOME Tracker."), DisplayName("Carpeta HOME-Ready")]
     public string HOMEReadyPKMFolder { get; set; } = string.Empty;
 
+    [Category(Files), Description("Path to your Events Folder. Create a new folder called 'events' and copy the path here."), DisplayName("Events Folder")]
+    public string EventsFolder { get; set; } = string.Empty;
+
+    [Category(Files), Description("Path to your BattleReady Folder. Create a new folder called 'battleready' and copy the path here."), DisplayName("Battle-Ready Folder")]
+    public string BattleReadyPKMFolder { get; set; } = string.Empty;
+
     [Category(Files), Description("Directorio donde se encuentra tu ejecutable de PKHeX."), DisplayName("Carpeta de PKHeX")]
     public string PKHeXDirectory { get; set; } = string.Empty;
 

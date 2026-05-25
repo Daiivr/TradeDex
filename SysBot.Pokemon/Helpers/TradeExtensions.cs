@@ -203,7 +203,7 @@ public abstract class TradeExtensions<T> where T : PKM, new()
         }
     }
 
-    public static T DittoTrade(PKM pkm)
+    public static T DittoTrade(PKM pkm, int[]? preservedIVs = null)
     {
         var dittoStats = new string[] { "atk", "spe", "spa" };
         var nickname = pkm.Nickname.ToLower();
@@ -230,7 +230,9 @@ public abstract class TradeExtensions<T> where T : PKM, new()
         }
 
         pkm.Ball = 21;
-        pkm.IVs = [31, nickname.Contains(dittoStats[0]) ? 0 : 31, 31, nickname.Contains(dittoStats[1]) ? 0 : 31, nickname.Contains(dittoStats[2]) ? 0 : 31, 31];
+        pkm.IVs = preservedIVs is { Length: 6 }
+            ? [.. preservedIVs]
+            : [31, nickname.Contains(dittoStats[0]) ? 0 : 31, 31, nickname.Contains(dittoStats[1]) ? 0 : 31, nickname.Contains(dittoStats[2]) ? 0 : 31, 31];
 
         // Create LA once and pass to TrashBytes to reuse it
         var la = new LegalityAnalysis(pkm);

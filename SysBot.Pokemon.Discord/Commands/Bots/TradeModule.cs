@@ -31,6 +31,8 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
 {
     private static TradeQueueInfo<T> Info => SysCord<T>.Runner.Hub.Queues.Info;
     private static string Prefix => SysCordSettings.Settings.CommandPrefix;
+    private static string EventsFolder => SysCord<T>.Runner.Config.Folder.EventsFolder;
+    private static string BattleReadyPKMFolder => SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder;
 
     #region Medal Achievement Command
 
@@ -312,10 +314,9 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
 
     [Command("dittoTrade")]
     [Alias("dt", "ditto")]
-    [Summary("Makes the bot trade you a Ditto with a requested stat spread and language.")]
+    [Summary("Makes the bot trade you a customizable Ditto. Optional arguments in any order: IVs, Language, Nature, Shiny, OT/TID/SID[/Gender], and Origin Game. No arguments creates a Shiny Ditto.")]
     [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
-    public async Task DittoTrade([Summary("A combination of \"ATK/SPA/SPE\" or \"6IV\"")] string keyword,
-        [Summary("Language")] string language, [Summary("Nature")] string nature)
+    public async Task DittoTrade([Remainder][Summary("Optional: IVs, Language, Nature, Shiny, OT/TID/SID[/Gender], and Origin Game")] string args = "")
     {
         var userID = Context.User.Id;
         if (!await Helpers<T>.EnsureUserNotInQueueAsync(userID))
@@ -325,39 +326,183 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         }
 
         var code = Info.GetRandomTradeCode(userID);
-        await ProcessDittoTradeAsync(code, keyword, language, nature);
+        await ProcessDittoTradeAsync(code, args);
     }
 
-    [Command("dittoTrade")]
-    [Alias("dt", "ditto")]
-    [Summary("Makes the bot trade you a Ditto with a requested stat spread and language.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
-    public async Task DittoTrade([Summary("Trade Code")] int code,
-        [Summary("A combination of \"ATK/SPA/SPE\" or \"6IV\"")] string keyword,
-        [Summary("Language")] string language, [Summary("Nature")] string nature)
+    private static readonly HashSet<string> DittoNatures = new(StringComparer.OrdinalIgnoreCase)
     {
-        var userID = Context.User.Id;
-        if (!await Helpers<T>.EnsureUserNotInQueueAsync(userID))
+        "Hardy", "Lonely", "Brave", "Adamant", "Naughty",
+        "Bold", "Docile", "Relaxed", "Impish", "Lax",
+        "Timid", "Hasty", "Serious", "Jolly", "Naive",
+        "Modest", "Mild", "Quiet", "Bashful", "Rash",
+        "Calm", "Gentle", "Sassy", "Careful", "Quirky",
+    };
+
+    private static readonly HashSet<string> DittoLanguages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Japanese", "English", "French", "Italian", "German",
+        "Spanish", "Korean", "ChineseS", "ChineseT",
+    };
+
+    private static readonly Dictionary<string, string> DittoGameKeywords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["SV"] = "50", ["Violet"] = "50", ["Scarlet"] = "50",
+        ["SLVL"] = "50", ["SL"] = "50", ["VL"] = "50",
+        ["BDSP"] = "48", ["BD"] = "48", ["BrilliantDiamond"] = "48",
+        ["ShiningPearl"] = "48", ["SP"] = "48", ["BS"] = "48",
+        ["SWSH"] = "45", ["SW"] = "45", ["Sword"] = "45",
+        ["SS"] = "45", ["Shield"] = "45", ["SH"] = "45",
+    };
+
+    private static string GetDefaultDittoVersion()
+    {
+        if (typeof(T) == typeof(PK9))
+            return "50";
+        if (typeof(T) == typeof(PB8))
+            return "48";
+        return "45";
+    }
+
+    private async Task ProcessDittoTradeAsync(int code, string args)
+    {
+        string nature = "Timid";
+        string language = "Japanese";
+        bool shiny = string.IsNullOrWhiteSpace(args);
+        string ot = "Ditto";
+        string tid = "143319";
+        string sid = "2551";
+        string otGender = "Male";
+        string version = GetDefaultDittoVersion();
+        int[] ivs = [31, 31, 31, 31, 31, 31];
+        bool userSetIVs = false;
+
+        var working = args ?? string.Empty;
+        working = Regex.Replace(working, @"\bBrilliant\s+Diamond\b", "BrilliantDiamond", RegexOptions.IgnoreCase);
+        working = Regex.Replace(working, @"\bShining\s+Pearl\b", "ShiningPearl", RegexOptions.IgnoreCase);
+
+        var tokens = working.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
+        var unknown = new List<string>();
+
+        foreach (var raw in tokens)
         {
-            await Helpers<T>.SendAlreadyInQueueEmbedAsync(Context);
+            var token = raw.Trim();
+            if (token.Length == 0)
+                continue;
+
+            if (Regex.IsMatch(token, @"^\d+/\d+/\d+/\d+/\d+/\d+$"))
+            {
+                var parts = token.Split('/');
+                var parsed = new int[6];
+                bool ok = true;
+                for (int i = 0; i < 6; i++)
+                {
+                    if (!int.TryParse(parts[i], out parsed[i]) || parsed[i] < 0 || parsed[i] > 31)
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                if (!ok)
+                {
+                    await Helpers<T>.ReplyAndDeleteAsync(Context, AppLocalization.Format(LocalizationKeys.DiscordDittoInvalidIVSpread, token), 5);
+                    return;
+                }
+
+                ivs = parsed;
+                userSetIVs = true;
+                continue;
+            }
+
+            var slashCount = token.Count(c => c == '/');
+            if (slashCount == 2 || slashCount == 3)
+            {
+                var parts = token.Split('/');
+                if (parts[0].Length > 0 && uint.TryParse(parts[1], out _) && uint.TryParse(parts[2], out _))
+                {
+                    string? gender = null;
+                    bool valid = true;
+                    if (parts.Length == 4)
+                    {
+                        var g = parts[3];
+                        if (g.Equals("Male", StringComparison.OrdinalIgnoreCase) || g.Equals("M", StringComparison.OrdinalIgnoreCase))
+                            gender = "Male";
+                        else if (g.Equals("Female", StringComparison.OrdinalIgnoreCase) || g.Equals("F", StringComparison.OrdinalIgnoreCase))
+                            gender = "Female";
+                        else
+                            valid = false;
+                    }
+
+                    if (valid)
+                    {
+                        ot = parts[0];
+                        tid = parts[1];
+                        sid = parts[2];
+                        if (gender != null)
+                            otGender = gender;
+                        continue;
+                    }
+                }
+            }
+
+            if (token.Equals("Shiny", StringComparison.OrdinalIgnoreCase))
+            {
+                shiny = true;
+                continue;
+            }
+
+            if (DittoGameKeywords.TryGetValue(token, out var ver))
+            {
+                version = ver;
+                continue;
+            }
+
+            if (DittoLanguages.Contains(token))
+            {
+                language = char.ToUpper(token[0]) + token[1..].ToLower();
+                if (token.Equals("ChineseS", StringComparison.OrdinalIgnoreCase))
+                    language = "ChineseS";
+                else if (token.Equals("ChineseT", StringComparison.OrdinalIgnoreCase))
+                    language = "ChineseT";
+                continue;
+            }
+
+            if (DittoNatures.Contains(token))
+            {
+                nature = char.ToUpper(token[0]) + token[1..].ToLower();
+                continue;
+            }
+
+            unknown.Add(token);
+        }
+
+        if (unknown.Count > 0)
+        {
+            await Helpers<T>.ReplyAndDeleteAsync(Context,
+                AppLocalization.Format(LocalizationKeys.DiscordDittoUnknownArguments, string.Join("`, `", unknown), Context.User.Mention), 8);
             return;
         }
 
-        await ProcessDittoTradeAsync(code, keyword, language, nature);
-    }
+        var sb = new StringBuilder();
+        sb.AppendLine("Ditto @ Destiny Knot");
+        sb.AppendLine("Level: 100");
+        if (shiny)
+            sb.AppendLine("Shiny: Yes");
+        sb.AppendLine($"{nature} Nature");
+        sb.AppendLine($"Language: {language}");
+        sb.AppendLine($"OT: {ot}");
+        sb.AppendLine($"TID: {tid}");
+        sb.AppendLine($"SID: {sid}");
+        sb.AppendLine($"OTGender: {otGender}");
+        sb.AppendLine($".IV_HP={ivs[0]}");
+        sb.AppendLine($".IV_ATK={ivs[1]}");
+        sb.AppendLine($".IV_DEF={ivs[2]}");
+        sb.AppendLine($".IV_SPA={ivs[3]}");
+        sb.AppendLine($".IV_SPD={ivs[4]}");
+        sb.AppendLine($".IV_SPE={ivs[5]}");
+        sb.AppendLine($"~=Version={version}");
 
-    private async Task ProcessDittoTradeAsync(int code, string keyword, string language, string nature)
-    {
-        keyword = keyword.ToLower().Trim();
-
-        if (!Enum.TryParse(language, true, out LanguageID lang))
-        {
-            await Helpers<T>.ReplyAndDeleteAsync(Context, AppLocalization.Format(LocalizationKeys.DiscordLanguageNotRecognized, language), 5);
-            return;
-        }
-
-        nature = nature.Trim()[..1].ToUpper() + nature.Trim()[1..].ToLower();
-        var set = new ShowdownSet($"{keyword}(Ditto)\nLanguage: {lang}\nNature: {nature}");
+        var set = new ShowdownSet(sb.ToString());
         var template = AutoLegalityWrapper.GetTemplate(set);
         var sav = AutoLegalityWrapper.GetTrainerInfo<T>();
         var pkm = sav.GetLegal(template, out var result);
@@ -368,20 +513,14 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             return;
         }
 
-        pkm = TradeExtensions<T>.DittoTrade((T)pkm);
-
-        // Apply early AutoOT for cached trainer info
-        if (pkm is T dittoPk)
-        {
-            TryApplyEarlyAutoOT(dittoPk, Context.User.Id);
-        }
+        pkm = TradeExtensions<T>.DittoTrade((T)pkm, userSetIVs ? ivs : null);
 
         var la = new LegalityAnalysis(pkm);
 
         if (pkm is not T pk || !la.Valid)
         {
             var reason = result == "Timeout" ? AppLocalization.Get(LocalizationKeys.DiscordGenerateTimeout) : AppLocalization.Get(LocalizationKeys.DiscordCreateSomethingFailed);
-            var imsg = AppLocalization.Format(LocalizationKeys.DiscordBestAttemptDitto, reason);
+            var imsg = AppLocalization.Format(LocalizationKeys.DiscordBestAttemptDitto, reason, Context.User.Mention);
             await Context.Channel.SendPKMAsync(pkm, imsg).ConfigureAwait(false);
             return;
         }
@@ -393,15 +532,17 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         {
             if (TradeExtensions<T>.HasAdName(pk, out string ad))
             {
-                var botName = string.IsNullOrEmpty(SysCordSettings.HubConfig.BotName);
-                await Helpers<T>.ReplyAndDeleteAsync(Context, $"{Context.User.Username} just tried genning an Admon on {botName}\nEveryone laugh at them and start calling them stupid.", 15);
+                var botName = string.IsNullOrEmpty(SysCordSettings.HubConfig.BotName)
+                    ? "el bot"
+                    : SysCordSettings.HubConfig.BotName;
+                await Helpers<T>.ReplyAndDeleteAsync(Context, AppLocalization.Format(LocalizationKeys.DiscordDittoAdAttempt, Context.User.Username, botName), 15);
                 return;
             }
         }
 
         var sig = Context.User.GetFavor();
         await QueueHelper<T>.AddToQueueAsync(Context, code, Context.User.Username, sig, pk,
-            PokeRoutineType.LinkTrade, PokeTradeType.Specific).ConfigureAwait(false);
+            PokeRoutineType.LinkTrade, PokeTradeType.Specific, Context.User, ignoreAutoOT: true).ConfigureAwait(false);
 
         if (Context.Message is IUserMessage userMessage)
             _ = Helpers<T>.DeleteMessagesAfterDelayAsync(userMessage, null, 2);
@@ -966,7 +1107,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task ListEventsAsync([Remainder] string args = "")
         => ListHelpers<T>.HandleListCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.EventsFolder,
+            EventsFolder,
             "events",
             "er",
             args
@@ -978,7 +1119,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task BattleReadyListAsync([Remainder] string args = "")
         => ListHelpers<T>.HandleListCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.BattleReadyPKMFolder,
+            BattleReadyPKMFolder,
             "battle-ready files",
             "brr",
             args
@@ -995,7 +1136,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task EventRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.EventsFolder,
+            EventsFolder,
             index,
             "event",
             "le"
@@ -1008,7 +1149,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task BattleReadyRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.BattleReadyPKMFolder,
+            BattleReadyPKMFolder,
             index,
             "battle-ready file",
             "brl"

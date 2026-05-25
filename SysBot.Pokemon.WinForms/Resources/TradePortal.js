@@ -13,6 +13,11 @@ const state = {
     confettiTradeKey: '',
     profileRefreshTradeKey: '',
     recentFiles: [],
+    activityPolling: null,
+    activitySeen: new Set(),
+    activityQueue: [],
+    activityShowing: false,
+    activityBootstrapped: false,
 };
 
 const $ = (id) => document.getElementById(id);
@@ -35,6 +40,7 @@ const ES = {
     discordLogin: 'Login de Discord requerido',
     loginText: 'Tu Discord ID se usa para codigos de trade, datos guardados de entrenador y seguimiento de cola.',
     loginButton: 'Login con Discord',
+    logoutButtonTitle: 'Cerrar sesion',
     trainerName: 'Nombre de entrenador',
     trainerPlaceholder: 'Tu nombre dentro del juego',
     tradeCode: 'Codigo de trade',
@@ -142,6 +148,8 @@ const ES = {
     terminalCancel: '[CANCELADO] {reason}',
     terminalWait: '[INFO] Esperando la siguiente actualizacion del bot...',
     terminalFallbackCancel: 'El trade fue cancelado.',
+    liveActivity: 'Actividad en vivo',
+    activityFinished: 'acaba de intercambiar un',
 };
 
 const EN = {
@@ -162,6 +170,7 @@ const EN = {
     discordLogin: 'Discord login required',
     loginText: 'Your Discord ID is used for trade codes, saved trainer data, and queue tracking.',
     loginButton: 'Login with Discord',
+    logoutButtonTitle: 'Log out',
     trainerName: 'Trainer name',
     trainerPlaceholder: 'Your in-game name',
     tradeCode: 'Trade code',
@@ -269,6 +278,8 @@ const EN = {
     terminalCancel: '[CANCELLED] {reason}',
     terminalWait: '[INFO] Waiting for the next bot update...',
     terminalFallbackCancel: 'The trade was cancelled.',
+    liveActivity: 'Live activity',
+    activityFinished: 'just traded a',
 };
 
 const t = (key, values = {}) => {
@@ -1309,6 +1320,62 @@ function stopPolling() {
     }
 }
 
+function startActivityPolling() {
+    pollActivity();
+    state.activityPolling = setInterval(pollActivity, 4000);
+}
+
+async function pollActivity() {
+    const result = await api('/api/trade/activity');
+    if (!result.success || !Array.isArray(result.events)) return;
+
+    const events = result.events.filter((event) => event?.id && event?.username && event?.pokemon);
+    if (!state.activityBootstrapped) {
+        events.forEach((event) => state.activitySeen.add(String(event.id)));
+        state.activityBootstrapped = true;
+        const latest = events.at(-1);
+        if (latest) enqueueActivity(latest);
+        return;
+    }
+
+    events.forEach((event) => {
+        const id = String(event.id);
+        if (state.activitySeen.has(id)) return;
+        state.activitySeen.add(id);
+        enqueueActivity(event);
+    });
+}
+
+function enqueueActivity(event) {
+    state.activityQueue.push(event);
+    if (!state.activityShowing) showNextActivity();
+}
+
+async function showNextActivity() {
+    const activity = state.activityQueue.shift();
+    if (!activity) {
+        state.activityShowing = false;
+        return;
+    }
+
+    state.activityShowing = true;
+    const bar = $('activity-bar');
+    $('activity-user').textContent = activity.username;
+    $('activity-pokemon').textContent = activity.pokemon;
+    bar.hidden = false;
+    bar.classList.remove('activity-enter', 'activity-exit');
+    void bar.offsetWidth;
+    bar.classList.add('activity-enter');
+
+    await delay(5400);
+    bar.classList.remove('activity-enter');
+    bar.classList.add('activity-exit');
+    await delay(280);
+    bar.hidden = true;
+    bar.classList.remove('activity-exit');
+    showNextActivity();
+}
+
 function toggleGuide(forceOpen = null) {
     const popover = $('guide-popover');
     const button = $('guide-button');
@@ -1385,6 +1452,7 @@ window.addEventListener('message', async (event) => {
 
 document.addEventListener('DOMContentLoaded', async () => {
     await initLocalization();
+    startActivityPolling();
     $('login-button').addEventListener('click', login);
     $('logout-button').addEventListener('click', logout);
     $('trade-form').addEventListener('submit', submitTrade);

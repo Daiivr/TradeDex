@@ -3296,6 +3296,102 @@ textarea:focus {
         border-color var(--d-fast) var(--ease-out);
 }
 
+.activity-bar {
+    position: fixed;
+    left: 50%;
+    bottom: clamp(16px, 3vw, 28px);
+    z-index: 58;
+    width: max-content;
+    max-width: calc(100vw - 188px);
+    min-height: 52px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 11px 18px 13px;
+    background: var(--surface-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    transform: translateX(-50%);
+}
+
+.activity-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 11px;
+    color: var(--ok);
+    background: var(--ok-soft);
+    border: 1px solid oklch(0.45 0.1 150);
+    border-radius: var(--radius-sm);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    white-space: nowrap;
+}
+
+.activity-dot {
+    width: 6px;
+    height: 6px;
+    flex-shrink: 0;
+    border-radius: 50%;
+    background: var(--ok);
+    box-shadow: 0 0 12px var(--ok);
+    animation: statusPulse 1.4s ease-in-out infinite;
+}
+
+.activity-message {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.32em;
+    color: var(--ink-soft);
+    font-size: 14px;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.activity-message strong {
+    color: var(--ink);
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.activity-bar.activity-enter {
+    animation: activityEnter 280ms var(--ease-out) both;
+}
+
+.activity-bar.activity-exit {
+    animation: activityExit 260ms var(--ease-out) both;
+}
+
+@keyframes activityEnter {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(12px) scale(0.985);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+}
+
+@keyframes activityExit {
+    from {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(8px) scale(0.99);
+    }
+}
+
 @media (max-width: 760px) {
     .topbar {
         margin: 0;
@@ -3347,5 +3443,18 @@ textarea:focus {
 
     .download-popover {
         width: min(360px, calc(100vw - 28px));
+    }
+
+    .activity-bar {
+        bottom: 74px;
+        width: max-content;
+        max-width: calc(100vw - 28px);
+        display: flex;
+        gap: 9px;
+        padding: 11px 14px 13px;
+    }
+
+    .activity-label {
+        width: max-content;
     }
 }

@@ -23,7 +23,17 @@ public partial class BotServer
     private static readonly HttpClient DiscordHttp = new();
     private static readonly ConcurrentDictionary<string, WebTradeSession> TradeSessions = new();
     private static readonly ConcurrentDictionary<string, DateTimeOffset> OAuthStates = new();
+    private static readonly ConcurrentQueue<WebTradeActivity> RecentTradeActivities = new();
     private static int _webTradeId;
+    private static long _webTradeActivityId;
+
+    private sealed class WebTradeActivity
+    {
+        public long Id { get; init; }
+        public string Username { get; init; } = string.Empty;
+        public string Pokemon { get; init; } = string.Empty;
+        public DateTimeOffset CompletedAt { get; init; } = DateTimeOffset.UtcNow;
+    }
 
     private sealed class WebTradeSession
     {
@@ -203,6 +213,36 @@ public partial class BotServer
                 avatar = session.Avatar
             }
         }, JsonOptions);
+    }
+
+    private static string GetRecentTradeActivity()
+    {
+        var visibleSince = DateTimeOffset.UtcNow.AddMinutes(-15);
+        var events = RecentTradeActivities
+            .Where(activity => activity.CompletedAt >= visibleSince)
+            .TakeLast(12)
+            .Select(activity => new
+            {
+                activity.Id,
+                activity.Username,
+                activity.Pokemon,
+                activity.CompletedAt
+            });
+
+        return JsonSerializer.Serialize(new { success = true, events }, JsonOptions);
+    }
+
+    private static void AddTradeActivity(string username, string pokemon)
+    {
+        RecentTradeActivities.Enqueue(new WebTradeActivity
+        {
+            Id = Interlocked.Increment(ref _webTradeActivityId),
+            Username = username,
+            Pokemon = pokemon
+        });
+
+        while (RecentTradeActivities.Count > 24)
+            RecentTradeActivities.TryDequeue(out _);
     }
 
     private static bool IsTradeWebAdmin(ulong discordId)
@@ -1072,6 +1112,7 @@ public partial class BotServer
             }
 
             Update("finished", $"Trade finished. Enjoy your {pokemonName}.");
+            AddTradeActivity(session.Username, pokemonName);
             OnFinish?.Invoke(routine);
         }
 

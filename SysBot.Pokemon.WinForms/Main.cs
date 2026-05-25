@@ -53,6 +53,12 @@ namespace SysBot.Pokemon.WinForms
         // Update available flag
         internal bool hasUpdate = false;
 
+        // Periodic background check for new GitHub releases so the
+        // "NEW RELEASE" banner appears without requiring a restart.
+        private System.Threading.Timer? _updateCheckTimer;
+        private string _lastSeenUpdateVersion = string.Empty;
+        private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromMinutes(30);
+
         // Currently active button in the left panel, for setting Bots as default
         private IconButton currentBtn = null!;
         private IconButton btnLanguage = null!;
@@ -365,6 +371,7 @@ namespace SysBot.Pokemon.WinForms
             lblTitle.Text = Text; // Set the title label text to the form's text
 
             _ = CheckForUpdatesInBackgroundAsync();
+            StartPeriodicUpdateChecks();
 
             this.ActiveControl = null;
             LogUtil.LogInfo("System", AppLocalization.Get(LocalizationKeys.LogBotInitializationComplete));
@@ -387,8 +394,14 @@ namespace SysBot.Pokemon.WinForms
         {
             try
             {
-                var (updateAvailable, _, newVersion) = await UpdateChecker.CheckForUpdatesAsync();
+                var (updateAvailable, _, newVersion) = await UpdateChecker.CheckForUpdatesAsync(forceShow: false, showDialog: false);
                 hasUpdate = updateAvailable;
+
+                // Avoid pushing the same notification twice on subsequent polls.
+                var versionKey = newVersion ?? string.Empty;
+                if (versionKey == _lastSeenUpdateVersion)
+                    return;
+                _lastSeenUpdateVersion = versionKey;
 
                 if (!IsDisposed && _botsForm != null)
                 {
@@ -399,6 +412,27 @@ namespace SysBot.Pokemon.WinForms
             {
                 LogUtil.LogError($"Update check failed: {ex.Message}", "System");
             }
+        }
+
+        private void StartPeriodicUpdateChecks()
+        {
+            // Run a background poll every UpdateCheckInterval. We dedupe by
+            // version inside CheckForUpdatesInBackgroundAsync so the banner
+            // only animates in once per new release detected at runtime.
+            _updateCheckTimer?.Dispose();
+            _updateCheckTimer = new System.Threading.Timer(_ =>
+            {
+                if (IsDisposed) return;
+                _ = CheckForUpdatesInBackgroundAsync();
+            }, null, UpdateCheckInterval, UpdateCheckInterval);
+
+            // Stop polling when the main form goes away to avoid leaking the
+            // timer or firing late callbacks against a disposed UI.
+            FormClosed += (_, _) =>
+            {
+                _updateCheckTimer?.Dispose();
+                _updateCheckTimer = null;
+            };
         }
 
 

@@ -313,6 +313,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("dittoTrade")]
     [Alias("dt", "ditto")]
     [Summary("Makes the bot trade you a Ditto with a requested stat spread and language.")]
+    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
     public async Task DittoTrade([Summary("A combination of \"ATK/SPA/SPE\" or \"6IV\"")] string keyword,
         [Summary("Language")] string language, [Summary("Nature")] string nature)
     {
@@ -330,6 +331,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("dittoTrade")]
     [Alias("dt", "ditto")]
     [Summary("Makes the bot trade you a Ditto with a requested stat spread and language.")]
+    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
     public async Task DittoTrade([Summary("Trade Code")] int code,
         [Summary("A combination of \"ATK/SPA/SPE\" or \"6IV\"")] string keyword,
         [Summary("Language")] string language, [Summary("Nature")] string nature)
@@ -408,6 +410,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("itemTrade")]
     [Alias("it", "item")]
     [Summary("Makes the bot trade you a Pokémon holding the requested item.")]
+    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
     public async Task ItemTrade([Remainder] string item)
     {
         var userID = Context.User.Id;
@@ -424,6 +427,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("itemTrade")]
     [Alias("it", "item")]
     [Summary("Makes the bot trade you a Pokémon holding the requested item.")]
+    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
     public async Task ItemTrade([Summary("Trade Code")] int code, [Remainder] string item)
     {
         var userID = Context.User.Id;
@@ -486,7 +490,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("itemBatchTrade")]
     [Alias("ibt")]
     [Summary("Makes the bot trade you the default item-trade species holding the requested item, multiple times in a batch.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public async Task ItemBatchTrade([Summary("Item Name and Count, e.g. 'Life Orb 6'")][Remainder] string content)
     {
         var tradeConfig = SysCord<T>.Runner.Config.Trade.TradeConfiguration;
@@ -987,7 +991,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("eventrequest")]
     [Alias("er")]
     [Summary("Downloads event attachments from the specified EventsFolder and adds to trade queue.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public Task EventRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
@@ -1000,7 +1004,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("battlereadyrequest")]
     [Alias("brr", "br")]
     [Summary("Downloads battle-ready attachments from the specified folder and adds to trade queue.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public Task BattleReadyRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
@@ -1017,7 +1021,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("batchTrade")]
     [Alias("bt")]
     [Summary("Makes the bot trade multiple Pokémon from the provided list, up to a maximum of 4 trades.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public async Task BatchTradeAsync([Summary("List of Showdown Sets separated by '---'")][Remainder] string content)
     {
         var tradeConfig = SysCord<T>.Runner.Config.Trade.TradeConfiguration;
@@ -1118,7 +1122,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("batchtradezip")]
     [Alias("btz", "batchzip", "ziptrade", "7z", "rar", "zip", "bt7", "btr", "batch7z", "batchrar")]
     [Summary("Upload a .zip/.rar/.7z containing PKM files to trade multiple Pokémon at once.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public async Task BatchTradeZipAsync()
     {
         var tradeConfig = SysCord<T>.Runner.Config.Trade.TradeConfiguration;

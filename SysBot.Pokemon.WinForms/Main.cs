@@ -19,6 +19,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -61,7 +62,9 @@ namespace SysBot.Pokemon.WinForms
 
         // Currently active button in the left panel, for setting Bots as default
         private IconButton currentBtn = null!;
-        private IconButton btnLanguage = null!;
+        private Panel btnLanguage = null!;
+        private Label lblLangEn = null!;
+        private Label lblLangEs = null!;
         private PictureBox childFormTitleImage = null!;
         private ToolTip languageToolTip = null!;
 
@@ -1281,6 +1284,9 @@ namespace SysBot.Pokemon.WinForms
             if (sender == btnClose || sender == btnMaximize || sender == btnMinimize || sender == btnLanguage)
                 return;
 
+            if (btnLanguage != null && sender is Control senderControl && senderControl.Parent == btnLanguage)
+                return;
+
             if (btnLanguage != null && btnLanguage.Visible && sender == panelTitleBar)
             {
                 var languageBounds = btnLanguage.Bounds;
@@ -1298,6 +1304,13 @@ namespace SysBot.Pokemon.WinForms
         ////////// CLOSE/MAX/MIN BUTTON HANDLING //////////
         ///////////////////////////////////////////////////
 
+        // Pill geometry — restrained title-bar chrome
+        private const int LangPillWidth = 62;
+        private const int LangPillHeight = 24;
+        private const int LangPillSegmentWidth = 31;
+        private bool _langHoverEn;
+        private bool _langHoverEs;
+
         // Method to activate Bots button and load BotsForm
         private void InitializeLanguageButton()
         {
@@ -1309,57 +1322,141 @@ namespace SysBot.Pokemon.WinForms
                 ShowAlways = true
             };
 
-            var muted = Color.FromArgb(180, 184, 192);
-            btnLanguage = new IconButton
+            btnLanguage = new DoubleBufferedPanel
             {
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = Color.Transparent,
-                FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Regular),
-                ForeColor = muted,
-                IconChar = IconChar.Globe,
-                IconColor = muted,
-                IconFont = IconFont.Auto,
-                IconSize = 12,
-                Location = new Point(btnMinimize.Left - 70, 16),
+                Location = new Point(btnMinimize.Left - LangPillWidth - 14, 15),
                 Name = "btnLanguage",
-                Size = new Size(60, 22),
-                TextAlign = ContentAlignment.MiddleRight,
-                TextImageRelation = TextImageRelation.ImageBeforeText,
-                UseVisualStyleBackColor = false,
+                Size = new Size(LangPillWidth, LangPillHeight),
                 Cursor = Cursors.Hand
             };
+            btnLanguage.Paint += LanguagePill_Paint;
 
-            btnLanguage.FlatAppearance.BorderSize = 0;
-            btnLanguage.FlatAppearance.MouseOverBackColor = Color.Transparent;
-            btnLanguage.FlatAppearance.MouseDownBackColor = Color.Transparent;
-            btnLanguage.MouseEnter += (_, _) =>
+            // Same weight on both segments — color carries the active state, not weight
+            var pillFont = new Font("Segoe UI Semibold", 8F, FontStyle.Regular);
+
+            lblLangEn = new Label
             {
-                btnLanguage.ForeColor = Color.FromArgb(232, 234, 238);
-                btnLanguage.IconColor = Color.FromArgb(232, 234, 238);
+                AutoSize = false,
+                BackColor = Color.Transparent,
+                Font = pillFont,
+                Location = new Point(0, 0),
+                Margin = Padding.Empty,
+                Padding = new Padding(0, 0, 0, 3),
+                Name = "lblLangEn",
+                Size = new Size(LangPillSegmentWidth, LangPillHeight),
+                Text = "EN",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
             };
-            btnLanguage.MouseLeave += (_, _) =>
+            lblLangEn.Click += (_, _) => SetLanguage(AppLanguage.English);
+            lblLangEn.MouseEnter += (_, _) => { _langHoverEn = true; ApplyLocalization(); };
+            lblLangEn.MouseLeave += (_, _) => { _langHoverEn = false; ApplyLocalization(); };
+
+            lblLangEs = new Label
             {
-                btnLanguage.ForeColor = muted;
-                btnLanguage.IconColor = muted;
+                AutoSize = false,
+                BackColor = Color.Transparent,
+                Font = pillFont,
+                Location = new Point(LangPillSegmentWidth, 0),
+                Margin = Padding.Empty,
+                Padding = new Padding(0, 0, 0, 3),
+                Name = "lblLangEs",
+                Size = new Size(LangPillSegmentWidth, LangPillHeight),
+                Text = "ES",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
             };
-            btnLanguage.Click += (_, _) => ToggleLanguage();
+            lblLangEs.Click += (_, _) => SetLanguage(AppLanguage.Spanish);
+            lblLangEs.MouseEnter += (_, _) => { _langHoverEs = true; ApplyLocalization(); };
+            lblLangEs.MouseLeave += (_, _) => { _langHoverEs = false; ApplyLocalization(); };
+
+            btnLanguage.Controls.Add(lblLangEn);
+            btnLanguage.Controls.Add(lblLangEs);
             panelTitleBar.Controls.Add(btnLanguage);
             btnLanguage.BringToFront();
             ApplyLocalization();
         }
 
-        private void ToggleLanguage()
+        private void LanguagePill_Paint(object? sender, PaintEventArgs e)
         {
+            if (btnLanguage == null)
+                return;
+
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+            var theme = ThemeManager.CurrentColors;
+            var bounds = new Rectangle(0, 0, btnLanguage.Width - 1, btnLanguage.Height - 1);
+            int radius = bounds.Height;
+
+            // Track: inset/recessed surface (Background is darker than the title bar's PanelBase),
+            // so the pill reads like an inset field — clearer container than the previous flat-on-flat.
+            using (var trackPath = CreatePillPath(bounds, radius))
+            using (var trackBrush = new SolidBrush(theme.Background))
+            using (var borderPen = new Pen(theme.Shadow, 1f))
+            {
+                g.FillPath(trackBrush, trackPath);
+                g.DrawPath(borderPen, trackPath);
+            }
+
+            // Thumb: raised tile — uses Hover, which is brighter than PanelBase, so it reads
+            // as lifted above both the track and the title bar. Single semantic moment for color
+            // is reserved for the text + the 2px accent underline.
+            bool isEnglish = AppLocalization.Language == AppLanguage.English;
+            const int inset = 3;
+            int halfWidth = (btnLanguage.Width - inset * 2) / 2;
+            int thumbX = isEnglish ? inset : inset + halfWidth;
+            var thumb = new Rectangle(
+                thumbX,
+                inset,
+                halfWidth,
+                btnLanguage.Height - (inset * 2) - 1);
+
+            using (var thumbPath = CreatePillPath(thumb, thumb.Height))
+            using (var thumbBrush = new SolidBrush(theme.Hover))
+            {
+                g.FillPath(thumbBrush, thumbPath);
+            }
+        }
+
+        private static GraphicsPath CreatePillPath(Rectangle bounds, int radius)
+        {
+            radius = Math.Max(2, Math.Min(radius, Math.Min(bounds.Width, bounds.Height)));
+            var path = new GraphicsPath();
+            int d = radius;
+            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        private sealed class DoubleBufferedPanel : Panel
+        {
+            public DoubleBufferedPanel()
+            {
+                SetStyle(ControlStyles.AllPaintingInWmPaint
+                    | ControlStyles.OptimizedDoubleBuffer
+                    | ControlStyles.UserPaint
+                    | ControlStyles.SupportsTransparentBackColor, true);
+                UpdateStyles();
+            }
+        }
+
+        private void SetLanguage(AppLanguage next)
+        {
+            if (AppLocalization.Language == next)
+                return;
+
             if (HasRunningBots())
             {
                 WinFormsUtil.Alert(AppLocalization.Get(LocalizationKeys.LanguageChangeBlockedBotRunning));
                 return;
             }
-
-            var next = AppLocalization.Language == AppLanguage.English
-                ? AppLanguage.Spanish
-                : AppLanguage.English;
 
             Config.Language = next;
             AppLocalization.SetLanguage(next);
@@ -1476,13 +1573,27 @@ namespace SysBot.Pokemon.WinForms
             if (btnLogs != null)
                 btnLogs.Text = "   " + AppLocalization.Get(LocalizationKeys.NavLogs);
 
-            if (btnLanguage != null)
+            if (btnLanguage != null && lblLangEn != null && lblLangEs != null)
             {
-                var nextLanguageKey = AppLocalization.Language == AppLanguage.English
-                    ? LocalizationKeys.LanguageButtonSpanish
-                    : LocalizationKeys.LanguageButtonEnglish;
-                btnLanguage.Text = " " + AppLocalization.Get(nextLanguageKey);
-                languageToolTip?.SetToolTip(btnLanguage, AppLocalization.Get(LocalizationKeys.LanguageButtonTooltip));
+                var theme = ThemeManager.CurrentColors;
+                bool isEnglish = AppLocalization.Language == AppLanguage.English;
+
+                // Active glyph rides the raised thumb in ForeColor for maximum legibility;
+                // the 2px Accent strip painted below carries the semantic tie to the nav.
+                // Inactive glyph sits on the recessed track in Muted, brightening on hover.
+                lblLangEn.ForeColor = isEnglish
+                    ? theme.ForeColor
+                    : (_langHoverEn ? theme.ForeColor : theme.Muted);
+                lblLangEs.ForeColor = !isEnglish
+                    ? theme.ForeColor
+                    : (_langHoverEs ? theme.ForeColor : theme.Muted);
+
+                btnLanguage.Invalidate();
+
+                var tooltip = AppLocalization.Get(LocalizationKeys.LanguageButtonTooltip);
+                languageToolTip?.SetToolTip(btnLanguage, tooltip);
+                languageToolTip?.SetToolTip(lblLangEn, tooltip);
+                languageToolTip?.SetToolTip(lblLangEs, tooltip);
             }
 
             if (downloadFontsLink != null)
@@ -1599,6 +1710,10 @@ namespace SysBot.Pokemon.WinForms
         {
             // Use the current theme colors
             var colors = ThemeManager.CurrentColors;
+
+            // Re-read tokens for the language pill so it follows theme swaps
+            if (btnLanguage != null)
+                ApplyLocalization();
 
             foreach (var btn in new[] { btnBots, btnHub, btnLogs })
             {

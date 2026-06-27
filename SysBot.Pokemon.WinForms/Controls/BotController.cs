@@ -61,6 +61,7 @@ public partial class BotController : UserControl
     public BotController()
     {
         InitializeComponent();
+        btnActions.Text = "MENU";
         InitializeContextMenu();
         AppLocalization.LanguageChanged += (_, _) => ApplyLocalization();
         ApplyLocalization();
@@ -120,6 +121,38 @@ public partial class BotController : UserControl
             _progressFill.Invalidate();
         };
         _sparkleTimer.Start();
+
+        ApplyTheme();
+    }
+
+    /// <summary>
+    /// Recolors this controller's surfaces to the currently selected theme.
+    /// Status/progress indicator colors (the glow dot, progress gradient, status
+    /// text) are intentionally left alone since they convey bot state, not decoration.
+    /// </summary>
+    public void ApplyTheme()
+    {
+        var colors = ThemeManager.CurrentColors;
+
+        BackColor = colors.ControlBackground;
+        rtbBotMeta.BackColor = colors.ControlBackground;
+        rtbBotMeta.ForeColor = colors.ControllerForeColor;
+
+        if (_progressBarContainer != null)
+            _progressBarContainer.BackColor = colors.ControlBackground;
+
+        btnActions.BackColor = colors.PanelBase;
+        btnActions.ForeColor = colors.ControllerForeColor;
+        btnActions.FlatAppearance.BorderColor = colors.Border;
+        btnActions.FlatAppearance.MouseOverBackColor = colors.Highlight;
+        btnActions.FlatAppearance.MouseDownBackColor = colors.Border;
+
+        // Text labels follow the theme foreground (lblStatus stays state-colored).
+        lblConnectionName.ForeColor = colors.ControllerForeColor;
+        if (lblConnectionInfo != null)
+            lblConnectionInfo.ForeColor = colors.ControllerForeColor;
+        if (lblRoutine != null)
+            lblRoutine.ForeColor = colors.ControllerForeColor;
     }
 
     private void _progressFill_Paint(object? sender, PaintEventArgs e)
@@ -458,6 +491,10 @@ public partial class BotController : UserControl
         private readonly Color _backgroundColor = Color.FromArgb(22, 23, 26);
         private readonly int _leftPadding = 22; // padding from left edge
 
+        // Pulled live so the menu follows theme changes without rebuilding it.
+        private static Color BackgroundColor => ThemeManager.CurrentColors.ControlBackground;
+        private static Color SelectedColor => ThemeManager.CurrentColors.Highlight;
+
         public ColoredMenuRenderer(Dictionary<string, Color> colorMap)
         {
             _colorMap = colorMap;
@@ -465,13 +502,13 @@ public partial class BotController : UserControl
 
         protected override void OnRenderToolStripBackground(ToolStripRenderEventArgs e)
         {
-            using var brush = new SolidBrush(_backgroundColor);
+            using var brush = new SolidBrush(BackgroundColor);
             e.Graphics.FillRectangle(brush, e.AffectedBounds);
         }
 
         protected override void OnRenderMenuItemBackground(ToolStripItemRenderEventArgs e)
         {
-            Color bg = e.Item.Selected ? Color.Cyan : _backgroundColor;
+            Color bg = e.Item.Selected ? SelectedColor : BackgroundColor;
             using var brush = new SolidBrush(bg);
             e.Graphics.FillRectangle(brush, e.Item.ContentRectangle);
         }

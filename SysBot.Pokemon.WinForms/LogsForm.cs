@@ -21,6 +21,8 @@ namespace SysBot.Pokemon.WinForms
         private Button clearButton = null!;
         private Label resultLabel = null!;
         private Label placeholderLabel = null!;
+        private Panel _logsPanel = null!;
+        private Panel _topPanel = null!;
 
         private List<int> matchIndices = new();
         private int currentMatchIndex = -1;
@@ -80,19 +82,59 @@ namespace SysBot.Pokemon.WinForms
                 Font = new Font("Segoe UI", 10F, FontStyle.Regular)
             };
 
-            var logsPanel = new Panel { Dock = DockStyle.Fill };
-            logsPanel.Controls.Add(placeholderLabel);
-            logsPanel.Controls.Add(LogsBox);
+            _logsPanel = new Panel { Dock = DockStyle.Fill };
+            _logsPanel.Controls.Add(placeholderLabel);
+            _logsPanel.Controls.Add(LogsBox);
 
-            var topPanel = CreateSearchPanel();
+            _topPanel = CreateSearchPanel();
 
             // Add the panels in correct order
-            Controls.Add(logsPanel);   // ✅ instead of LogsBox directly
-            Controls.Add(topPanel);
+            Controls.Add(_logsPanel);   // ✅ instead of LogsBox directly
+            Controls.Add(_topPanel);
 
             LogsBox.TextChanged += LogsBox_TextChanged;
             DarkScrollHelper.Apply(LogsBox);
             ApplyLocalization();
+            ApplyTheme();
+        }
+
+        public void ApplyTheme()
+        {
+            var colors = ThemeManager.CurrentColors;
+            BackColor = colors.Background;
+
+            if (_topPanel != null)
+                _topPanel.BackColor = colors.PanelBase;
+            if (_logsPanel != null)
+                _logsPanel.BackColor = colors.Background;
+            if (LogsBox != null)
+            {
+                LogsBox.BackColor = colors.Background;
+                LogsBox.ForeColor = colors.ForeColor;
+            }
+            if (placeholderLabel != null)
+                placeholderLabel.ForeColor = colors.Muted;
+            if (searchBoxShell != null)
+            {
+                searchBoxShell.BackColor = colors.ControlBackground;
+                searchBoxShell.Invalidate();
+            }
+            if (searchBox != null)
+            {
+                searchBox.BackColor = colors.ControlBackground;
+                searchBox.ForeColor = colors.ForeColor;
+            }
+            if (resultLabel != null)
+                resultLabel.ForeColor = colors.Muted;
+            foreach (var button in new[] { nextButton, prevButton, clearButton })
+            {
+                if (button == null)
+                    continue;
+                button.BackColor = colors.PanelBase;
+                button.ForeColor = colors.CommandButtonForeColor;
+                button.FlatAppearance.BorderColor = colors.Border;
+                button.FlatAppearance.MouseOverBackColor = colors.Highlight;
+            }
         }
 
         public void ApplyLocalization()

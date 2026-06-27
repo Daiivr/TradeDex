@@ -101,10 +101,45 @@ public static class ThemeManager
 
         // Reapply hover handlers so they pick up the new palette.
         form.SetupThemeAwareButtons();
+
+        // Cascade the theme into the child forms (Bots/Hub/Logs) and their controls
+        form.RefreshChildThemes();
     }
 
     public static ThemeColors? GetCurrentColors()
         => ThemePresets.TryGetValue(CurrentThemeName, out var colors) ? colors : null;
+
+    // ──────────────────────────────────────────────────────────────────────
+    //  Color helpers — used to derive the secondary surface colors so every
+    //  preset themes the child forms without having to declare extra colors.
+    // ──────────────────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// Lightens (factor &gt; 0, toward white) or darkens (factor &lt; 0, toward
+    /// black) a color. <paramref name="factor"/> is a 0–1 ratio.
+    /// </summary>
+    public static Color Shade(Color c, float factor)
+    {
+        if (factor < 0)
+        {
+            float f = 1f + factor; // e.g. -0.30 -> scale channels by 0.70
+            return Color.FromArgb(c.A, Clamp(c.R * f), Clamp(c.G * f), Clamp(c.B * f));
+        }
+
+        return Color.FromArgb(c.A,
+            Clamp(c.R + (255 - c.R) * factor),
+            Clamp(c.G + (255 - c.G) * factor),
+            Clamp(c.B + (255 - c.B) * factor));
+    }
+
+    /// <summary>Linearly blends <paramref name="a"/> toward <paramref name="b"/> by <paramref name="t"/> (0–1).</summary>
+    public static Color Blend(Color a, Color b, float t)
+        => Color.FromArgb(
+            Clamp(a.R + (b.R - a.R) * t),
+            Clamp(a.G + (b.G - a.G) * t),
+            Clamp(a.B + (b.B - a.B) * t));
+
+    private static int Clamp(float v) => (int)(v < 0 ? 0 : v > 255 ? 255 : v);
 }
 
 public class ThemeColors
@@ -118,4 +153,10 @@ public class ThemeColors
     public Color Accent { get; set; } = Color.FromArgb(96, 165, 250);
     public Color Muted { get; set; } = Color.FromArgb(140, 144, 152);
     public Color Background { get; set; } = Color.FromArgb(15, 16, 19);
+    public Color ControlBackground => Hover;
+    public Color ControllerForeColor => ForeColor;
+    public Color Border => Shadow;
+    public Color Highlight => Accent;
+    public Color ListBackground => Background;
+    public Color CommandButtonForeColor => ForeColor;
 }

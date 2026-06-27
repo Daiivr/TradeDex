@@ -968,6 +968,7 @@ public class PokeTradeBotPLZA(PokeTradeHub<PA9> Hub, PokeBotState Config) : Poke
 
                 SetTradeState(TradeState.Confirming);
 
+                Log(PokeTradeBotUtil.FormatFinalTrainerInfo(poke.TradeData));
                 var tradeResult = await ConfirmAndStartTrading(
                     poke,
                     beforeTrade.Checksum,

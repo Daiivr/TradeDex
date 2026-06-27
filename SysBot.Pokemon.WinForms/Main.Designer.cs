@@ -179,8 +179,6 @@ namespace SysBot.Pokemon.WinForms
             // panelImageLogo
             // 
             panelImageLogo.BackColor = Color.Transparent;
-            panelImageLogo.Controls.Add(panel6);
-            panelImageLogo.Controls.Add(panel5);
             panelImageLogo.Controls.Add(panel3);
             panelImageLogo.Controls.Add(pictureLogo);
             panelImageLogo.Dock = DockStyle.Top;
@@ -219,6 +217,7 @@ namespace SysBot.Pokemon.WinForms
             panel3.Name = "panel3";
             panel3.Size = new Size(220, 1);
             panel3.TabIndex = 3;
+            panel3.Paint += panel3_Paint;
             // 
             // pictureLogo
             // 

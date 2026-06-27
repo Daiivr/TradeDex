@@ -132,8 +132,8 @@ namespace SysBot.Pokemon.WinForms
         {
             ProgramMode.PLZA => TitleBarPalette_PLZA,
             ProgramMode.LGPE => TitleBarPalette_LGPE,
-            ProgramMode.SV   => TitleBarPalette_SV,
-            ProgramMode.LA   => TitleBarPalette_LA,
+            ProgramMode.SV => TitleBarPalette_SV,
+            ProgramMode.LA => TitleBarPalette_LA,
             ProgramMode.BDSP => TitleBarPalette_BDSP,
             ProgramMode.SWSH => TitleBarPalette_SWSH,
             _ => null, // null falls back to Sparkle's default white/yellow
@@ -700,7 +700,7 @@ namespace SysBot.Pokemon.WinForms
             if (!_botsForm.BotPanel.Controls.OfType<BotController>().Any(c => c.IsRunning()) && (ModifierKeys & Keys.Alt) == 0)
             // If not running and no Alt key pressed
             {
-                WinFormsUtil.Alert("Nothing's running, genius."); // Derp
+                WinFormsUtil.Alert("Nothing's running, genius.");
                 return;
             }
 
@@ -710,12 +710,16 @@ namespace SysBot.Pokemon.WinForms
             {
                 if (env.IsRunning)
                 {
-                    WinFormsUtil.Alert("Commanding all bots to Idle.", "Press Stop (without a modifier key) to hard-stop and unlock control, or press Stop with the modifier key again to resume.");
+                    WinFormsUtil.Alert(
+                        "Commanding all bots to Idle.",
+                        "Press Stop (without a modifier key) to hard-stop and unlock control, or press Stop with the modifier key again to resume.");
                     cmd = WebApi.BotControlCommand.Idle;
                 }
                 else
                 {
-                    WinFormsUtil.Alert("Commanding all bots to resume their original task.", "Press Stop (without a modifier key) to hard-stop and unlock control.");
+                    WinFormsUtil.Alert(
+                        "Commanding all bots to resume their original task.",
+                        "Press Stop (without a modifier key) to hard-stop and unlock control.");
                     cmd = WebApi.BotControlCommand.Resume;
                 }
             }
@@ -847,6 +851,19 @@ namespace SysBot.Pokemon.WinForms
 
             CB_Themes.SelectedItem = Config.Theme;
             ThemeManager.ApplyTheme(this, Config.Theme);
+        }
+
+        /// <summary>
+        /// Re-applies the current theme to the child forms (Bots/Hub/Logs) and their
+        /// nested controls. Called by <see cref="ThemeManager.ApplyTheme(Main, string)"/>
+        /// whenever the theme changes so the whole UI stays in sync.
+        /// </summary>
+        public void RefreshChildThemes()
+        {
+            _botsForm?.ApplyTheme();
+            _logsForm?.ApplyTheme();
+            if (_hubForm is { IsDisposed: false })
+                _hubForm.ApplyTheme();
         }
 
 
@@ -1187,7 +1204,7 @@ namespace SysBot.Pokemon.WinForms
         ///////////////////////////////////////////////////
         //////////// PROGRESS BAR UPDATE LOGIC ////////////
         ///////////////////////////////////////////////////
-       
+
         private void HookBotProgress(PokeBotState cfg, PokeRoutineExecutorBase bot)
         {
             BotController? botControl = _botsForm.BotPanel.Controls
@@ -2023,7 +2040,11 @@ namespace SysBot.Pokemon.WinForms
             catch (Exception ex)
             {
                 LogUtil.LogError($"Error in Download Fonts link click: {ex.Message}", "System");
-                WinFormsUtil.Error($"Error showing font download dialog:\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}");
+                WinFormsUtil.Error(
+                    "Error showing font download dialog:",
+                    ex.Message,
+                    "Stack trace:",
+                    ex.StackTrace ?? string.Empty);
             }
         }
 
@@ -2063,7 +2084,11 @@ namespace SysBot.Pokemon.WinForms
             catch (Exception ex)
             {
                 LogUtil.LogError($"Error in Download Fonts link click: {ex.Message}", "System");
-                WinFormsUtil.Error($"Error showing font download dialog:\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}");
+                WinFormsUtil.Error(
+                    "Error showing font download dialog:",
+                    ex.Message,
+                    "Stack trace:",
+                    ex.StackTrace ?? string.Empty);
             }
         }
 
@@ -2125,12 +2150,17 @@ namespace SysBot.Pokemon.WinForms
                 await File.WriteAllBytesAsync(filePath, fileBytes);
 
                 LogUtil.LogInfo($"Fonts downloaded successfully to: {filePath}", "System");
-                WinFormsUtil.Alert($"Fonts downloaded successfully!\n\nLocation: {filePath}\n\nPlease install the fonts and restart the program.");
+                WinFormsUtil.Alert(
+                    "Fonts downloaded successfully!",
+                    $"Location: {filePath}",
+                    "Please install the fonts and restart the program.");
             }
             catch (Exception ex)
             {
                 LogUtil.LogError($"Failed to download fonts: {ex.Message}", "System");
-                WinFormsUtil.Error($"Failed to download fonts:\n{ex.Message}");
+                WinFormsUtil.Error(
+                    "Failed to download fonts:",
+                    ex.Message);
             }
         }
 
@@ -2150,12 +2180,24 @@ namespace SysBot.Pokemon.WinForms
             }
             catch (Exception ex)
             {
-                WinFormsUtil.Error($"Failed to save configuration:\n{ex.Message}");
+                WinFormsUtil.Error(
+                    "Failed to save configuration:",
+                    ex.Message);
             }
         }
 
         // WINFORMS JUNK THAT'S NEEDED
         private void panel6_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void panel5_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void panel3_Paint(object sender, PaintEventArgs e)
         {
 
         }

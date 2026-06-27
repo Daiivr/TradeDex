@@ -167,6 +167,35 @@ public static class Helpers<T> where T : PKM, new()
         var filteredLines = contentLines.Where(line =>
             !line.TrimStart().StartsWith("Language:", StringComparison.OrdinalIgnoreCase)
         ).ToArray();
+
+        // Strip user-supplied OT:/TID:/SID: lines and capture them for explicit
+        // application after generation. ALM does not reliably propagate these
+        // from a RegenSet onto a PKM generated against the bot's configured sav,
+        // so without this the bot's GenerateOT/TID/SID survive into the trade.
+        string? userOT = null;
+        uint? userTID = null;
+        uint? userSID = null;
+        filteredLines = filteredLines.Where(line =>
+        {
+            var t = line.TrimStart();
+            if (t.StartsWith("OT:", StringComparison.OrdinalIgnoreCase))
+            {
+                userOT = t[3..].Trim();
+                return false;
+            }
+            if (t.StartsWith("TID:", StringComparison.OrdinalIgnoreCase) && uint.TryParse(t[4..].Trim(), out var tv))
+            {
+                userTID = tv;
+                return false;
+            }
+            if (t.StartsWith("SID:", StringComparison.OrdinalIgnoreCase) && uint.TryParse(t[4..].Trim(), out var sv))
+            {
+                userSID = sv;
+                return false;
+            }
+            return true;
+        }).ToArray();
+
         var contentWithoutLanguage = string.Join('\n', filteredLines);
 
         // Detect user-specified Tera Type (for SV non-native override fix)
@@ -240,11 +269,11 @@ public static class Helpers<T> where T : PKM, new()
         // Generate egg or normal pokemon based on isEgg flag
         if (isEgg)
         {
-            // Create a proper RegenTemplate from the ShowdownSet
-            var regenTemplate = new RegenTemplate(set);
-
-            // Generate egg using ALM
-            pkm = sav.GenerateEgg(regenTemplate, out var eggResult);
+            // Reuse the template built above. GetTemplate(set) already parsed the Ball:/.Scale=
+            // lines into its Regen AND removed them from set.InvalidLines, so a fresh
+            // RegenTemplate(set) here would silently drop the user's ball and batch commands.
+            // Generate egg (also applies the user's batch commands, e.g. .Scale=)
+            pkm = AutoLegalityWrapper.GenerateEgg(sav, template, out var eggResult);
             result = eggResult.ToString();
         }
         else
@@ -914,6 +943,17 @@ public static class Helpers<T> where T : PKM, new()
         // choice is not overwritten by finalLanguage here.
         PrepareForTrade(pk, set, effectiveLanguage);
 
+        // Apply user-supplied OT/TID/SID from the Showdown set (after PrepareForTrade
+        // has finalized language/nickname/Asian-OT handling). Reverts to the
+        // pre-override state if the result fails legality so we never ship an
+        // illegal trade — for fixed-OT encounters the bot defaults survive.
+        if (userOT is not null || userTID is not null || userSID is not null)
+        {
+            LogUtil.LogInfo($"Trade TrainerOverride = Requested OT: {userOT} | Requested TID: {userTID} | Requested SID: {userSID} | Species: {pk.Species} | Before OT: {pk.OriginalTrainerName} | Before TID: {pk.TrainerTID7} | Before SID: {pk.TrainerSID7}", "TrainerOverride");
+            ApplyUserTrainerOverride(pk, userOT, userTID, userSID);
+            LogUtil.LogInfo($"Trade TrainerOverride = Final OT: {pk.OriginalTrainerName} | Final TID: {pk.TrainerTID7} | Final SID: {pk.TrainerSID7} | Legal: {new LegalityAnalysis(pk).Valid}", "TrainerOverride");
+        }
+
         // Check for spam names
         if (Info.Hub.Config.Trade.TradeConfiguration.EnableSpamCheck)
         {
@@ -998,6 +1038,52 @@ public static class Helpers<T> where T : PKM, new()
         }
 
         pk.ResetPartyStats();
+    }
+
+    /// Applies user-supplied OT/TID/SID from the Showdown set onto the final PKM.
+    /// Captures shiny state before mutating IDs so the PID can be rebuilt against
+    /// the new TID/SID — without this, pk.IsShiny re-evaluates against the new IDs
+    /// with the old PID and silently reads false, dropping the shiny we generated.
+    /// Reverts every field on legality failure so the bot never ships an illegal
+    /// trade for fixed-OT encounters (events, in-game trades, Mystery Gifts).
+    private static void ApplyUserTrainerOverride(T pk, string? ot, uint? tid, uint? sid)
+    {
+        var backup = pk.Clone();
+        bool wasShiny = backup.IsShiny;
+        uint originalShinyXor = backup.ShinyXor;
+
+        if (ot is not null)
+        {
+            // Clear the trash buffer first — PKHeX's OriginalTrainerName setter
+            // writes the new chars + null terminator but does NOT zero out bytes
+            // past the new null. Replacing "FreeMons.Org" (12) with "Chris" (5)
+            // leaves "ns.Org\0" in the buffer, which the Trainer legality check
+            // flags as invalid trash.
+            pk.OriginalTrainerTrash.Clear();
+            pk.OriginalTrainerName = ot;
+        }
+        if (tid is not null)
+            pk.TrainerTID7 = tid.Value;
+        if (sid is not null)
+            pk.TrainerSID7 = sid.Value;
+
+        if (wasShiny && (tid is not null || sid is not null))
+            pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ originalShinyXor) << 16) | (pk.PID & 0xFFFF);
+
+        pk.RefreshChecksum();
+
+        var la = new LegalityAnalysis(pk);
+        if (!la.Valid)
+        {
+            var fails = string.Join("; ", la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}"));
+            LogUtil.LogInfo($"TrainerOverride: REVERT — legality failed: {fails}", "TrainerOverride");
+            pk.OriginalTrainerTrash.Clear();
+            backup.OriginalTrainerTrash.CopyTo(pk.OriginalTrainerTrash);
+            pk.TrainerTID7 = backup.TrainerTID7;
+            pk.TrainerSID7 = backup.TrainerSID7;
+            pk.PID = backup.PID;
+            pk.RefreshChecksum();
+        }
     }
 
     private static int ValidateLanguageForGame(PKM pk, byte requestedLanguage)

@@ -74,7 +74,6 @@ public class LegalitySettings
         EncounterTypeGroup.Mystery, EncounterTypeGroup.Egg,
         EncounterTypeGroup.Static,
     ];
-
     [Category(Generate), Description("Method of searching for encounters when generating Pokémon. \"NativeOnly\" searches current game pair only, \"NewestFirst\" searches from most recent game, and \"PriorityOrder\" uses the order designated in the \"PriorityOrder\" setting.")]
     public GameVersionPriorityType GameVersionPriority { get; set; } = GameVersionPriorityType.PriorityOrder;
 

@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.IO;
+using SysBot.Pokemon.Localization;
 
 namespace SysBot.Pokemon;
 

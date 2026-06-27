@@ -150,7 +150,6 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-
   <!-- Rename the published exe to FusionBot_x.x.x.exe using the Version from TradeBot.cs (with the "v" stripped). -->
   <Target Name="RenamePublishOutput" AfterTargets="Publish">
     <PropertyGroup>

@@ -18,6 +18,7 @@ namespace SysBot.Pokemon.Discord;
 public class ProfileModule : ModuleBase<SocketCommandContext>
 {
     private const string StatsFilePath = "user_stats.json";
+    private const int MaxComponentTextLength = 3900;
     private static readonly HttpClient Http = new();
 
     [Command("profile")]
@@ -27,15 +28,14 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
     {
         var targetUser = user ?? Context.User;
         var isSelfProfile = targetUser.Id == Context.User.Id;
-        var embed = await BuildProfileEmbedAsync(targetUser, isSelfProfile).ConfigureAwait(false);
-        var components = BuildProfileComponents("profile");
+        var component = await BuildProfileComponentAsync(targetUser, isSelfProfile).ConfigureAwait(false);
 
         if (isSelfProfile)
         {
             try
             {
                 var dmChannel = await targetUser.CreateDMChannelAsync().ConfigureAwait(false);
-                var message = await dmChannel.SendMessageAsync(embed: embed, components: components).ConfigureAwait(false);
+                var message = await dmChannel.SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
                 if (Context.Guild != null)
                 {
                     var confirmation = await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordProfileSentDm, targetUser.Mention)).ConfigureAwait(false);
@@ -55,11 +55,11 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
             return;
         }
 
-        var publicMessage = await ReplyAsync(embed: embed, components: components).ConfigureAwait(false);
+        var publicMessage = await Context.Channel.SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
         _ = HandleProfileInteractionsAsync(publicMessage, Context.User.Id, TimeSpan.FromMinutes(1), targetUser.Id);
     }
 
-    private async Task<Embed> BuildProfileEmbedAsync(IUser targetUser, bool includePrivateInfo)
+    private async Task<MessageComponent> BuildProfileComponentAsync(IUser targetUser, bool includePrivateInfo, bool disableActions = false)
     {
         var avatarUrl = targetUser.GetAvatarUrl(size: 128) ?? targetUser.GetDefaultAvatarUrl();
         var tradeCount = GetTradeCountForUser(targetUser.Id);
@@ -79,18 +79,27 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
             FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileCurrentTitle), currentStatus),
             FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileLastTrade), GetLastTradeText(tradeDetails), false));
         var progress = $"{GetProgressBar(xpProgress)}\n`XP` **{xp:N0}/{requiredXp:N0}**";
+        var color = await GetDominantColorAsync(avatarUrl).ConfigureAwait(false);
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(color);
 
-        var embed = new EmbedBuilder()
-            .WithAuthor(targetUser)
-            .WithTitle(AppLocalization.Format(LocalizationKeys.DiscordProfileTitle, targetUser.Username))
-            .WithDescription($"{AppLocalization.Get(LocalizationKeys.DiscordProfileDescription)}\n{FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileUpdated), $"<t:{updatedAt}:f>")}")
-            .WithThumbnailUrl(avatarUrl)
-            .WithColor(await GetDominantColorAsync(avatarUrl).ConfigureAwait(false))
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileOverview), overview, true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileActivity), activity, true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileProgress), progress, false)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileBadges), badges, false)
-            .WithCurrentTimestamp();
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"**{targetUser.Username}**\n" +
+                $"**{AppLocalization.Format(LocalizationKeys.DiscordProfileTitle, targetUser.Username)}**\n" +
+                $"{AppLocalization.Get(LocalizationKeys.DiscordProfileDescription)}\n" +
+                $"{FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileUpdated), $"<t:{updatedAt}:f>")}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(avatarUrl),
+                targetUser.Username,
+                false));
+
+        container.WithSection(header);
+        AddProfileSection(container, AppLocalization.Get(LocalizationKeys.DiscordProfileOverview), overview);
+        AddProfileSection(container, AppLocalization.Get(LocalizationKeys.DiscordProfileActivity), activity);
+        AddProfileSection(container, AppLocalization.Get(LocalizationKeys.DiscordProfileProgress), progress);
+        AddProfileSection(container, AppLocalization.Get(LocalizationKeys.DiscordProfileBadges), badges);
 
         if (includePrivateInfo)
         {
@@ -100,20 +109,15 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
                 FormatProfileLine("SID", sid),
                 FormatProfileLine("TID", tid),
                 FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileTradeCode), GetTradeCodeForUser(targetUser.Id) ?? AppLocalization.Get(LocalizationKeys.DiscordProfileNoTradeCode)));
-            embed.AddField(AppLocalization.Get(LocalizationKeys.DiscordProfilePrivateInfo), privateInfo, false);
+            AddProfileSection(container, AppLocalization.Get(LocalizationKeys.DiscordProfilePrivateInfo), privateInfo);
         }
 
-        embed.WithFooter(footer =>
-        {
-            var serverIconUrl = Context.Guild?.IconUrl;
-            var serverName = Context.Guild?.Name ?? AppLocalization.Get(LocalizationKeys.DiscordProfileThisServer);
-            footer.WithIconUrl(serverIconUrl);
-            footer.WithText(includePrivateInfo
-                ? AppLocalization.Format(LocalizationKeys.DiscordProfileServerFooter, serverName)
-                : AppLocalization.Format(LocalizationKeys.DiscordProfilePublicFooter, serverName));
-        });
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{GetProfileFooter(includePrivateInfo)} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:f>"));
 
-        return embed.Build();
+        builder.WithContainer(container);
+        builder.WithActionRow(BuildProfileActionRow("profile", disableActions));
+        return builder.Build();
     }
 
     private async Task<Color> GetDominantColorAsync(string imageUrl)
@@ -151,30 +155,30 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
         }
     }
 
-    private static MessageComponent BuildProfileComponents(string activeView)
+    private static ActionRowBuilder BuildProfileActionRow(string activeView, bool disableActions = false)
     {
         var profileButton = new ButtonBuilder()
             .WithLabel(AppLocalization.Get(LocalizationKeys.DiscordProfileProfileTab))
             .WithCustomId("profile_back_to_profile")
             .WithStyle(activeView == "profile" ? ButtonStyle.Success : ButtonStyle.Secondary)
             .WithEmote(new Emoji("🪪"))
-            .WithDisabled(activeView == "profile");
+            .WithDisabled(disableActions || activeView == "profile");
         var badgesButton = new ButtonBuilder()
             .WithLabel(AppLocalization.Get(LocalizationKeys.DiscordProfileBadgesTab))
             .WithCustomId("profile_view_badges")
             .WithStyle(activeView == "badges" ? ButtonStyle.Success : ButtonStyle.Secondary)
             .WithEmote(new Emoji("🎖️"))
-            .WithDisabled(activeView == "badges");
+            .WithDisabled(disableActions || activeView == "badges");
 
-        return new ComponentBuilder()
+        return new ActionRowBuilder()
             .WithButton(profileButton)
-            .WithButton(badgesButton)
-            .Build();
+            .WithButton(badgesButton);
     }
 
     private async Task HandleProfileInteractionsAsync(IUserMessage message, ulong userId, TimeSpan timeout, ulong targetUserId)
     {
         using var timeoutCts = new CancellationTokenSource(timeout);
+        var activeView = "profile";
 
         while (!timeoutCts.IsCancellationRequested)
         {
@@ -187,26 +191,43 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
             var selectedOption = interaction.Data.CustomId;
 
             if (selectedOption == "profile_view_badges")
+            {
+                activeView = "badges";
                 await ShowBadgesAsync(message, targetUserId).ConfigureAwait(false);
+            }
             else if (selectedOption == "profile_back_to_profile")
             {
+                activeView = "profile";
                 var targetUser = GetUser(targetUserId) ?? Context.User;
-                var embed = await BuildProfileEmbedAsync(targetUser, targetUser.Id == Context.User.Id).ConfigureAwait(false);
+                var component = await BuildProfileComponentAsync(targetUser, targetUser.Id == Context.User.Id).ConfigureAwait(false);
                 await message.ModifyAsync(msg =>
                 {
-                    msg.Embed = embed;
-                    msg.Components = BuildProfileComponents("profile");
+                    msg.Components = component;
                 }).ConfigureAwait(false);
             }
         }
 
-        await message.ModifyAsync(msg => msg.Components = new ComponentBuilder().Build()).ConfigureAwait(false);
+        var finalUser = GetUser(targetUserId) ?? Context.User;
+        var finalComponent = activeView == "badges"
+            ? await BuildBadgesComponentAsync(finalUser, true).ConfigureAwait(false)
+            : await BuildProfileComponentAsync(finalUser, finalUser.Id == Context.User.Id, true).ConfigureAwait(false);
+        await message.ModifyAsync(msg => msg.Components = finalComponent).ConfigureAwait(false);
     }
 
     private async Task ShowBadgesAsync(IUserMessage message, ulong targetUserId)
     {
         var targetUser = GetUser(targetUserId) ?? Context.User;
-        var tradeCount = GetTradeCountForUser(targetUserId);
+        var component = await BuildBadgesComponentAsync(targetUser).ConfigureAwait(false);
+
+        await message.ModifyAsync(msg =>
+        {
+            msg.Components = component;
+        }).ConfigureAwait(false);
+    }
+
+    private async Task<MessageComponent> BuildBadgesComponentAsync(IUser targetUser, bool disableActions = false)
+    {
+        var tradeCount = GetTradeCountForUser(targetUser.Id);
         var avatarUrl = targetUser.GetAvatarUrl(size: 128) ?? targetUser.GetDefaultAvatarUrl();
         var badgeList = SysCordSettings.Settings.CustomBadgeEmojis.OrderBy(b => b.TradeCount).ToList();
         var nextBadge = badgeList.FirstOrDefault(b => b.TradeCount > tradeCount);
@@ -214,29 +235,56 @@ public class ProfileModule : ModuleBase<SocketCommandContext>
             ? AppLocalization.Format(LocalizationKeys.DiscordProfileNextBadgeInfo, nextBadge.TradeCount - tradeCount, nextBadge.Emoji, nextBadge.TradeCount)
             : AppLocalization.Get(LocalizationKeys.DiscordProfileAllBadgesUnlocked);
         var nextTitle = nextBadge != null ? GetCurrentStatus(nextBadge.TradeCount) : AppLocalization.Get(LocalizationKeys.DiscordProfileMaxTitle);
+        var color = await GetDominantColorAsync(avatarUrl).ConfigureAwait(false);
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(color);
 
-        var badgesEmbed = new EmbedBuilder()
-            .WithAuthor(targetUser)
-            .WithTitle(AppLocalization.Format(LocalizationKeys.DiscordProfileBadgesTitle, targetUser.Username))
-            .WithDescription($"{AppLocalization.Get(LocalizationKeys.DiscordProfileDescription)}\n{FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileTrades), tradeCount.ToString("N0"))}")
-            .WithColor(await GetDominantColorAsync(avatarUrl).ConfigureAwait(false))
-            .WithThumbnailUrl(avatarUrl);
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"**{targetUser.Username}**\n" +
+                $"**{AppLocalization.Format(LocalizationKeys.DiscordProfileBadgesTitle, targetUser.Username)}**\n" +
+                $"{AppLocalization.Get(LocalizationKeys.DiscordProfileDescription)}\n" +
+                $"{FormatProfileLine(AppLocalization.Get(LocalizationKeys.DiscordProfileTrades), tradeCount.ToString("N0"))}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(avatarUrl),
+                targetUser.Username,
+                false));
+
+        container.WithSection(header);
         foreach (var (title, value) in GetBadgeRouteFields(tradeCount))
-            badgesEmbed.AddField(title, value, false);
+            AddProfileSection(container, title, value);
 
-        var builtBadgesEmbed = badgesEmbed
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileNextBadge), nextBadgeInfo, true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordProfileNextTitle), nextTitle, true)
-            .WithFooter(footer => footer.WithText(AppLocalization.Format(LocalizationKeys.DiscordProfileBadgesFooter, tradeCount))
-                                        .WithIconUrl(Context.Guild?.IconUrl))
-            .WithCurrentTimestamp()
-            .Build();
+        AddProfileSection(container, AppLocalization.Get(LocalizationKeys.DiscordProfileNextBadge), nextBadgeInfo);
+        AddProfileSection(container, AppLocalization.Get(LocalizationKeys.DiscordProfileNextTitle), nextTitle);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{AppLocalization.Format(LocalizationKeys.DiscordProfileBadgesFooter, tradeCount)} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:f>"));
 
-        await message.ModifyAsync(msg =>
-        {
-            msg.Embed = builtBadgesEmbed;
-            msg.Components = BuildProfileComponents("badges");
-        }).ConfigureAwait(false);
+        builder.WithContainer(container);
+        builder.WithActionRow(BuildProfileActionRow("badges", disableActions));
+        return builder.Build();
+    }
+
+    private string GetProfileFooter(bool includePrivateInfo)
+    {
+        var serverName = Context.Guild?.Name ?? AppLocalization.Get(LocalizationKeys.DiscordProfileThisServer);
+        return includePrivateInfo
+            ? AppLocalization.Format(LocalizationKeys.DiscordProfileServerFooter, serverName)
+            : AppLocalization.Format(LocalizationKeys.DiscordProfilePublicFooter, serverName);
+    }
+
+    private static void AddProfileSection(ContainerBuilder container, string title, string body)
+    {
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"**{title}**\n{body}"));
+    }
+
+    private static string TrimComponentText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "\u200B";
+
+        return text.Length <= MaxComponentTextLength ? text : text[..(MaxComponentTextLength - 3)] + "...";
     }
 
     private async Task<SocketMessageComponent?> WaitForProfileComponentAsync(IUserMessage message, ulong userId, CancellationToken token)

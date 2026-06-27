@@ -2,6 +2,7 @@ using SysBot.Base;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
+using SysBot.Pokemon.Localization;
 
 namespace SysBot.Pokemon;
 
@@ -57,7 +58,6 @@ public class EncounterSettings : IBotStateSettings, ICountSettings
 
     [Category(Encounter), Description("El método utilizado por los Bots Line y Reset para encontrar Pokémon.")]
     public EncounterMode EncounteringType { get; set; } = EncounterMode.VerticalLine;
-
     [Category(Settings)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public FossilSettings Fossil { get; set; } = new();

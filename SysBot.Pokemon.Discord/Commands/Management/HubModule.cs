@@ -12,6 +12,8 @@ namespace SysBot.Pokemon.Discord;
 
 public class HubModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new()
 {
+    private const int MaxComponentTextLength = 3900;
+
     [Command("status")]
     [Alias("stats")]
     [Summary("Gets the status of the bot environment.")]
@@ -25,77 +27,113 @@ public class HubModule<T> : ModuleBase<SocketCommandContext> where T : PKM, new(
         var noBots = botCount == 0;
         var queues = hub.Queues.AllQueues;
         var queuesEmpty = queues.All(q => q.Count == 0);
-        var (statusEmoji, statusLabel, embedColor) = GetGlobalStatus(noBots, queuesEmpty);
-
-        var builder = new EmbedBuilder()
-            .WithTitle($"{statusEmoji} {AppLocalization.Get(LocalizationKeys.DiscordHubStatusTitle)}")
-            .WithColor(embedColor)
-            .WithCurrentTimestamp();
-
-        var currentUser = Context.Client.CurrentUser;
-        builder.WithAuthor(author =>
-        {
-            author.Name = currentUser?.Username ?? "SysBot";
-            author.IconUrl = currentUser?.GetAvatarUrl() ?? currentUser?.GetDefaultAvatarUrl();
-        });
+        var (statusEmoji, statusLabel, statusColor) = GetGlobalStatus(noBots, queuesEmpty);
 
         var botsSummary = SummarizeBotsWithBadges(allBots);
         var botsSection = string.IsNullOrWhiteSpace(botsSummary)
             ? string.Empty
             : $"\n```{Environment.NewLine}{botsSummary}{Environment.NewLine}```";
 
-        builder.AddField(x =>
-        {
-            x.Name = AppLocalization.Get(LocalizationKeys.DiscordHubSummaryTitle);
-            x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubSummaryValue, botCount, botsSection, statusLabel, hub.Ledy.Pool.Count);
-            x.IsInline = false;
-        });
+        var summary = AppLocalization.Format(LocalizationKeys.DiscordHubSummaryValue, botCount, botsSection, statusLabel, hub.Ledy.Pool.Count);
 
-        builder.AddField(x =>
-        {
-            var bots = allBots.OfType<ICountBot>();
-            var lines = bots.SelectMany(z => z.Counts.GetNonZeroCounts()).Distinct();
-            var msg = string.Join("\n", lines);
-            if (string.IsNullOrWhiteSpace(msg))
-                msg = AppLocalization.Get(LocalizationKeys.DiscordHubNothingCounted);
-            x.Name = AppLocalization.Get(LocalizationKeys.DiscordHubCountsTitle);
-            x.Value = msg;
-            x.IsInline = false;
-        });
+        var bots = allBots.OfType<ICountBot>();
+        var lines = bots.SelectMany(z => z.Counts.GetNonZeroCounts()).Distinct();
+        var counts = string.Join("\n", lines);
+        if (string.IsNullOrWhiteSpace(counts))
+            counts = AppLocalization.Get(LocalizationKeys.DiscordHubNothingCounted);
 
         var totalQueued = queues.Sum(q => q.Count);
+        var queueSections = new List<(string Title, string Body)>();
         if (totalQueued == 0)
         {
-            builder.AddField(x =>
-            {
-                x.Name = AppLocalization.Get(LocalizationKeys.DiscordHubQueuesEmptyTitle);
-                x.Value = AppLocalization.Get(LocalizationKeys.DiscordHubQueuesEmptyValue);
-                x.IsInline = false;
-            });
+            queueSections.Add((
+                AppLocalization.Get(LocalizationKeys.DiscordHubQueuesEmptyTitle),
+                AppLocalization.Get(LocalizationKeys.DiscordHubQueuesEmptyValue)));
         }
         else
         {
-            builder.AddField(x =>
-            {
-                x.Name = AppLocalization.Get(LocalizationKeys.DiscordHubQueueSummaryTitle);
-                x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubQueueSummaryValue, totalQueued, queues.Count(q => q.Count > 0));
-                x.IsInline = false;
-            });
+            queueSections.Add((
+                AppLocalization.Get(LocalizationKeys.DiscordHubQueueSummaryTitle),
+                AppLocalization.Format(LocalizationKeys.DiscordHubQueueSummaryValue, totalQueued, queues.Count(q => q.Count > 0))));
 
             foreach (var q in queues.Where(q => q.Count > 0))
             {
                 var queueEmoji = q.Count > 5 ? "🔥" : "⏳";
-
-                builder.AddField(x =>
-                {
-                    x.Name = AppLocalization.Format(LocalizationKeys.DiscordHubQueueTitle, queueEmoji, q.Type);
-                    x.Value = AppLocalization.Format(LocalizationKeys.DiscordHubQueueValue, GetNextName(q), q.Count);
-                    x.IsInline = false;
-                });
+                queueSections.Add((
+                    AppLocalization.Format(LocalizationKeys.DiscordHubQueueTitle, queueEmoji, q.Type),
+                    AppLocalization.Format(LocalizationKeys.DiscordHubQueueValue, GetNextName(q), q.Count)));
             }
         }
 
-        await ReplyAsync(embed: builder.Build()).ConfigureAwait(false);
+        var component = BuildStatusComponent(
+            statusEmoji,
+            statusColor,
+            summary,
+            counts,
+            queueSections,
+            Context.Client.CurrentUser,
+            Context.User);
+
+        await Context.Channel.SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+    }
+
+    private static MessageComponent BuildStatusComponent(
+        string statusEmoji,
+        Color statusColor,
+        string summary,
+        string counts,
+        IReadOnlyList<(string Title, string Body)> queueSections,
+        IUser? botUser,
+        IUser requestingUser)
+    {
+        var botName = botUser?.Username ?? "SysBot";
+        var botAvatar = botUser?.GetAvatarUrl(size: 64) ?? botUser?.GetDefaultAvatarUrl();
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(statusColor);
+
+        var headerText = TrimComponentText($"**{botName}**\n**{statusEmoji} {AppLocalization.Get(LocalizationKeys.DiscordHubStatusTitle)}**");
+        if (string.IsNullOrWhiteSpace(botAvatar))
+        {
+            container.WithTextDisplay(headerText);
+        }
+        else
+        {
+            var header = new SectionBuilder()
+                .AddComponent(new TextDisplayBuilder(headerText))
+                .WithAccessory(new ThumbnailBuilder(
+                    new UnfurledMediaItemProperties(botAvatar),
+                    botName,
+                    false));
+
+            container.WithSection(header);
+        }
+
+        AddStatusSection(container, AppLocalization.Get(LocalizationKeys.DiscordHubSummaryTitle), summary);
+        AddStatusSection(container, AppLocalization.Get(LocalizationKeys.DiscordHubCountsTitle), counts);
+
+        foreach (var (title, body) in queueSections)
+            AddStatusSection(container, title, body);
+
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{requestingUser.Username} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:f>"));
+
+        builder.WithContainer(container);
+        return builder.Build();
+    }
+
+    private static void AddStatusSection(ContainerBuilder container, string title, string body)
+    {
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{title}\n{body}"));
+    }
+
+    private static string TrimComponentText(string text)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "\u200B";
+
+        return text.Length <= MaxComponentTextLength ? text : text[..(MaxComponentTextLength - 3)] + "...";
     }
 
     private static (string Emoji, string Label, Color Color) GetGlobalStatus(bool noBots, bool queuesEmpty)

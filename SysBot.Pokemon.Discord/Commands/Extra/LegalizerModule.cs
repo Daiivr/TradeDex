@@ -14,7 +14,7 @@ namespace SysBot.Pokemon.Discord
         public async Task ConvertShowdown([Summary("Generation/Format")] byte gen, [Remainder][Summary("Showdown Set")] string content)
         {
             var deleteMessageTask = LegalizerModule<T>.DeleteCommandMessageAsync(Context.Message, 2000);
-            var convertTask = Context.Channel.ReplyWithLegalizedSetAsync(content, gen);
+            var convertTask = Context.Channel.ReplyWithLegalizedSetAsync(content, gen, Context.Client.CurrentUser);
             await Task.WhenAll(deleteMessageTask, convertTask).ConfigureAwait(false);
         }
 
@@ -24,7 +24,7 @@ namespace SysBot.Pokemon.Discord
         public async Task ConvertShowdown([Remainder][Summary("Showdown Set")] string content)
         {
             var deleteMessageTask = LegalizerModule<T>.DeleteCommandMessageAsync(Context.Message, 2000);
-            var convertTask = Context.Channel.ReplyWithLegalizedSetAsync<T>(content);
+            var convertTask = Context.Channel.ReplyWithLegalizedSetAsync<T>(content, Context.Client.CurrentUser);
             await Task.WhenAll(deleteMessageTask, convertTask).ConfigureAwait(false);
         }
 
@@ -34,7 +34,7 @@ namespace SysBot.Pokemon.Discord
         {
             var deleteMessageTask = LegalizerModule<T>.DeleteCommandMessageAsync(Context.Message, 2000);
             var legalizationTasks = Context.Message.Attachments.Select(att =>
-                Context.Channel.ReplyWithLegalizedSetAsync(att)
+                Context.Channel.ReplyWithLegalizedSetAsync(att, Context.Client.CurrentUser)
             ).ToArray();
 
             await Task.WhenAll(deleteMessageTask, Task.WhenAll(legalizationTasks)).ConfigureAwait(false);

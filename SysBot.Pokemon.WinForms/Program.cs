@@ -1,3 +1,4 @@
+using FontAwesome.Sharp;
 using System;
 using System.Drawing;
 using System.IO;
@@ -42,6 +43,8 @@ namespace SysBot.Pokemon.WinForms
             // Set text rendering to be compatible
             Application.SetCompatibleTextRenderingDefault(false);
             Application.SetDefaultFont(new Font("Segoe UI", 9F, FontStyle.Regular, GraphicsUnit.Point));
+
+            InitializeFontAwesome();
 
             ///////////////////////////////////////////
             /// Load fonts before showing main form ///
@@ -145,6 +148,23 @@ namespace SysBot.Pokemon.WinForms
                 // Log font loading errors but don't fail startup
                 Console.WriteLine($"[Font Loading Warning] Some fonts failed to load: {ex.Message}");
                 Console.WriteLine("[Font Loading Warning] Application will use fallback fonts.");
+            }
+        }
+
+        private static void InitializeFontAwesome()
+        {
+            try
+            {
+                var assembly = typeof(IconChar).Assembly;
+                _ = FormsIconHelper.LoadResourceFont(assembly, "fonts", "fa-solid-900.ttf");
+                _ = FormsIconHelper.LoadResourceFont(assembly, "fonts", "fa-regular-400.ttf");
+                _ = FormsIconHelper.LoadResourceFont(assembly, "fonts", "fa-brands-400.ttf");
+                using var warmupIcon = FormsIconHelper.ToBitmap(IconChar.Robot, IconFont.Solid, 16, Color.White, 0, FlipOrientation.Normal);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[FontAwesome Warning] Icon font initialization failed: {ex.Message}");
+                FormsIconHelper.ThrowOnNullFonts = false;
             }
         }
     }

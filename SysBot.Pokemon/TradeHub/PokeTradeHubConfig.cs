@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SysBot.Pokemon.Localization;
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
@@ -37,7 +38,6 @@ public sealed class PokeTradeHubConfig : BaseConfig
     [Category(Integration), Description("Permite que usuarios favorecidos entren a la cola con una posición más ventajosa que los no favorecidos.")]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public FavoredPrioritySettings Favoritism { get; set; } = new();
-
     [Category(Operation)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public QueueSettings Queues { get; set; } = new();
@@ -73,11 +73,9 @@ public sealed class PokeTradeHubConfig : BaseConfig
     public TimingSettings Timings { get; set; } = new();
 
     // Trade Bots
-
     [Category(BotTrade)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public TradeSettings Trade { get; set; } = new();
-
     [Category(BotTrade)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public TradeAbuseSettings TradeAbuse { get; set; } = new();
@@ -86,7 +84,6 @@ public sealed class PokeTradeHubConfig : BaseConfig
     [Category(Integration)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public TwitchSettings Twitch { get; set; } = new();
-
     [Category(Integration)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public YouTubeSettings YouTube { get; set; } = new();

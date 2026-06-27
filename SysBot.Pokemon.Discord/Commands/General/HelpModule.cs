@@ -17,6 +17,9 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
 #pragma warning restore CS9124
 
     private static readonly Color HelpColor = new(114, 137, 218);
+    private const int MaxComponentTextLength = 3900;
+    private const int MaxHelpContainerTextLength = 3600;
+    private const int MaxHelpBlocksPerContainer = 4;
 
     [Command("help")]
     [Summary("Shows the available commands.")]
@@ -31,8 +34,8 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
             return;
         }
 
-        var embeds = BuildHelpEmbeds(modules, prefix, Context.Client.CurrentUser);
-        await SendHelpEmbedsAsync(embeds, AppLocalization.Format(LocalizationKeys.DiscordHelpDmSent, Context.User.Mention)).ConfigureAwait(false);
+        var pages = BuildHelpComponents(modules, prefix, Context.Client.CurrentUser);
+        await SendHelpComponentsAsync(pages, AppLocalization.Format(LocalizationKeys.DiscordHelpDmSent, Context.User.Mention)).ConfigureAwait(false);
     }
 
     [Command("help")]
@@ -54,8 +57,8 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         }
 
         var prefix = SysCordSettings.HubConfig.Discord.CommandPrefix;
-        var embed = BuildCommandHelpEmbed(result.Commands.Select(x => x.Command), command, prefix);
-        await SendHelpEmbedsAsync([embed], AppLocalization.Format(LocalizationKeys.DiscordHelpCommandDmSent, Context.User.Mention, command)).ConfigureAwait(false);
+        var page = BuildCommandHelpComponent(result.Commands.Select(x => x.Command), command, prefix);
+        await SendHelpComponentsAsync([page], AppLocalization.Format(LocalizationKeys.DiscordHelpCommandDmSent, Context.User.Mention, command)).ConfigureAwait(false);
     }
 
     private async Task<List<(string ModuleName, List<CommandInfo> Commands)>> GetVisibleModulesAsync()
@@ -93,79 +96,120 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         }
 
         return modules
-            .OrderByDescending(x => IsTradeModule(x.ModuleName))
+            .OrderBy(x => GetHelpCategory(x.ModuleName).Order)
             .ThenBy(x => x.ModuleName)
             .ToList();
     }
 
-    private static IReadOnlyList<Embed> BuildHelpEmbeds(
+    private static IReadOnlyList<MessageComponent> BuildHelpComponents(
         List<(string ModuleName, List<CommandInfo> Commands)> modules,
         string prefix,
         IUser botUser)
     {
-        var embeds = new List<Embed>();
-        var builder = MakeBaseHelpEmbed(prefix, botUser);
-        var inlineColumn = 0;
+        var blocks = BuildCategorizedHelpBlocks(modules, prefix);
 
-        foreach (var (module, commands) in modules)
+        var sections = BuildHelpBlockGroups(blocks);
+        var avatarUrl = GetUserAvatarUrl(botUser);
+        var footer = AppLocalization.Format(LocalizationKeys.DiscordHelpTipFooter, prefix);
+
+        return
+        [
+            BuildHelpMessageComponent(
+                AppLocalization.Get(LocalizationKeys.DiscordHelpCenterTitle),
+                AppLocalization.Get(LocalizationKeys.DiscordHelpDescription),
+                sections,
+                footer,
+                avatarUrl,
+                botUser.Username)
+        ];
+    }
+
+    private static List<string> BuildCategorizedHelpBlocks(
+        List<(string ModuleName, List<CommandInfo> Commands)> modules,
+        string prefix)
+    {
+        var blocks = new List<string>();
+        var groups = modules
+            .Select(x => (Category: GetHelpCategory(x.ModuleName), x.ModuleName, x.Commands))
+            .OrderBy(x => x.Category.Order)
+            .ThenBy(x => x.ModuleName)
+            .GroupBy(x => x.Category);
+
+        foreach (var group in groups)
         {
-            var chunks = ChunkCommandLines(commands, prefix);
-            for (int i = 0; i < chunks.Count; i++)
+            var categoryBlocks = new List<string>();
+
+            foreach (var (_, module, commands) in group)
             {
-                if (!EnsureCapacityOrNew(ref builder, embeds, prefix, botUser, 1))
-                    inlineColumn = 0;
-
-                var moduleName = chunks.Count == 1 ? module : $"{module} {i + 1}/{chunks.Count}";
-                builder.AddField(AppLocalization.Format(LocalizationKeys.DiscordHelpModuleField, moduleName), chunks[i], true);
-                inlineColumn++;
-
-                if (inlineColumn == 2)
+                var chunks = ChunkCommandLines(commands, prefix);
+                for (int i = 0; i < chunks.Count; i++)
                 {
-                    if (EnsureCapacityOrNew(ref builder, embeds, prefix, botUser, 1))
-                        builder.AddField("\u200B", "\u200B", false);
-
-                    inlineColumn = 0;
+                    var moduleName = chunks.Count == 1 ? module : $"{module} {i + 1}/{chunks.Count}";
+                    categoryBlocks.Add($"**{AppLocalization.Format(LocalizationKeys.DiscordHelpModuleField, moduleName)}**\n{chunks[i]}");
                 }
             }
+
+            blocks.AddRange(BuildCategoryBlocks(group.Key.Title, categoryBlocks));
         }
 
-        if (builder.Fields.Count > 0)
-            embeds.Add(builder.Build());
+        return blocks;
+    }
 
-        for (int i = 0; i < embeds.Count; i++)
+    private static List<string> BuildCategoryBlocks(string categoryTitle, IReadOnlyList<string> moduleBlocks)
+    {
+        var blocks = new List<string>();
+        var header = $"**{categoryTitle}:**";
+        var current = header;
+
+        foreach (var moduleBlock in moduleBlocks)
         {
-            var built = embeds[i];
-            var pageFooter = AppLocalization.Format(LocalizationKeys.DiscordHelpFooterPage, i + 1, embeds.Count);
-            var footer = $"{AppLocalization.Format(LocalizationKeys.DiscordHelpTipFooter, prefix)} | {pageFooter}";
+            var separator = current.Equals(header, StringComparison.Ordinal) ? "\n" : "\n\n";
+            if (!current.Equals(header, StringComparison.Ordinal) &&
+                current.Length + separator.Length + moduleBlock.Length > MaxHelpContainerTextLength)
+            {
+                blocks.Add(current);
+                current = $"**{categoryTitle} (continued):**";
+                separator = "\n";
+            }
 
-            embeds[i] = built.ToEmbedBuilder()
-                .WithFooter(footer, built.Footer?.IconUrl)
-                .Build();
+            current = $"{current}{separator}{moduleBlock}";
         }
 
-        return embeds;
+        if (!string.IsNullOrWhiteSpace(current))
+            blocks.Add(current);
+
+        return blocks;
     }
 
-    private static bool EnsureCapacityOrNew(ref EmbedBuilder builder, List<Embed> embeds, string prefix, IUser botUser, int neededSlots)
+    private static List<List<string>> BuildHelpBlockGroups(IReadOnlyList<string> blocks)
     {
-        const int MaxFields = 25;
-        if (builder.Fields.Count + neededSlots <= MaxFields)
-            return true;
+        var groups = new List<List<string>>();
+        var current = new List<string>();
+        var currentLength = 0;
 
-        embeds.Add(builder.Build());
-        builder = MakeBaseHelpEmbed(prefix, botUser);
-        return false;
+        foreach (var block in blocks)
+        {
+            var nextLength = currentLength + block.Length;
+            if (current.Count > 0 && (nextLength > MaxHelpContainerTextLength || current.Count >= MaxHelpBlocksPerContainer))
+            {
+                groups.Add(current);
+                current = [];
+                currentLength = 0;
+            }
+
+            current.Add(block);
+            currentLength += block.Length;
+        }
+
+        if (current.Count > 0)
+            groups.Add(current);
+
+        return groups;
     }
 
-    private Embed BuildCommandHelpEmbed(IEnumerable<CommandInfo> commands, string searchedCommand, string prefix)
+    private MessageComponent BuildCommandHelpComponent(IEnumerable<CommandInfo> commands, string searchedCommand, string prefix)
     {
-        var embed = new EmbedBuilder()
-            .WithColor(HelpColor)
-            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordHelpCommandAuthor), Context.Client.CurrentUser.GetAvatarUrl() ?? Context.Client.CurrentUser.GetDefaultAvatarUrl())
-            .WithTitle($"{prefix}{searchedCommand}")
-            .WithThumbnailUrl(Context.Client.CurrentUser.GetAvatarUrl() ?? Context.Client.CurrentUser.GetDefaultAvatarUrl())
-            .WithFooter(AppLocalization.Format(LocalizationKeys.DiscordHelpCommandFooter, prefix))
-            .WithCurrentTimestamp();
+        var blocks = new List<string>();
 
         foreach (var command in commands.OrderBy(x => x.Name))
         {
@@ -174,13 +218,20 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
                 ? $"_{AppLocalization.Get(LocalizationKeys.DiscordHelpNoParameters)}_"
                 : string.Join("\n", command.Parameters.Select(FormatParameter));
 
-            embed.AddField(
-                AppLocalization.Format(LocalizationKeys.DiscordHelpCommandField, command.Name),
-                $"{summary}\n\n**{AppLocalization.Get(LocalizationKeys.DiscordHelpParametersLabel)}:**\n{parameters}\n\n**{AppLocalization.Get(LocalizationKeys.DiscordHelpExampleLabel)}:**\n`{BuildExample(command, prefix)}`",
-                false);
+            blocks.Add(
+                $"**{AppLocalization.Format(LocalizationKeys.DiscordHelpCommandField, command.Name)}**\n" +
+                $"{summary}\n\n" +
+                $"**{AppLocalization.Get(LocalizationKeys.DiscordHelpParametersLabel)}:**\n{parameters}\n\n" +
+                $"**{AppLocalization.Get(LocalizationKeys.DiscordHelpExampleLabel)}:**\n`{BuildExample(command, prefix)}`");
         }
 
-        return embed.Build();
+        return BuildHelpMessageComponent(
+            AppLocalization.Get(LocalizationKeys.DiscordHelpCommandAuthor),
+            $"**{prefix}{searchedCommand}**",
+            BuildHelpBlockGroups(blocks),
+            AppLocalization.Format(LocalizationKeys.DiscordHelpCommandFooter, prefix),
+            Context.Client.CurrentUser.GetAvatarUrl() ?? Context.Client.CurrentUser.GetDefaultAvatarUrl(),
+            Context.Client.CurrentUser.Username);
     }
 
     private static List<string> ChunkCommandLines(List<CommandInfo> commands, string prefix)
@@ -222,13 +273,13 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         return chunks;
     }
 
-    private async Task SendHelpEmbedsAsync(IReadOnlyList<Embed> embeds, string sentNotice)
+    private async Task SendHelpComponentsAsync(IReadOnlyList<MessageComponent> pages, string sentNotice)
     {
         try
         {
             var dm = await Context.User.CreateDMChannelAsync().ConfigureAwait(false);
-            foreach (var embed in embeds)
-                await dm.SendMessageAsync(embed: embed).ConfigureAwait(false);
+            foreach (var page in pages)
+                await dm.SendMessageAsync(components: page, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
 
             if (Context.Channel is IGuildChannel)
             {
@@ -239,8 +290,12 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         }
         catch (HttpException ex) when (ex.HttpCode == HttpStatusCode.Forbidden)
         {
-            foreach (var embed in embeds)
-                await ReplyAsync(embed: embed).ConfigureAwait(false);
+            foreach (var page in pages)
+            {
+                await Context.Channel.SendMessageAsync(
+                    components: page,
+                    flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+            }
         }
         catch (Exception ex)
         {
@@ -248,15 +303,90 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         }
     }
 
-    private static EmbedBuilder MakeBaseHelpEmbed(string prefix, IUser botUser)
+    private static MessageComponent BuildHelpMessageComponent(
+        string title,
+        string description,
+        IReadOnlyList<List<string>> blocks,
+        string footer,
+        string avatarUrl,
+        string avatarDescription)
     {
-        return new EmbedBuilder()
-            .WithColor(HelpColor)
-            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordHelpCenterTitle), botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
-            .WithDescription(AppLocalization.Get(LocalizationKeys.DiscordHelpDescription))
-            .WithThumbnailUrl(botUser.GetAvatarUrl() ?? botUser.GetDefaultAvatarUrl())
-            .WithFooter(AppLocalization.Format(LocalizationKeys.DiscordHelpTipFooter, prefix))
-            .WithCurrentTimestamp();
+        var builder = new ComponentBuilderV2();
+
+        for (int i = 0; i < blocks.Count; i++)
+        {
+            var isFirst = i == 0;
+            var pageTitle = isFirst || blocks.Count == 1
+                ? title
+                : $"{title} {i + 1}/{blocks.Count}";
+            var pageDescription = isFirst
+                ? description
+                : AppLocalization.Format(LocalizationKeys.DiscordHelpFooterPage, i + 1, blocks.Count);
+            var pageFooter = blocks.Count == 1
+                ? footer
+                : $"{footer} | {AppLocalization.Format(LocalizationKeys.DiscordHelpFooterPage, i + 1, blocks.Count)}";
+
+            builder.WithContainer(BuildHelpContainer(
+                pageTitle,
+                pageDescription,
+                blocks[i],
+                pageFooter,
+                isFirst ? avatarUrl : string.Empty,
+                avatarDescription));
+        }
+
+        return builder.Build();
+    }
+
+    private static ContainerBuilder BuildHelpContainer(
+        string title,
+        string description,
+        IReadOnlyList<string> bodyBlocks,
+        string footer,
+        string avatarUrl,
+        string avatarDescription)
+    {
+        var container = new ContainerBuilder()
+            .WithAccentColor(HelpColor);
+
+        var headerText = TrimComponentText($"**{title}**\n{description}");
+        if (string.IsNullOrWhiteSpace(avatarUrl))
+        {
+            container.WithTextDisplay(headerText);
+        }
+        else
+        {
+            var header = new SectionBuilder()
+                .AddComponent(new TextDisplayBuilder(headerText))
+                .WithAccessory(new ThumbnailBuilder(
+                    new UnfurledMediaItemProperties(avatarUrl),
+                    avatarDescription,
+                    false));
+
+            container.WithSection(header);
+        }
+
+        foreach (var body in bodyBlocks)
+        {
+            container.WithSeparator(SeparatorSpacingSize.Small, true);
+            container.WithTextDisplay(TrimComponentText(body));
+        }
+
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(footer));
+
+        return container;
+    }
+
+    private static string GetUserAvatarUrl(IUser user) =>
+        user.GetAvatarUrl(size: 64) ?? user.GetDefaultAvatarUrl();
+
+    private static string TrimComponentText(string text, int maxLength = MaxComponentTextLength)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+            return "\u200B";
+
+        return text.Length <= maxLength ? text : text[..(maxLength - 3)] + "...";
     }
 
     private static string FormatParameter(ParameterInfo parameter)
@@ -283,9 +413,33 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         return clean.EndsWith("Module", StringComparison.Ordinal) ? clean[..^"Module".Length] : clean;
     }
 
-    private static bool IsTradeModule(string moduleName) =>
-        moduleName.Contains("Trade", StringComparison.OrdinalIgnoreCase) ||
-        moduleName.Contains("Queue", StringComparison.OrdinalIgnoreCase);
+    private static (int Order, string Title) GetHelpCategory(string moduleName)
+    {
+        var normalized = moduleName.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase);
+
+        if (MatchesAny(normalized, "Trade", "Clone", "Dump", "MysteryEgg", "MysteryMon", "HOMEReady", "SpecialRequest", "Pokepaste"))
+            return (0, "Trade Commands");
+
+        if (MatchesAny(normalized, "Queue"))
+            return (1, "Queue Commands");
+
+        if (MatchesAny(normalized, "Legalizer", "LegalityCheck", "BatchEditing", "SeedCheck", "Smogon"))
+            return (2, "Pokemon Tools");
+
+        if (MatchesAny(normalized, "Help", "Hello", "Ping", "Info", "Profile", "Stream", "Donate", "Tutorial", "Joke"))
+            return (3, "General Commands");
+
+        if (MatchesAny(normalized, "Hub", "Bot", "TradeStart", "Log", "Recovery", "Pool", "RemoteControl", "Echo", "Encounter"))
+            return (4, "Bot Management");
+
+        if (MatchesAny(normalized, "Owner", "Sudo", "PKHeX", "BotAvatar"))
+            return (5, "Owner & Moderation");
+
+        return (6, "Other Commands");
+    }
+
+    private static bool MatchesAny(string value, params string[] names) =>
+        names.Any(name => value.Contains(name, StringComparison.OrdinalIgnoreCase));
 
     private static async Task DeleteAfterDelayAsync(IMessage message, int seconds)
     {

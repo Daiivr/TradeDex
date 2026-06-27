@@ -1,5 +1,9 @@
+using SysBot.Base;
+using SysBot.Pokemon;
+using SysBot.Pokemon.WinForms.Controls;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Linq;
 using System.Windows.Forms;
@@ -7,6 +11,7 @@ using SysBot.Base;
 using SysBot.Pokemon;
 using SysBot.Pokemon.Localization;
 using System.IO;
+using System.Linq;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using SysBot.Pokemon.WinForms.Controls;
@@ -216,7 +221,15 @@ namespace SysBot.Pokemon.WinForms
             _CB_Routine.SelectedValue = (int)PokeRoutineType.FlexTrade;
 
             _CB_GameMode = new FlatComboBox { Location = new Point(504, 57), Size = new Size(96, rowHeight), BackColor = inputBg, ForeColor = whiteText };
-            _CB_GameMode.Items.AddRange(new object[] { "SWSH", "BDSP", "PLA", "SV", "LGPE", "PLZA" });
+            _CB_GameMode.Items.AddRange(new object[]
+            {
+                new GameModeItem("SWSH", "SWSH"),
+                new GameModeItem("BDSP", "BDSP"),
+                new GameModeItem("PLA", "PLA"),
+                new GameModeItem("SV", "SV"),
+                new GameModeItem("LGPE", "LGPE"),
+                new GameModeItem("PLZA", "PLZA"),
+            });
             _CB_GameMode.SelectedIndex = -1;
             _CB_GameMode.SelectedIndexChanged += CB_GameMode_SelectedIndexChanged;
 
@@ -237,7 +250,7 @@ namespace SysBot.Pokemon.WinForms
 
             this.BackColor = theme.Background;
 
-                Controls.AddRange(new Control[] {
+            Controls.AddRange(new Control[] {
                 _B_Start, _B_Stop, _B_RebootStop, _updater, _B_New,
                 _B_Reload, _TB_IP, _NUD_Port, _CB_Protocol, _CB_Routine, _CB_GameMode,
                 _FLP_Bots, _updateNotificationImage, _updateVersionLabel
@@ -245,6 +258,46 @@ namespace SysBot.Pokemon.WinForms
 
             ApplyLocalization();
             Size = new Size(722, 53);
+
+            ApplyTheme();
+        }
+
+        private sealed record GameModeItem(string Display, string Code)
+        {
+            public override string ToString() => Display;
+        }
+
+        /// <summary>
+        /// Recolors this form and all of its controls to the currently selected theme.
+        /// Called on construction and whenever the theme changes (via <see cref="Main.RefreshChildThemes"/>).
+        /// </summary>
+        public void ApplyTheme()
+        {
+            var colors = ThemeManager.CurrentColors;
+
+            BackColor = colors.PanelBase;
+            _FLP_Bots.BackColor = colors.ListBackground;
+
+            // Input controls
+            foreach (var box in new Control[] { _TB_IP, _NUD_Port, _CB_Protocol, _CB_Routine, _CB_GameMode })
+            {
+                box.BackColor = colors.ControlBackground;
+                box.ForeColor = colors.ForeColor;
+            }
+
+            _updateVersionLabel.ForeColor = colors.ForeColor;
+
+            // Command buttons (Start/Stop/Reboot/Update/Reload + the "+" add button)
+            // draw their own text, so recolor them explicitly per theme.
+            foreach (var fb in new[] { _B_Start, _B_Stop, _B_RebootStop, _updater, _B_Reload, _B_New })
+                fb.ForeColor = colors.CommandButtonForeColor;
+
+            // Cascade to the bot controllers hosted in the list
+            foreach (Control c in _FLP_Bots.Controls)
+            {
+                if (c is BotController controller)
+                    controller.ApplyTheme();
+            }
         }
 
         public void ApplyLocalization()
@@ -275,7 +328,7 @@ namespace SysBot.Pokemon.WinForms
             if (_CB_GameMode.SelectedIndex == -1)
                 return;
 
-            var selectedMode = _CB_GameMode.SelectedItem?.ToString();
+            var selectedMode = (_CB_GameMode.SelectedItem as GameModeItem)?.Code;
             ProgramMode newMode = selectedMode switch
             {
                 "SWSH" => ProgramMode.SWSH,
@@ -341,7 +394,15 @@ namespace SysBot.Pokemon.WinForms
                     _ => "SWSH"
                 };
 
-                int index = _CB_GameMode.Items.IndexOf(modeText);
+                int index = -1;
+                for (int i = 0; i < _CB_GameMode.Items.Count; i++)
+                {
+                    if (_CB_GameMode.Items[i] is GameModeItem gm && gm.Code == modeText)
+                    {
+                        index = i;
+                        break;
+                    }
+                }
                 if (index >= 0)
                     _CB_GameMode.SelectedIndex = index;
             }

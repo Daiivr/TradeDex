@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Linq;
 using System.Text.Json.Serialization;
 using static SysBot.Pokemon.TradeSettings;
+using SysBot.Pokemon.Localization;
 
 namespace SysBot.Pokemon;
 

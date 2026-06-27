@@ -220,8 +220,9 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         content = ReusableActions.StripCodeBlock(content);
         var set = new ShowdownSet(content);
 
-        // You can still get template if you want other ALM things, but not for GenerateEgg
-         var template = AutoLegalityWrapper.GetTemplate(set);
+        // GetTemplate parses Ball:/.Scale= into the RegenTemplate's Regen (and consumes those
+        // lines from set.InvalidLines), so this same instance must be the one passed to GenerateEgg.
+        var template = AutoLegalityWrapper.GetTemplate(set);
 
         _ = Task.Run(async () =>
         {
@@ -229,11 +230,11 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             {
                 var sav = AutoLegalityWrapper.GetTrainerInfo<T>();
 
-                // Wrap the ShowdownSet in a RegenTemplate for GenerateEgg
-                var regenTemplate = new RegenTemplate(set);
-
-                // Generate the egg using ALM's GenerateEgg
-                var pkm = sav.GenerateEgg(regenTemplate, out var result);
+                // Reuse the template built above. GetTemplate(set) already parsed the Ball:/.Scale=
+                // lines into its Regen AND removed them from set.InvalidLines, so building a second
+                // RegenTemplate(set) here would silently drop the user's ball and batch commands.
+                // Generate the egg (also applies the user's batch commands, e.g. .Scale=)
+                var pkm = AutoLegalityWrapper.GenerateEgg(sav, template, out var result);
 
                 if (result != LegalizationResult.Regenerated)
                 {
@@ -1107,7 +1108,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task ListEventsAsync([Remainder] string args = "")
         => ListHelpers<T>.HandleListCommandAsync(
             Context,
-            EventsFolder,
+            SysCord<T>.Runner.Config.Folder.EventsFolder,
             "events",
             "er",
             args
@@ -1119,7 +1120,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task BattleReadyListAsync([Remainder] string args = "")
         => ListHelpers<T>.HandleListCommandAsync(
             Context,
-            BattleReadyPKMFolder,
+            SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder,
             "battle-ready files",
             "brr",
             args
@@ -1136,7 +1137,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task EventRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
-            EventsFolder,
+            SysCord<T>.Runner.Config.Folder.EventsFolder,
             index,
             "event",
             "le"
@@ -1149,7 +1150,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task BattleReadyRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
-            BattleReadyPKMFolder,
+            SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder,
             index,
             "battle-ready file",
             "brl"
@@ -1536,6 +1537,12 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
 
         var originalPk = pk.Clone();
 
+        // Capture shiny state from the unmodified pkm. Once TID/SID are overwritten below,
+        // pk.IsShiny re-evaluates against the new trainer IDs with the old PID and will
+        // almost always read false — silently dropping the shiny we just generated.
+        bool wasShiny = originalPk.IsShiny;
+        uint originalShinyXor = originalPk.ShinyXor;
+
         // Apply cached trainer info
         pk.OriginalTrainerName = cachedTrainerDetails.OT;
         pk.TrainerTID7 = (uint)cachedTrainerDetails.TID;
@@ -1552,12 +1559,9 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         if (!pk.IsNicknamed)
             pk.ClearNickname();
 
-        // Recalculate PID for shiny Pokemon
-        if (pk.IsShiny)
-        {
-            var shinyXor = pk.ShinyXor;
-            pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ shinyXor) << 16) | (pk.PID & 0xFFFF);
-        }
+        // Rebuild PID against the new TID/SID so the original shiny type (Square/Star) is preserved.
+        if (wasShiny)
+            pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ originalShinyXor) << 16) | (pk.PID & 0xFFFF);
 
         pk.RefreshChecksum();
 
@@ -1596,6 +1600,14 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
                 // Normalize content and parse Showdown set
                 // IMPORTANT: ShowdownSet is IMMUTABLE — never try to modify Nature/IVs/etc on it
                 content = BatchCommandNormalizer.NormalizeBatchCommands(content);
+
+                // Reject future-dated MetDate requests (must run AFTER normalization
+                // since the validator only matches the .MetDate=YYYYMMDD batch form).
+                if (!MetDateValidator.IsValid(content, out var metDateError))
+                {
+                    await Helpers<T>.ReplyAndDeleteAsync(Context, metDateError!, 10);
+                    return;
+                }
 
                 // Parse hypertraining preferences before stripping code blocks
                 var userHTPreferences = AutoLegalityExtensionsDiscord.ParseHyperTrainingCommandsPublic(content);

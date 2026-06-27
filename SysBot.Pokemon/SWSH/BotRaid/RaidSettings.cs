@@ -3,6 +3,7 @@ using SysBot.Base;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Threading;
+using SysBot.Pokemon.Localization;
 
 namespace SysBot.Pokemon;
 

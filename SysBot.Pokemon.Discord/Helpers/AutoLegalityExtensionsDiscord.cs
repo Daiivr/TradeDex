@@ -9,6 +9,7 @@ using SysBot.Pokemon.Helpers;
 using SysBot.Pokemon.Localization;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -28,7 +29,7 @@ public static class AutoLegalityExtensionsDiscord
     {
         if (set.Species <= 0)
         {
-            await SendAutoLegalityEmbedAsync(channel, AppLocalization.Get(LocalizationKeys.DiscordUnableInterpretShowdown), Color.Orange, AppLocalization.Get(LocalizationKeys.DiscordLegalizationWarningTitle), includeErrorImage: true).ConfigureAwait(false);
+            await SendUnableInterpretShowdownComponentAsync(channel, AppLocalization.Get(LocalizationKeys.DiscordUnableInterpretShowdown), authorUser).ConfigureAwait(false);
             return;
         }
 
@@ -124,7 +125,6 @@ public static class AutoLegalityExtensionsDiscord
                 ? AppLocalization.Format(LocalizationKeys.DiscordLegalizedEgg, result, spec)
                 : AppLocalization.Format(LocalizationKeys.DiscordLegalizedPkmShowdown, result, spec, la.EncounterOriginal.Name);
             await SendLegalizationSuccessEmbedAsync(channel, pkm, msg, GetRegenTemplateText(pkm), result, la.EncounterOriginal.Name, authorUser).ConfigureAwait(false);
-            await channel.SendPKMAsync(pkm).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -308,7 +308,6 @@ public static class AutoLegalityExtensionsDiscord
         legal.RefreshChecksum();
 
         await SendLegalizationSuccessEmbedAsync(channel, legal, AppLocalization.Format(LocalizationKeys.DiscordLegalizedPkmFile, sanitizedFileName, string.Empty).Trim(), GetRegenTemplateText(legal), authorUser: authorUser).ConfigureAwait(false);
-        await channel.SendPKMAsync(legal).ConfigureAwait(false);
     }
 
     private static async Task SendAutoLegalityEmbedAsync(ISocketMessageChannel channel, string description, Color color, string title, bool includeErrorImage = false, string? imageUrl = null, string? status = null, string? reason = null)
@@ -336,6 +335,35 @@ public static class AutoLegalityExtensionsDiscord
         await channel.SendMessageAsync(embed: embed.Build()).ConfigureAwait(false);
     }
 
+    private static async Task SendUnableInterpretShowdownComponentAsync(ISocketMessageChannel channel, string description, IUser? authorUser)
+    {
+        var title = AppLocalization.Get(LocalizationKeys.DiscordLegalizationWarningTitle);
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
+
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n{description}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(ErrorThumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"```{GetUnableInterpretShowdownSolutions()}```"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(ErrorImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(FormatComponentFooter(authorUser)));
+
+        builder.WithContainer(container);
+        await channel.SendMessageAsync(components: builder.Build(), flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+    }
+
     private static async Task SendLegalizationSuccessEmbedAsync(ISocketMessageChannel channel, PKM pkm, string description, string showdownText, string? result = null, string? encounterName = null, IUser? authorUser = null)
     {
         var species = GameInfo.Strings.Species[pkm.Species];
@@ -344,15 +372,8 @@ public static class AutoLegalityExtensionsDiscord
         var container = new ContainerBuilder()
             .WithAccentColor(Color.Green);
 
-        var header = new SectionBuilder()
-            .AddComponent(new TextDisplayBuilder(TrimComponentText(
-                $"**✅ {AppLocalization.Get(LocalizationKeys.DiscordLegalizationSuccessTitle)}**\n{description}")))
-            .WithAccessory(new ThumbnailBuilder(
-                new UnfurledMediaItemProperties(SuccessIconUrl),
-                AppLocalization.Get(LocalizationKeys.DiscordLegalizationSuccessTitle),
-                false));
-
-        container.WithSection(header);
+        container.WithTextDisplay(TrimComponentText(
+            $"## ✅ {AppLocalization.Get(LocalizationKeys.DiscordLegalizationSuccessTitle)}\n> {description}"));
 
         var summaryLines = new List<string>
         {
@@ -377,9 +398,31 @@ public static class AutoLegalityExtensionsDiscord
         container.WithTextDisplay(TrimComponentText($"{FormatFieldName(LocalizationKeys.DiscordLegalizationDetailsLabel)}\n{WrapCodeBlock(showdownText)}"));
         container.WithSeparator(SeparatorSpacingSize.Small, true);
         container.WithTextDisplay(TrimComponentText(AppLocalization.Get(LocalizationKeys.DiscordLegalizationCopyFooter)));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+
+        var fileName = CreatePkmFileName(pkm);
+        container.WithFile(new UnfurledMediaItemProperties($"attachment://{fileName}"), false);
 
         builder.WithContainer(container);
-        await channel.SendMessageAsync(components: builder.Build(), flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+        using var fileStream = CreatePkmFileStream(pkm);
+        var attachments = new[]
+        {
+            new FileAttachment(fileStream, fileName, species),
+        };
+        await channel.SendFilesAsync(attachments, components: builder.Build(), flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+    }
+
+    private static string CreatePkmFileName(PKM pkm)
+    {
+        var uniqueId = Guid.NewGuid().ToString("N")[..8];
+        return $"{uniqueId}_{PathUtil.CleanFileName(pkm.FileName)}";
+    }
+
+    private static MemoryStream CreatePkmFileStream(PKM pkm)
+    {
+        var partyBytes = new byte[pkm.SIZE_PARTY];
+        pkm.WriteDecryptedDataParty(partyBytes);
+        return new MemoryStream(partyBytes);
     }
 
     private static string FormatFieldName(string key) => $"__**{AppLocalization.Get(key)}**__";
@@ -454,6 +497,19 @@ public static class AutoLegalityExtensionsDiscord
     {
         var trimmed = TrimEmbedField(value, 1016);
         return $"```{trimmed}```";
+    }
+
+    private static string GetUnableInterpretShowdownSolutions()
+    {
+        return AppLocalization.Language == AppLanguage.Spanish
+            ? "📝Soluciones:\n• Pega un set Showdown válido.\n\n• Revisa que el nombre del Pokémon esté escrito correctamente y en inglés.\n\n• Usa el nombre oficial del Pokémon en el juego."
+            : "📝Solutions:\n• Paste a valid Showdown set.\n\n• Check that the Pokémon name is spelled correctly and in English.\n\n• Use the official Pokémon name from the game.";
+    }
+
+    private static string FormatComponentFooter(IUser? authorUser)
+    {
+        var timestamp = $"<t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>";
+        return authorUser is null ? timestamp : $"{authorUser.Username} • {timestamp}";
     }
 
     private static string TrimComponentText(string value)

@@ -22,7 +22,11 @@ public static partial class AppLocalization
                 target[LocalizationKeys.BotsUpdateAvailableTooltip] = "Click to view update details and download the latest version.";
                 target[LocalizationKeys.BotsNewRelease] = "NEW RELEASE!";
                 target[LocalizationKeys.BotsGameModePlaceholder] = "Game";
+                target[LocalizationKeys.BotsModeSwitchSuccessTitle] = "Mode Switch Successful";
+                target[LocalizationKeys.BotsModeSwitchSuccessChanged] = "Game mode successfully changed to {0}!";
+                target[LocalizationKeys.BotsModeSwitchSuccessReady] = "You can now start your bots and they will operate in the new mode.";
                 target[LocalizationKeys.BotsModeSwitchErrorTitle] = "Mode Switch Error";
+                target[LocalizationKeys.BotsModeSwitchReloadProgram] = "Please try reloading the program.";
                 target[LocalizationKeys.BotsMainFormUnavailable] = "Main form instance not available. Please restart the program.";
                 target[LocalizationKeys.BotsFailedSwitchMode] = "Failed to switch game mode: {0}";
                 target[LocalizationKeys.BotsConfigFileNotFound] = "Config file not found at: {0}";
@@ -46,7 +50,11 @@ public static partial class AppLocalization
                 target[LocalizationKeys.BotsUpdateAvailableTooltip] = "Haz clic para ver detalles de la actualizacion y descargar la ultima version.";
                 target[LocalizationKeys.BotsNewRelease] = "NUEVA VERSION!";
                 target[LocalizationKeys.BotsGameModePlaceholder] = "Juego";
+                target[LocalizationKeys.BotsModeSwitchSuccessTitle] = "Modo cambiado correctamente";
+                target[LocalizationKeys.BotsModeSwitchSuccessChanged] = "El modo de juego se cambio correctamente a {0}!";
+                target[LocalizationKeys.BotsModeSwitchSuccessReady] = "Ahora puedes iniciar tus bots y funcionaran en el nuevo modo.";
                 target[LocalizationKeys.BotsModeSwitchErrorTitle] = "Error al cambiar modo";
+                target[LocalizationKeys.BotsModeSwitchReloadProgram] = "Intenta recargar el programa.";
                 target[LocalizationKeys.BotsMainFormUnavailable] = "La ventana principal no esta disponible. Reinicia el programa.";
                 target[LocalizationKeys.BotsFailedSwitchMode] = "No se pudo cambiar el modo de juego: {0}";
                 target[LocalizationKeys.BotsConfigFileNotFound] = "No se encontro el archivo de configuracion en: {0}";

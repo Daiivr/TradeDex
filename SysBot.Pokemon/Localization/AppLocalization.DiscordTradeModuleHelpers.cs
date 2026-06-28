@@ -91,6 +91,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordReasonLabel] = "Reason";
                 target[LocalizationKeys.DiscordReportForRequest] = "{0}, here's the report for your request:";
                 target[LocalizationKeys.DiscordNoAttachmentProvided] = "No attachment provided!";
+                target[LocalizationKeys.DiscordNoTradeInputSummary] = "No **file** or **Showdown set** was attached.";
+                target[LocalizationKeys.DiscordNoTradeInputSolution] = "Please make sure to upload a file with the `{0}trade` command, or paste a Showdown set with it so the bot can process your request correctly.";
                 target[LocalizationKeys.DiscordAttachmentIncompatible] = "Attachment provided is not compatible with this module!";
                 target[LocalizationKeys.DiscordBlockedPokemon] = "Provided Pokemon content is blocked from trading!";
                 target[LocalizationKeys.DiscordBlockedHeldItem] = "Trade blocked: The held item '{0}' cannot be traded.";
@@ -98,12 +100,14 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordAttachmentNotLegal] = "{0} attachment is not legal, and cannot be traded!\n\nLegality Report:\n```\n{1}\n```";
                 target[LocalizationKeys.DiscordInvalidShowdownSetTitle] = "Invalid Showdown set!";
                 target[LocalizationKeys.DiscordInvalidEggSetSummary] = "❌ {0} The showdown set is not valid for a {1} egg.";
+                target[LocalizationKeys.DiscordInvalidEggSetSummaryPlain] = "The showdown set is not valid for a {0} egg.";
                 target[LocalizationKeys.DiscordInvalidEggSetError] = "{0} may not be obtainable in an egg or some data is blocking the trade.";
                 target[LocalizationKeys.DiscordInvalidEggSetSolution] = "Review your information and try again.";
                 target[LocalizationKeys.DiscordSolutionLabel] = "Solution";
                 target[LocalizationKeys.DiscordReportLabel] = "Report:";
                 target[LocalizationKeys.DiscordInvalidAttachmentTitle] = "Invalid attachment!";
                 target[LocalizationKeys.DiscordInvalidAttachmentSummary] = "❌ {0}, this {1} is not native to this game and cannot be traded!";
+                target[LocalizationKeys.DiscordInvalidAttachmentSummaryPlain] = "This **{0}** is not native to this game and cannot be traded!";
                 target[LocalizationKeys.DiscordInvalidAttachmentReasonIntro] = "Here is the reason:";
                 target[LocalizationKeys.DiscordInvalidAttachmentAdvice] = "🔊Advice:\n• Please carefully verify the information in PKHeX and try again!\n• You can use the ALM plugin to legalize your Pokemon and avoid these problems.";
                 target[LocalizationKeys.DiscordNonNativeBlocked] = "This **{0}** is not native to this game, and cannot be traded! Trade with the correct bot, then trade to HOME.";
@@ -194,6 +198,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordReasonLabel] = "Motivo";
                 target[LocalizationKeys.DiscordReportForRequest] = "{0}, aqui esta el reporte de tu solicitud:";
                 target[LocalizationKeys.DiscordNoAttachmentProvided] = "No se adjunto ningun archivo!";
+                target[LocalizationKeys.DiscordNoTradeInputSummary] = "No se adjunto ningun **archivo** o **conjunto showdown**.";
+                target[LocalizationKeys.DiscordNoTradeInputSolution] = "Por favor asegurate de subir un archivo junto al comando `{0}trade` o pegar un conjunto showdown junto a este para que el bot pueda procesar tu solicitud correctamente.";
                 target[LocalizationKeys.DiscordAttachmentIncompatible] = "El archivo adjunto no es compatible con este modulo!";
                 target[LocalizationKeys.DiscordBlockedPokemon] = "El contenido de este Pokemon esta bloqueado para trade!";
                 target[LocalizationKeys.DiscordBlockedHeldItem] = "Trade bloqueado: el item '{0}' no se puede tradear.";
@@ -201,12 +207,14 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordAttachmentNotLegal] = "El archivo de {0} no es legal y no se puede tradear!\n\nReporte de legalidad:\n```\n{1}\n```";
                 target[LocalizationKeys.DiscordInvalidShowdownSetTitle] = "Conjunto de showdown no valido!";
                 target[LocalizationKeys.DiscordInvalidEggSetSummary] = "❌ {0} El conjunto de showdown no es valido para un huevo de {1}.";
+                target[LocalizationKeys.DiscordInvalidEggSetSummaryPlain] = "El conjunto de showdown no es valido para un huevo de {0}.";
                 target[LocalizationKeys.DiscordInvalidEggSetError] = "Puede que {0} no se pueda obtener en un huevo o algun dato este impidiendo el trade.";
                 target[LocalizationKeys.DiscordInvalidEggSetSolution] = "Revisa tu informacion y vuelve a intentarlo.";
                 target[LocalizationKeys.DiscordSolutionLabel] = "Solucion";
                 target[LocalizationKeys.DiscordReportLabel] = "Reporte:";
                 target[LocalizationKeys.DiscordInvalidAttachmentTitle] = "Archivo adjunto no valido!";
                 target[LocalizationKeys.DiscordInvalidAttachmentSummary] = "❌ {0}, este {1} no es nativo de este juego y no se puede intercambiar!";
+                target[LocalizationKeys.DiscordInvalidAttachmentSummaryPlain] = "Este **{0}** no es nativo de este juego y no se puede intercambiar!";
                 target[LocalizationKeys.DiscordInvalidAttachmentReasonIntro] = "He aqui la razon:";
                 target[LocalizationKeys.DiscordInvalidAttachmentAdvice] = "🔊Consejo:\n• Por favor verifica detenidamente la informacion en PKHeX e intentalo de nuevo!\n• Puedes utilizar el plugin de ALM para legalizar tus pokemons y ahorrarte estos problemas.";
                 target[LocalizationKeys.DiscordNonNativeBlocked] = "Este **{0}** no es nativo de este juego y no se puede tradear! Usa el bot correcto y luego pasalo a HOME.";

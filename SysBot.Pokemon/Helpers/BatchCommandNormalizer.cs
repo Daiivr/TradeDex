@@ -42,7 +42,8 @@ namespace SysBot.Pokemon.Discord.Helpers
             { "OT Friendship", "OriginalTrainerFriendship" },
             { "HT Friendship", "HandlingTrainerFriendship" },
             { "Characteristic", "Characteristic" },
-            { "Stat Nature", "StatNature" }
+            { "Stat Nature", "StatAlignment" },
+            { "StatNature", "StatAlignment" }
         };
 
         private static readonly HashSet<string> EqualCommandKeys = new(StringComparer.OrdinalIgnoreCase)
@@ -76,7 +77,7 @@ namespace SysBot.Pokemon.Discord.Helpers
                 { "HT", ProcessHyperTrain },
                 { "MetLevel", ProcessMetLevel },
                 { "Markings", ProcessMarkings },
-                { "StatNature", ProcessStatNature },
+                { "StatAlignment", ProcessStatNature },
                 { "Nickname", ProcessNickname }
             };
 
@@ -559,7 +560,7 @@ namespace SysBot.Pokemon.Discord.Helpers
                 ? $".HyperTrainFlags={b}"
                 : string.Empty;
 
-        // .StatNature= → Stat Nature:
+        // .StatAlignment= → Stat Nature:
         // Value is a Nature enum name or "Random"
         private static string ProcessStatNature(string val)
         {
@@ -574,7 +575,7 @@ namespace SysBot.Pokemon.Discord.Helpers
                 return string.Empty;
 
             // Return exact batch command Showdown expects
-            return $".StatNature={matchedNature}";
+            return $".StatAlignment={matchedNature}";
         }
 
         // Nickname: Suggest → Nickname: [Random]

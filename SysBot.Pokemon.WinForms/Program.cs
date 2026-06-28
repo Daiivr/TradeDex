@@ -39,6 +39,7 @@ namespace SysBot.Pokemon.WinForms
             // DarkScrollHelper instead, which leaves the rest of the chrome untouched.
 
             LocalizedPropertyGrid.Register();
+            ThemedCollectionEditors.Register();
 
             // Set text rendering to be compatible
             Application.SetCompatibleTextRenderingDefault(false);

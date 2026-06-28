@@ -217,6 +217,26 @@ public class TradeCodeStorage
         return null;
     }
 
+    public IReadOnlyDictionary<ulong, TradeCodeDetails> GetAllTradeDetails()
+    {
+        LoadFromFile();
+        return new Dictionary<ulong, TradeCodeDetails>(_tradeCodeDetails);
+    }
+
+    public void UpdateQuote(ulong trainerID, string? quote)
+    {
+        LoadFromFile();
+
+        if (!_tradeCodeDetails.TryGetValue(trainerID, out var details))
+        {
+            details = new TradeCodeDetails { Code = GenerateRandomTradeCode().ToString("D8") };
+            _tradeCodeDetails[trainerID] = details;
+        }
+
+        details.Quote = string.IsNullOrWhiteSpace(quote) ? null : quote.Trim();
+        SaveToFile();
+    }
+
     public void UpdateTradeDetails(ulong trainerID, string ot, int tid, int sid, string? quote = null, int? language = null, byte? gender = null)
     {
         LoadFromFile();

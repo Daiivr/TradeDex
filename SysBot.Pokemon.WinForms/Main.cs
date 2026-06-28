@@ -545,9 +545,9 @@ namespace SysBot.Pokemon.WinForms
 
                 LogUtil.LogInfo($"Successfully switched from {oldMode} to {newMode}", "GameMode");
                 SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(
-                    $"Game mode successfully changed to {newMode}!\n\n" +
-                    "You can now start your bots and they will operate in the new mode.",
-                    "Mode Switch Successful",
+                    $"{AppLocalization.Format(LocalizationKeys.BotsModeSwitchSuccessChanged, newMode)}\n\n" +
+                    AppLocalization.Get(LocalizationKeys.BotsModeSwitchSuccessReady),
+                    AppLocalization.Get(LocalizationKeys.BotsModeSwitchSuccessTitle),
                     MessageBoxButtons.OK,
                     SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Success);
             }
@@ -555,8 +555,8 @@ namespace SysBot.Pokemon.WinForms
             {
                 LogUtil.LogError($"Failed to switch game mode: {ex.Message}", "GameMode");
                 SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(
-                    $"Failed to switch game mode:\n\n{ex.Message}\n\nPlease try reloading the program.",
-                    "Mode Switch Failed",
+                    $"{AppLocalization.Format(LocalizationKeys.BotsFailedSwitchMode, ex.Message)}\n\n{AppLocalization.Get(LocalizationKeys.BotsModeSwitchReloadProgram)}",
+                    AppLocalization.Get(LocalizationKeys.BotsModeSwitchErrorTitle),
                     MessageBoxButtons.OK,
                     SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
             }

@@ -50,9 +50,10 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             return;
         }
 
-        int currentMilestone = MedalHelpers.GetCurrentMilestone(totalTrades);
-        var embed = MedalHelpers.CreateMedalsEmbed(Context.User, currentMilestone, totalTrades);
-        await Context.Channel.SendMessageAsync(embed: embed).ConfigureAwait(false);
+        await using var medalsImage = MedalHelpers.BuildMedalsCollectionImage(totalTrades);
+        var attachment = new FileAttachment(medalsImage, MedalHelpers.GetMedalsCollectionFileName(Context.User.Id));
+        var component = MedalHelpers.CreateMedalsShowcaseComponent(Context.User, totalTrades);
+        await Context.Channel.SendFileAsync(attachment, components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
     }
 
     #endregion

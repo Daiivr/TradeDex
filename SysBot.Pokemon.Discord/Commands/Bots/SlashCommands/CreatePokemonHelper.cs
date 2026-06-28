@@ -161,7 +161,7 @@ public static class CreatePokemonHelper
         if (pk is not PA9 && !string.IsNullOrWhiteSpace(finalNature) && Enum.TryParse<Nature>(finalNature, true, out var parsedNature))
         {
             pk.Nature = parsedNature;
-            pk.StatNature = parsedNature;
+            pk.StatAlignment = parsedNature;
         }
 
         // Refresh stats after IV/Nature changes

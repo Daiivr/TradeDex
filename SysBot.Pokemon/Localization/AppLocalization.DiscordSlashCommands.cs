@@ -24,6 +24,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordPreconditionSudoRequired] = "⚠️ {0} You are not permitted to run this command.";
                 target[LocalizationKeys.DiscordPreconditionOwnerRequired] = "⚠️ {0} only the owner of the bot can run this command.";
                 target[LocalizationKeys.DiscordCommandTooFewParameters] = "⚠️ {0}, this command is missing required parameters. Include the required value and try again.";
+                target[LocalizationKeys.DiscordCommandTooManyParameters] = "⚠️ {0}, this command has too many parameters. Remove the extra text and try again.";
                 break;
             case AppLanguage.Spanish:
                 // Discord: Slash commands
@@ -43,6 +44,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordPreconditionSudoRequired] = "⚠️ {0} no estas autorizado a ejecutar este comando.";
                 target[LocalizationKeys.DiscordPreconditionOwnerRequired] = "⚠️ {0} solo el dueno del bot puede ejecutar este comando.";
                 target[LocalizationKeys.DiscordCommandTooFewParameters] = "⚠️ {0}, a este comando le faltan parametros requeridos. Incluye el valor necesario e intentalo de nuevo.";
+                target[LocalizationKeys.DiscordCommandTooManyParameters] = "⚠️ {0}, este comando tiene demasiados parametros. Quita el texto extra e intentalo de nuevo.";
                 break;
         }
     }

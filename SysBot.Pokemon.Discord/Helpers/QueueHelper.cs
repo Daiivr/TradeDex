@@ -25,25 +25,6 @@ public static class QueueHelper<T> where T : PKM, new()
     private const uint MaxTradeCode = 9999_9999;
     private const string MysteryTradeImageUrl = "https://i.imgur.com/FdESYAv.png";
 
-    private static readonly Dictionary<int, string> MilestoneImages = new()
-    {
-        { 1, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/001.png" },
-        { 50, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/050.png" },
-        { 100, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/100.png" },
-        { 150, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/150.png" },
-        { 200, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/200.png" },
-        { 250, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/250.png" },
-        { 300, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/300.png" },
-        { 350, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/350.png" },
-        { 400, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/400.png" },
-        { 450, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/450.png" },
-        { 500, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/500.png" },
-        { 550, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/550.png" },
-        { 600, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/600.png" },
-        { 650, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/650.png" },
-        { 700, "https://raw.githubusercontent.com/Secludedly/ZE-FusionBot-Sprite-Images/main/700.png" }
-    };
-
     private static GameStrings GetDisplayStrings() => GameInfo.GetStrings(AppLocalization.Language switch
     {
         AppLanguage.Spanish => "es",
@@ -94,29 +75,6 @@ public static class QueueHelper<T> where T : PKM, new()
 
         footerParts.Add(AppLocalization.Format(LocalizationKeys.DiscordWaitEstimateTradeNumber, eta, batchTradeNumber, totalBatchTrades));
         return string.Join("\n", footerParts);
-    }
-
-    private static string GetMilestoneDescription(int tradeCount)
-    {
-        return tradeCount switch
-        {
-            1 => AppLocalization.Get(LocalizationKeys.DiscordMilestoneFirst),
-            50 => AppLocalization.Get(LocalizationKeys.DiscordMilestone50),
-            100 => AppLocalization.Get(LocalizationKeys.DiscordMilestone100),
-            150 => AppLocalization.Get(LocalizationKeys.DiscordMilestone150),
-            200 => AppLocalization.Get(LocalizationKeys.DiscordMilestone200),
-            250 => AppLocalization.Get(LocalizationKeys.DiscordMilestone250),
-            300 => AppLocalization.Get(LocalizationKeys.DiscordMilestone300),
-            350 => AppLocalization.Get(LocalizationKeys.DiscordMilestone350),
-            400 => AppLocalization.Get(LocalizationKeys.DiscordMilestone400),
-            450 => AppLocalization.Get(LocalizationKeys.DiscordMilestone450),
-            500 => AppLocalization.Get(LocalizationKeys.DiscordMilestone500),
-            550 => AppLocalization.Get(LocalizationKeys.DiscordMilestone550),
-            600 => AppLocalization.Get(LocalizationKeys.DiscordMilestone600),
-            650 => AppLocalization.Get(LocalizationKeys.DiscordMilestone650),
-            700 => AppLocalization.Get(LocalizationKeys.DiscordMilestone700),
-            _ => AppLocalization.Format(LocalizationKeys.DiscordMilestoneDefault, tradeCount)
-        };
     }
 
     public static async Task AddToQueueAsync(SocketCommandContext context, int code, string trainer, RequestSignificance sig, T trade, PokeRoutineType routine, PokeTradeType type, SocketUser trader, bool isBatchTrade = false, int batchTradeNumber = 1, int totalBatchTrades = 1, bool isHiddenTrade = false, bool isMysteryEgg = false, List<Pictocodes>? lgcode = null, bool ignoreAutoOT = false, bool setEdited = false, bool isNonNative = false, bool isMysteryTrade = false)
@@ -1111,16 +1069,10 @@ public static class QueueHelper<T> where T : PKM, new()
 
     private static async Task SendMilestoneEmbed(int tradeCount, ISocketMessageChannel channel, SocketUser user)
     {
-        if (MilestoneImages.TryGetValue(tradeCount, out string? imageUrl))
+        if (MedalHelpers.TryGetMilestoneImageUrl(tradeCount, out _))
         {
-            var embed = new EmbedBuilder()
-                .WithTitle(AppLocalization.Format(LocalizationKeys.DiscordMilestoneMedalTitle, user.Username))
-                .WithDescription(GetMilestoneDescription(tradeCount))
-                .WithColor(new DiscordColor(255, 215, 0)) // Gold color
-                .WithThumbnailUrl(imageUrl)
-                .Build();
-
-            await channel.SendMessageAsync(embed: embed).ConfigureAwait(false);
+            var component = MedalHelpers.CreateMilestoneComponent(user, tradeCount, tradeCount);
+            await channel.SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
         }
     }
 

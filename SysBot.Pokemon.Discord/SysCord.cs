@@ -637,7 +637,8 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         SaveStats(stats);
     }
 
-    private static int GetRequiredXPForNextLevel(int currentLevel) => (int)(100 * Math.Pow(1.2, Math.Max(0, currentLevel - 1)));
+    private static int GetRequiredXPForNextLevel(int currentLevel) =>
+        XpProgression.GetRequiredXPForNextLevel(currentLevel);
 
     private static Dictionary<string, UserStats> LoadOrCreateStats()
     {
@@ -1005,6 +1006,9 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         if (IsTooFewParametersError(result))
             return AppLocalization.Format(LocalizationKeys.DiscordCommandTooFewParameters, msg.Author.Mention);
 
+        if (IsTooManyParametersError(result))
+            return AppLocalization.Format(LocalizationKeys.DiscordCommandTooManyParameters, msg.Author.Mention);
+
         return result.ErrorReason;
     }
 
@@ -1012,6 +1016,12 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
     {
         return result.Error == CommandError.BadArgCount &&
                result.ErrorReason.Contains("too few parameters", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTooManyParametersError(global::Discord.Commands.IResult result)
+    {
+        return result.Error == CommandError.BadArgCount &&
+               result.ErrorReason.Contains("too many parameters", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task SafeSendMessageAsync(IMessageChannel channel, string message)

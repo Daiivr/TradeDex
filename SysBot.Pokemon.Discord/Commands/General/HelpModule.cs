@@ -1,6 +1,7 @@
 using Discord;
 using Discord.Commands;
 using Discord.Net;
+using Discord.WebSocket;
 using SysBot.Pokemon.Localization;
 using System;
 using System.Collections.Generic;
@@ -17,8 +18,8 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
 #pragma warning restore CS9124
 
     private static readonly Color HelpColor = new(114, 137, 218);
-    private const int MaxComponentTextLength = 3900;
-    private const int MaxHelpContainerTextLength = 3600;
+    private const int MaxComponentTextLength = 3000;
+    private const int MaxHelpContainerTextLength = 3000;
     private const int MaxHelpBlocksPerContainer = 4;
 
     [Command("help")]
@@ -57,8 +58,22 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         }
 
         var prefix = SysCordSettings.HubConfig.Discord.CommandPrefix;
-        var page = BuildCommandHelpComponent(result.Commands.Select(x => x.Command), command, prefix);
-        await SendHelpComponentsAsync([page], AppLocalization.Format(LocalizationKeys.DiscordHelpCommandDmSent, Context.User.Mention, command)).ConfigureAwait(false);
+        var app = await Context.Client.GetApplicationInfoAsync().ConfigureAwait(false);
+        var owner = app.Owner.Id;
+        var canUseSudo = CanUseSudo(SysCordSettings.Manager, Context);
+        var commands = result.Commands
+            .Select(x => x.Command)
+            .Where(x => CanSeeCommand(x, owner, Context.User.Id, canUseSudo))
+            .ToList();
+
+        if (commands.Count == 0)
+        {
+            await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordHelpCommandNotFound, Context.User.Mention, command)).ConfigureAwait(false);
+            return;
+        }
+
+        var pages = BuildCommandHelpComponents(commands, command, prefix);
+        await SendHelpComponentsAsync(pages, AppLocalization.Format(LocalizationKeys.DiscordHelpCommandDmSent, Context.User.Mention, command)).ConfigureAwait(false);
     }
 
     private async Task<List<(string ModuleName, List<CommandInfo> Commands)>> GetVisibleModulesAsync()
@@ -67,6 +82,7 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         var app = await Context.Client.GetApplicationInfoAsync().ConfigureAwait(false);
         var owner = app.Owner.Id;
         var userId = Context.User.Id;
+        var canUseSudo = CanUseSudo(manager, Context);
         var modules = new List<(string ModuleName, List<CommandInfo> Commands)>();
 
         foreach (var module in _commandService.Modules)
@@ -76,17 +92,13 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
 
             foreach (var command in module.Commands.OrderBy(x => x.Name))
             {
+                if (!CanSeeCommand(command, owner, userId, canUseSudo))
+                    continue;
+
                 if (!seen.Add(command.Name))
                     continue;
 
-                if (command.Attributes.Any(a => a is RequireOwnerAttribute) && owner != userId)
-                    continue;
-                if (command.Attributes.Any(a => a is RequireSudoAttribute) && !manager.CanUseSudo(userId))
-                    continue;
-
-                var preconditions = await command.CheckPreconditionsAsync(Context).ConfigureAwait(false);
-                if (preconditions.IsSuccess)
-                    commands.Add(command);
+                commands.Add(command);
             }
 
             if (commands.Count == 0)
@@ -101,6 +113,29 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
             .ToList();
     }
 
+    private static bool CanSeeCommand(CommandInfo command, ulong owner, ulong userId, bool canUseSudo)
+    {
+        if (HasCommandOrModulePrecondition<RequireOwnerAttribute>(command) && owner != userId)
+            return false;
+        if (HasCommandOrModulePrecondition<RequireSudoAttribute>(command) && !canUseSudo)
+            return false;
+
+        return true;
+    }
+
+    private static bool HasCommandOrModulePrecondition<TPrecondition>(CommandInfo command) where TPrecondition : PreconditionAttribute =>
+        command.Preconditions.Any(a => a is TPrecondition) ||
+        command.Module.Preconditions.Any(a => a is TPrecondition);
+
+    private static bool CanUseSudo(DiscordManager manager, SocketCommandContext context)
+    {
+        if (manager.Config.AllowGlobalSudo && manager.CanUseSudo(context.User.Id))
+            return true;
+
+        return context.User is SocketGuildUser guildUser &&
+            manager.CanUseSudo(guildUser.Roles.Select(z => z.Name));
+    }
+
     private static IReadOnlyList<MessageComponent> BuildHelpComponents(
         List<(string ModuleName, List<CommandInfo> Commands)> modules,
         string prefix,
@@ -112,16 +147,13 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         var avatarUrl = GetUserAvatarUrl(botUser);
         var footer = AppLocalization.Format(LocalizationKeys.DiscordHelpTipFooter, prefix);
 
-        return
-        [
-            BuildHelpMessageComponent(
-                AppLocalization.Get(LocalizationKeys.DiscordHelpCenterTitle),
-                AppLocalization.Get(LocalizationKeys.DiscordHelpDescription),
-                sections,
-                footer,
-                avatarUrl,
-                botUser.Username)
-        ];
+        return BuildHelpMessageComponents(
+            AppLocalization.Get(LocalizationKeys.DiscordHelpCenterTitle),
+            AppLocalization.Get(LocalizationKeys.DiscordHelpDescription),
+            sections,
+            footer,
+            avatarUrl,
+            botUser.Username);
     }
 
     private static List<string> BuildCategorizedHelpBlocks(
@@ -207,7 +239,7 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         return groups;
     }
 
-    private MessageComponent BuildCommandHelpComponent(IEnumerable<CommandInfo> commands, string searchedCommand, string prefix)
+    private IReadOnlyList<MessageComponent> BuildCommandHelpComponents(IEnumerable<CommandInfo> commands, string searchedCommand, string prefix)
     {
         var blocks = new List<string>();
 
@@ -225,7 +257,7 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
                 $"**{AppLocalization.Get(LocalizationKeys.DiscordHelpExampleLabel)}:**\n`{BuildExample(command, prefix)}`");
         }
 
-        return BuildHelpMessageComponent(
+        return BuildHelpMessageComponents(
             AppLocalization.Get(LocalizationKeys.DiscordHelpCommandAuthor),
             $"**{prefix}{searchedCommand}**",
             BuildHelpBlockGroups(blocks),
@@ -303,7 +335,7 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         }
     }
 
-    private static MessageComponent BuildHelpMessageComponent(
+    private static IReadOnlyList<MessageComponent> BuildHelpMessageComponents(
         string title,
         string description,
         IReadOnlyList<List<string>> blocks,
@@ -311,7 +343,7 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
         string avatarUrl,
         string avatarDescription)
     {
-        var builder = new ComponentBuilderV2();
+        var pages = new List<MessageComponent>(blocks.Count);
 
         for (int i = 0; i < blocks.Count; i++)
         {
@@ -326,16 +358,19 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
                 ? footer
                 : $"{footer} | {AppLocalization.Format(LocalizationKeys.DiscordHelpFooterPage, i + 1, blocks.Count)}";
 
-            builder.WithContainer(BuildHelpContainer(
-                pageTitle,
-                pageDescription,
-                blocks[i],
-                pageFooter,
-                isFirst ? avatarUrl : string.Empty,
-                avatarDescription));
+            var builder = new ComponentBuilderV2()
+                .WithContainer(BuildHelpContainer(
+                    pageTitle,
+                    pageDescription,
+                    blocks[i],
+                    pageFooter,
+                    isFirst ? avatarUrl : string.Empty,
+                    avatarDescription));
+
+            pages.Add(builder.Build());
         }
 
-        return builder.Build();
+        return pages;
     }
 
     private static ContainerBuilder BuildHelpContainer(
@@ -416,6 +451,9 @@ public class HelpModule(CommandService commandService) : ModuleBase<SocketComman
     private static (int Order, string Title) GetHelpCategory(string moduleName)
     {
         var normalized = moduleName.Replace(" ", string.Empty, StringComparison.OrdinalIgnoreCase);
+
+        if (MatchesAny(normalized, "TradeLeaderboard", "Leaderboard"))
+            return (6, "Other Commands");
 
         if (MatchesAny(normalized, "Trade", "Clone", "Dump", "MysteryEgg", "MysteryMon", "HOMEReady", "SpecialRequest", "Pokepaste"))
             return (0, "Trade Commands");

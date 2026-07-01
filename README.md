@@ -1,6 +1,6 @@
 ﻿<h1 align="center">
     <a href="https://amplication.com/#gh-dark-mode-only">
-    <img src="https://i.imgur.com/zhOvwMc.png">
+    <img src="https://i.imgur.com/Kwzfkqv.png">
     </a>
 </h1>
 

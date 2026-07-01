@@ -68,9 +68,17 @@ public sealed record TradeQueueInfo<T>(PokeTradeHub<T> Hub)
                 // Trade found in queue - use queue-based position calculation
                 var entry = allTrades[index];
 
+                // A trade being actively processed by a bot is dequeued from
+                // Hub.Queues.AllQueues entirely (TryDequeue removes it, it isn't
+                // just flagged), so it no longer shows up in allTrades at all.
+                // UsersInQueue still tracks it (it's only removed on OnFinish),
+                // so count those as "ahead" too or anyone still waiting sees a
+                // position/total that's missing whoever is currently trading.
+                var liveIds = new HashSet<int>(allTrades.Select(t => t.UniqueTradeID));
+                int processingCount = UsersInQueue.Count(z => z.Trade.IsProcessing && !liveIds.Contains(z.Trade.UniqueTradeID));
+
                 // Count total trades accounting for batch trades
                 int totalTradesAhead = 0;
-                int processingCount = 0;
 
                 for (int i = 0; i < allTrades.Count; i++)
                 {

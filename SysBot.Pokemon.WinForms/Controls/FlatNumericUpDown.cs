@@ -162,7 +162,8 @@ public sealed class FlatNumericUpDown : Panel
         var g = e.Graphics;
         g.SmoothingMode = SmoothingMode.AntiAlias;
 
-        Color border = _editor.Focused ? FocusBorderColor : (_hover ? Color.FromArgb(60, 64, 70) : BorderColor);
+        var colors = ThemeManager.CurrentColors;
+        Color border = _editor.Focused ? colors.Accent : (_hover ? ThemeManager.Shade(colors.Shadow, 0.24f) : colors.Shadow);
         using (var pen = new Pen(border, 1))
             g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
 
@@ -174,8 +175,8 @@ public sealed class FlatNumericUpDown : Panel
         int upCy = arrowZone.Y + arrowZone.Height / 4;
         int dnCy = arrowZone.Y + arrowZone.Height * 3 / 4;
 
-        DrawChevron(g, cx, upCy, isUp: true, _hoverUp ? ChevronHoverColor : ChevronColor);
-        DrawChevron(g, cx, dnCy, isUp: false, _hoverDown ? ChevronHoverColor : ChevronColor);
+        DrawChevron(g, cx, upCy, isUp: true, _hoverUp ? colors.ForeColor : colors.Muted);
+        DrawChevron(g, cx, dnCy, isUp: false, _hoverDown ? colors.ForeColor : colors.Muted);
     }
 
     private static void DrawChevron(Graphics g, int cx, int cy, bool isUp, Color color)

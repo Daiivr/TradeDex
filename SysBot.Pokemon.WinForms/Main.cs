@@ -70,7 +70,7 @@ namespace SysBot.Pokemon.WinForms
 
         private Panel leftBorderBtn = null!;
         private Dictionary<IconButton, Timer> hoverTimers = new();
-        private readonly Dictionary<string, Image> childFormTitleImages = new();
+        private readonly Dictionary<string, Image> embeddedResourceImages = new();
 
 #pragma warning disable CS0414 // Field is assigned but never used
         private bool _isFormLoading = true;               // Flag to indicate if the form is still loading (reserved for future use)
@@ -1132,6 +1132,68 @@ namespace SysBot.Pokemon.WinForms
             }
         }
 
+        public void ApplyThemeArtwork()
+        {
+            if (pictureLogo != null)
+            {
+                var logo = GetEmbeddedResourceImage(GetThemeLogoResourceFile());
+                if (logo != null)
+                    pictureLogo.Image = logo;
+            }
+
+            RefreshNavThemeState();
+            UpdateChildFormTitle(currentBtn);
+        }
+
+        private static bool IsCuteTheme
+            => string.Equals(ThemeManager.CurrentThemeName, "Cute", StringComparison.OrdinalIgnoreCase);
+
+        private static string GetThemeLogoResourceFile()
+            => IsCuteTheme ? "cute_logo.png" : "picture_logo.png";
+
+        private Image? GetEmbeddedResourceImage(string resourceFile)
+        {
+            if (embeddedResourceImages.TryGetValue(resourceFile, out var cached))
+                return cached;
+
+            var resourceName = $"SysBot.Pokemon.WinForms.Resources.{resourceFile}";
+            using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+            if (stream == null)
+                return null;
+
+            var image = Image.FromStream(stream);
+            embeddedResourceImages[resourceFile] = image;
+            return image;
+        }
+
+        private void RefreshNavThemeState()
+        {
+            var colors = ThemeManager.CurrentColors;
+            foreach (var btn in new[] { btnBots, btnHub, btnLogs })
+            {
+                bool active = btn == currentBtn;
+                btn.BackColor = active ? colors.Hover : colors.PanelBase;
+                btn.IconColor = active ? colors.Accent : colors.Muted;
+                btn.ForeColor = colors.ForeColor;
+            }
+
+            if (CB_Themes != null)
+            {
+                CB_Themes.BackColor = colors.ControlBackground;
+                CB_Themes.ForeColor = colors.ForeColor;
+                CB_Themes.Invalidate();
+            }
+
+            if (leftBorderBtn != null && currentBtn != null)
+            {
+                leftBorderBtn.BackColor = colors.Accent;
+                leftBorderBtn.Size = new Size(3, currentBtn.Height);
+                leftBorderBtn.Location = new Point(0, currentBtn.Top);
+                leftBorderBtn.BringToFront();
+                leftBorderBtn.Visible = true;
+            }
+        }
+
         // Update the background image based on the current game mode
         private void UpdateBackgroundImage(ProgramMode mode)
         {
@@ -1511,6 +1573,9 @@ namespace SysBot.Pokemon.WinForms
         {
             var resourceFile = btn switch
             {
+                var b when b == btnBots && IsCuteTheme => "cute_title_bots.png",
+                var b when b == btnHub && IsCuteTheme => "cute_title_hub.png",
+                var b when b == btnLogs && IsCuteTheme => "cute_title_registros.png",
                 var b when b == btnBots => "title_bots.png",
                 var b when b == btnHub => "title_hub.png",
                 var b when b == btnLogs && AppLocalization.Language == AppLanguage.Spanish => "title_registros.png",
@@ -1521,17 +1586,7 @@ namespace SysBot.Pokemon.WinForms
             if (resourceFile == null)
                 return null;
 
-            if (childFormTitleImages.TryGetValue(resourceFile, out var cached))
-                return cached;
-
-            var resourceName = $"SysBot.Pokemon.WinForms.Resources.{resourceFile}";
-            using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
-            if (stream == null)
-                return null;
-
-            var image = Image.FromStream(stream);
-            childFormTitleImages[resourceFile] = image;
-            return image;
+            return GetEmbeddedResourceImage(resourceFile);
         }
 
         private void UpdateChildFormTitle(IconButton? btn)
@@ -1564,11 +1619,12 @@ namespace SysBot.Pokemon.WinForms
 
             int titleHeight = btn switch
             {
+                _ when IsCuteTheme => 46,
                 var b when b == btnBots => 34,
                 var b when b == btnHub => 34,
                 _ => 38
             };
-            const int maxTitleWidth = 210;
+            int maxTitleWidth = IsCuteTheme ? 230 : 210;
             int width = Math.Min(maxTitleWidth, Math.Max(120, (int)Math.Round(image.Width * (titleHeight / (double)image.Height))));
             childFormTitleImage.Image = image;
             childFormTitleImage.Size = new Size(width, titleHeight);
@@ -1607,10 +1663,11 @@ namespace SysBot.Pokemon.WinForms
 
                 btnLanguage.Invalidate();
 
-                var tooltip = AppLocalization.Get(LocalizationKeys.LanguageButtonTooltip);
-                languageToolTip?.SetToolTip(btnLanguage, tooltip);
-                languageToolTip?.SetToolTip(lblLangEn, tooltip);
-                languageToolTip?.SetToolTip(lblLangEs, tooltip);
+                var englishTooltip = AppLocalization.Get(LocalizationKeys.LanguageButtonTooltipEnglish);
+                var spanishTooltip = AppLocalization.Get(LocalizationKeys.LanguageButtonTooltipSpanish);
+                languageToolTip?.SetToolTip(btnLanguage, isEnglish ? spanishTooltip : englishTooltip);
+                languageToolTip?.SetToolTip(lblLangEn, englishTooltip);
+                languageToolTip?.SetToolTip(lblLangEs, spanishTooltip);
             }
 
             if (downloadFontsLink != null)
@@ -1944,7 +2001,7 @@ namespace SysBot.Pokemon.WinForms
             {
                 StopOutlinePulse(currentBtn); // STOP pulse animation (no-op if not running)
                 currentBtn.BackColor = ThemeManager.CurrentColors.PanelBase; // default bg
-                currentBtn.IconColor = Color.FromArgb(180, 184, 192);        // muted icon
+                currentBtn.IconColor = ThemeManager.CurrentColors.Muted;     // muted icon
                 currentBtn.TextAlign = ContentAlignment.MiddleLeft;
                 currentBtn.TextImageRelation = TextImageRelation.ImageBeforeText;
                 currentBtn.ImageAlign = ContentAlignment.MiddleLeft;

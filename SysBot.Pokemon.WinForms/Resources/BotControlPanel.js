@@ -543,10 +543,10 @@ class ApiService {
 class StatusManager {
     constructor() {
         this.colors = {
-            RUNNING: '#10b981',
-            IDLE: '#f59e0b',
-            STOPPED: '#ef4444',
-            UNKNOWN: '#6b7280'
+            RUNNING: 'oklch(0.72 0.16 150)',
+            IDLE: 'oklch(0.78 0.13 80)',
+            STOPPED: 'oklch(0.68 0.18 25)',
+            UNKNOWN: 'oklch(0.5 0.014 65)'
         };
 
         this.states = {

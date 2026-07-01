@@ -76,12 +76,17 @@
     <EmbeddedResource Include="Resources\new-release-update.png" />
     <EmbeddedResource Include="Resources\pikachu_running.gif" />
     <EmbeddedResource Include="Resources\pla_mode_image.png" />
+    <EmbeddedResource Include="Resources\cute_logo.png" />
+    <EmbeddedResource Include="Resources\cute_title_bots.png" />
+    <EmbeddedResource Include="Resources\cute_title_hub.png" />
+    <EmbeddedResource Include="Resources\cute_title_registros.png" />
     <EmbeddedResource Include="Resources\picture_logo.png" />
     <EmbeddedResource Include="Resources\title_bots.png" />
     <EmbeddedResource Include="Resources\title_hub.png" />
     <EmbeddedResource Include="Resources\title_logs.png" />
     <EmbeddedResource Include="Resources\title_registros.png" />
     <EmbeddedResource Include="Resources\pla_mode_upper.png" />
+    <EmbeddedResource Include="Resources\plza_mode_image.png" />
     <EmbeddedResource Include="Resources\plza_mode_upper.png" />
     <EmbeddedResource Include="Resources\RightJoyCon.png" />
     <EmbeddedResource Include="Resources\swsh_mode_image.png" />

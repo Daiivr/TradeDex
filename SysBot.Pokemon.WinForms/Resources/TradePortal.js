@@ -16,7 +16,7 @@ const state = {
     activityPolling: null,
     activitySeen: new Set(),
     activityQueue: [],
-    activityShowing: false,
+    activityPlaying: false,
     activityBootstrapped: false,
 };
 
@@ -125,6 +125,8 @@ const ES = {
     tradeCancelled: 'Trade cancelado.',
     tradeFinishedFileSaved: 'Trade completado. Tu archivo esta disponible en la bandeja de Archivos recientes.',
     positionLine: 'Posicion {position} de {total}',
+    etaRemaining: 'Tiempo estimado: ~{time}',
+    etaAlmostThere: 'Ya casi es tu turno',
     waitingLatest: 'Esperando el ultimo estado.',
     noTradeConsole: 'Pega un set, entra a la cola y esta consola te dira cuando buscar el codigo.',
     loginConsole: 'Inicia sesion con Discord para usar tu codigo guardado y tu perfil.',
@@ -142,7 +144,8 @@ const ES = {
     terminalQueuePosition: '[COLA] Posicion actual: {position} de {total}. Mantente listo y no cierres esta pagina.',
     terminalPrepare: '[BOT] Preparando el menu de intercambio. Abre Poke Portal > Link Trade en tu consola.',
     terminalSearch: '[BUSCAR] Busca intercambio por codigo ahora: {code}.',
-    terminalFound: '[BOT] Entrenador encontrado: {trainer}. TID: {tid}. SID: {sid}. Confirma solo si la informacion coincide.',
+    terminalFound: '[BOT] Entrenador encontrado. Verifica los datos antes de confirmar.',
+    trainerCardTrainer: 'Entrenador',
     terminalOffer: '[BOT] Esperando que ofrezcas un Pokemon en el juego.',
     terminalComplete: '[LISTO] Trade completado. Disfruta tu {pokemon}.',
     terminalCancel: '[CANCELADO] {reason}',
@@ -150,6 +153,7 @@ const ES = {
     terminalFallbackCancel: 'El trade fue cancelado.',
     liveActivity: 'Actividad en vivo',
     activityFinished: 'acaba de intercambiar un',
+    footerDisclaimer: 'TradeDex es una herramienta hecha por fans y no esta afiliada con Nintendo, Game Freak ni The Pokemon Company.',
 };
 
 const EN = {
@@ -255,6 +259,8 @@ const EN = {
     guideTerminal: 'Follow the live terminal: it tells you when to search the code, who was found, and what to confirm.',
     guideProfile: 'Use Profile to review your history and edit or delete your saved trade code.',
     positionLine: 'Position {position} of {total}',
+    etaRemaining: 'Estimated time: ~{time}',
+    etaAlmostThere: "You're almost up",
     waitingLatest: 'Waiting for the latest status.',
     noTradeConsole: 'Paste a set, join the queue, and this console will tell you when to search the code.',
     loginConsole: 'Login with Discord to use your saved code and profile.',
@@ -272,7 +278,8 @@ const EN = {
     terminalQueuePosition: '[QUEUE] Current position: {position} of {total}. Stay ready and keep this page open.',
     terminalPrepare: '[BOT] Loading the trade menu. Open Poke Portal > Link Trade on your console.',
     terminalSearch: '[SEARCH] Search for a link trade with this code now: {code}.',
-    terminalFound: '[BOT] Trainer found: {trainer}. TID: {tid}. SID: {sid}. Confirm only if the info matches.',
+    terminalFound: '[BOT] Trainer found. Verify the details before confirming.',
+    trainerCardTrainer: 'Trainer',
     terminalOffer: '[BOT] Waiting for you to offer a Pokemon in game.',
     terminalComplete: '[DONE] Trade complete. Enjoy your {pokemon}.',
     terminalCancel: '[CANCELLED] {reason}',
@@ -280,6 +287,7 @@ const EN = {
     terminalFallbackCancel: 'The trade was cancelled.',
     liveActivity: 'Live activity',
     activityFinished: 'just traded a',
+    footerDisclaimer: 'TradeDex is a fan-made tool and is not affiliated with Nintendo, Game Freak, or The Pokémon Company.',
 };
 
 const t = (key, values = {}) => {
@@ -333,7 +341,6 @@ async function initLocalization() {
     });
     document.title = t('pageTitle');
     renderSiteGuide();
-    await initMode();
 }
 
 async function initMode() {
@@ -351,6 +358,10 @@ async function initMode() {
         SV: '/sv_mode_image.png',
         PLZA: '/plza_mode_image.png',
         SWSH: '/swsh_mode_image.png',
+        BDSP: '/bdsp_mode_image.png',
+        LA: '/pla_mode_image.png',
+        PLA: '/pla_mode_image.png',
+        LGPE: '/lgpe_mode_image.png',
     };
     image.src = imageMap[state.mode] || '/sv_mode_image.png';
     image.alt = modeLabel(state.mode);
@@ -363,6 +374,7 @@ function modeLabel(mode) {
         SWSH: 'Sword / Shield',
         BDSP: 'Brilliant Diamond / Shining Pearl',
         LA: 'Legends Arceus',
+        PLA: 'Legends Arceus',
         LGPE: "Let's Go",
     }[mode] || mode || 'Trade';
 }
@@ -524,7 +536,6 @@ async function initAuth() {
     } else {
         state.recentFiles = [];
         renderRecentFiles([]);
-        renderConsole(null);
         const config = await api('/api/trade/auth/config');
         if (!config.discordConfigured) {
             $('login-help').textContent = t('loginUnconfigured');
@@ -819,8 +830,6 @@ function renderQueue(result) {
     const stateKey = getEffectiveTradeState(trade);
     $('cancel-button').hidden = !trade || ['finished', 'cancelled'].includes(stateKey);
 
-    renderConsole(trade);
-
     if (!trade) return;
 
     applyStateBadge($('trade-state'), stateKey);
@@ -1047,12 +1056,6 @@ function localizeRuntimeInstruction(message) {
     return text.replace(/[*_`▲▼]/g, '').replace(/\s+/g, ' ').trim();
 }
 
-function renderConsole(trade) {
-    const led = $('console-led');
-    const stateKey = trade ? getEffectiveTradeState(trade) : null;
-    led.classList.toggle('live', Boolean(trade) && !['finished', 'cancelled'].includes(stateKey));
-}
-
 function renderSiteGuide() {
     const list = $('site-guide-list');
     if (!list) return;
@@ -1216,7 +1219,12 @@ function getTerminalLines(trade) {
     ];
 
     if (stateKey === 'queued') {
-        lines.push({ id: 'position', text: t('terminalQueuePosition', { position, total }), kind: stateKey === 'queued' ? 'active' : 'ok' });
+        lines.push({
+            id: 'position',
+            text: t('terminalQueuePosition', { position, total }),
+            kind: 'active',
+            etaSeconds: trade?.etaSeconds > 0 ? trade.etaSeconds : 0,
+        });
     }
 
     if (['initializing', 'searching', 'partner', 'processing', 'finished'].includes(stateKey)) {
@@ -1224,11 +1232,12 @@ function getTerminalLines(trade) {
     }
 
     if (['searching', 'partner', 'processing', 'finished'].includes(stateKey)) {
-        lines.push({ id: 'search', text: t('terminalSearch', { code }), kind: stateKey === 'searching' ? 'active' : 'ok', important: true });
+        lines.push({ id: 'search', text: t('terminalSearch', { code }), kind: stateKey === 'searching' ? 'active' : 'ok' });
     }
 
     if (['partner', 'processing', 'finished'].includes(stateKey)) {
-        lines.push({ id: 'found', text: t('terminalFound', { trainer, tid, sid }), kind: stateKey === 'partner' ? 'active' : 'ok', important: true });
+        lines.push({ id: 'found', text: t('terminalFound', { trainer, tid, sid }), kind: stateKey === 'partner' ? 'active' : 'ok' });
+        lines.push({ id: 'found-card', kind: 'trainer-card', trainer, tid, sid });
     }
 
     if (stateKey === 'processing') {
@@ -1257,13 +1266,44 @@ function syncTerminalLines(lines) {
         }
     }
 
+    // The trainer-card line always arrives right after the "found" line in
+    // the same render pass -- capture its typing promise so the card can
+    // wait for it instead of popping in before the message is readable.
+    let foundTypingPromise = null;
+
     for (const line of lines) {
         const existing = current.get(line.id);
+
+        if (line.kind === 'trainer-card') {
+            const reveal = () => {
+                if (existing) {
+                    updateTrainerCard(existing, line);
+                    list.append(existing);
+                } else {
+                    list.append(buildTrainerCard(line));
+                }
+            };
+            const foundText = current.get('found')?.querySelector('.terminal-text');
+            if (foundTypingPromise) {
+                foundTypingPromise.then(reveal);
+            } else if (!foundText?.classList.contains('typing')) {
+                reveal();
+            }
+            continue;
+        }
+
         if (existing) {
             existing.className = `terminal-line ${line.kind || 'system'}${line.important ? ' important' : ''}`;
             const text = existing.querySelector('.terminal-text');
-            if (text && text.textContent !== line.text && !text.classList.contains('typing')) {
+            const stillTyping = text?.classList.contains('typing');
+            if (text && text.textContent !== line.text && !stillTyping) {
                 text.textContent = line.text;
+            }
+            // While the line is still being typed out, the in-flight
+            // queueTerminalTyping().then() from its creation will reveal
+            // the badge once it's done -- don't jump the gun here.
+            if (!stillTyping) {
+                syncEtaBadge(existing, line.etaSeconds);
             }
             list.append(existing);
             continue;
@@ -1276,8 +1316,113 @@ function syncTerminalLines(lines) {
         text.className = 'terminal-text';
         item.append(text);
         list.append(item);
-        queueTerminalTyping(text, line.text);
+        const typingRun = state.terminalTypingRun;
+        const typingPromise = queueTerminalTyping(text, line.text);
+        if (line.id === 'found') {
+            foundTypingPromise = typingPromise;
+        }
+        // Don't reveal the ETA badge until the line has finished typing out --
+        // otherwise it pops in before the message it belongs to is readable.
+        typingPromise.then(() => {
+            if (typingRun !== state.terminalTypingRun) return;
+            syncEtaBadge(item, line.etaSeconds);
+        });
     }
+}
+
+/** Live "time remaining" badge next to the queue position line. Lives
+ * outside the typed `.terminal-text` node so the per-second tick never
+ * fights with the typewriter effect or retypes the sentence.
+ * `etaSeconds` is undefined for any line that isn't the position line
+ * (no badge at all), 0 once the server stops giving a meaningful
+ * estimate (the badge stays, just settles on "almost there" instead of
+ * disappearing), and a positive count while there's time left to show. */
+function syncEtaBadge(item, etaSeconds) {
+    let badge = item.querySelector('.terminal-eta');
+    if (etaSeconds === undefined) {
+        badge?.remove();
+        return;
+    }
+
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'terminal-eta';
+        item.append(badge);
+    }
+
+    if (etaSeconds > 0) {
+        badge.dataset.target = String(Date.now() + etaSeconds * 1000);
+    } else {
+        delete badge.dataset.target;
+    }
+    updateEtaBadge(badge);
+}
+
+function updateEtaBadge(badge) {
+    if (!badge.dataset.target) {
+        badge.textContent = t('etaAlmostThere');
+        return;
+    }
+    const remainingMs = Number(badge.dataset.target) - Date.now();
+    const remainingSeconds = Math.max(0, Math.round(remainingMs / 1000));
+    badge.textContent = remainingSeconds > 0
+        ? t('etaRemaining', { time: formatEtaClock(remainingSeconds) })
+        : t('etaAlmostThere');
+}
+
+function formatEtaClock(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function trainerCardField(label, value, tabular) {
+    const row = document.createElement('div');
+    row.className = 'trainer-card-row';
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'trainer-card-label';
+    labelEl.textContent = label;
+
+    const valueEl = document.createElement('strong');
+    valueEl.className = tabular ? 'trainer-card-value tabular' : 'trainer-card-value';
+    valueEl.textContent = value;
+
+    row.append(labelEl, valueEl);
+    return row;
+}
+
+function buildTrainerCard(line) {
+    const item = document.createElement('li');
+    item.className = 'terminal-line trainer-card';
+    item.dataset.lineId = line.id;
+
+    const inner = document.createElement('div');
+    inner.className = 'trainer-card-inner';
+    for (const corner of ['tl', 'tr', 'bl', 'br']) {
+        const span = document.createElement('span');
+        span.className = `trainer-card-corner ${corner}`;
+        inner.append(span);
+    }
+    const sweep = document.createElement('span');
+    sweep.className = 'trainer-card-sweep';
+    inner.append(sweep);
+
+    inner.append(
+        trainerCardField(t('trainerCardTrainer'), line.trainer, false),
+        trainerCardField('TID', line.tid, true),
+        trainerCardField('SID', line.sid, true),
+    );
+
+    item.append(inner);
+    return item;
+}
+
+function updateTrainerCard(item, line) {
+    const values = item.querySelectorAll('.trainer-card-value');
+    if (values[0]) values[0].textContent = line.trainer;
+    if (values[1]) values[1].textContent = line.tid;
+    if (values[2]) values[2].textContent = line.sid;
 }
 
 function queueTerminalTyping(node, text) {
@@ -1291,6 +1436,7 @@ function queueTerminalTyping(node, text) {
         screen.scrollTop = screen.scrollHeight;
         await delay(90);
     });
+    return state.terminalTypingQueue;
 }
 
 async function typeText(node, text, run) {
@@ -1330,50 +1476,90 @@ async function pollActivity() {
     if (!result.success || !Array.isArray(result.events)) return;
 
     const events = result.events.filter((event) => event?.id && event?.username && event?.pokemon);
+
+    // First poll: remember everything already finished without replaying the
+    // whole backlog -- only surface the most recent one as a welcome.
     if (!state.activityBootstrapped) {
         events.forEach((event) => state.activitySeen.add(String(event.id)));
         state.activityBootstrapped = true;
         const latest = events.at(-1);
-        if (latest) enqueueActivity(latest);
+        if (latest) state.activityQueue.push(latest);
+        playActivity();
         return;
     }
 
+    // Each new trade is shown exactly once, then never again.
     events.forEach((event) => {
         const id = String(event.id);
         if (state.activitySeen.has(id)) return;
         state.activitySeen.add(id);
-        enqueueActivity(event);
+        state.activityQueue.push(event);
     });
+    playActivity();
 }
 
-function enqueueActivity(event) {
-    state.activityQueue.push(event);
-    if (!state.activityShowing) showNextActivity();
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
 }
 
-async function showNextActivity() {
-    const activity = state.activityQueue.shift();
-    if (!activity) {
-        state.activityShowing = false;
+// Sweep the queued trade(s) across once -- enter right, exit left -- then
+// clear. New trades that arrive mid-sweep are shown in the next pass.
+function playActivity() {
+    if (state.activityPlaying) return;
+
+    const ticker = $('activity-ticker');
+    const track = $('ticker-track');
+    if (!ticker || !track) return;
+
+    const batch = state.activityQueue.splice(0);
+    if (!batch.length) {
+        track.innerHTML = '';
+        ticker.hidden = true;
         return;
     }
 
-    state.activityShowing = true;
-    const bar = $('activity-bar');
-    $('activity-user').textContent = activity.username;
-    $('activity-pokemon').textContent = activity.pokemon;
-    bar.hidden = false;
-    bar.classList.remove('activity-enter', 'activity-exit');
-    void bar.offsetWidth;
-    bar.classList.add('activity-enter');
+    state.activityPlaying = true;
+    const verb = escapeHtml(t('activityFinished'));
+    const chip = (event) => {
+        const user = escapeHtml(event.username);
+        const mon = escapeHtml(cleanPokemonName(event.pokemon) || event.pokemon);
+        return `<span class="ticker-chip"><strong>${user}</strong> ${verb} <span class="ticker-mon">${mon}</span></span>`;
+    };
 
-    await delay(5400);
-    bar.classList.remove('activity-enter');
-    bar.classList.add('activity-exit');
-    await delay(280);
-    bar.hidden = true;
-    bar.classList.remove('activity-exit');
-    showNextActivity();
+    track.innerHTML = batch.map(chip).join('');
+    ticker.hidden = false;
+
+    const finish = () => {
+        track.innerHTML = '';
+        ticker.hidden = true;
+        state.activityPlaying = false;
+        if (state.activityQueue.length) playActivity();
+    };
+
+    // Reduced motion: show statically for a moment instead of sweeping.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        window.setTimeout(finish, 6000);
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        const viewport = ticker.querySelector('.ticker-viewport');
+        const viewWidth = viewport ? viewport.clientWidth : ticker.clientWidth;
+        const trackWidth = track.scrollWidth;
+        const duration = Math.max(10, (viewWidth + trackWidth) / 90);
+
+        track.style.setProperty('--ticker-from', `${viewWidth}px`);
+        track.style.setProperty('--ticker-to', `${-trackWidth}px`);
+        track.style.animation = 'none';
+        void track.offsetWidth;
+        track.style.animation = `tickerScroll ${duration}s linear 1`;
+        track.addEventListener('animationend', finish, { once: true });
+    });
 }
 
 function toggleGuide(forceOpen = null) {
@@ -1451,8 +1637,16 @@ window.addEventListener('message', async (event) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    await initLocalization();
+    // Localization, mode, and auth are independent -- run them concurrently
+    // instead of chaining awaits, so a logged-in user's session resolves
+    // (and the login panel never flashes) as soon as possible.
+    const localizationPromise = initLocalization();
+    const modePromise = initMode();
+    const authPromise = initAuth();
     startActivityPolling();
+    setInterval(() => {
+        document.querySelectorAll('.terminal-eta[data-target]').forEach(updateEtaBadge);
+    }, 1000);
     $('login-button').addEventListener('click', login);
     $('logout-button').addEventListener('click', logout);
     $('trade-form').addEventListener('submit', submitTrade);
@@ -1518,5 +1712,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         event.stopPropagation();
         clearPkmFile();
     });
-    await initAuth();
+    await Promise.all([localizationPromise, modePromise, authPromise]);
+    // initLocalization()'s i18n sweep and initAuth()'s session-state update
+    // race each other; re-apply the session label last so it can't get
+    // stuck on the static "Checking" fallback either way.
+    $('session-state').textContent = state.authenticated ? t('loggedIn') : t('guest');
 });

@@ -9,7 +9,7 @@ public static partial class AppLocalization
             case AppLanguage.English:
                 // Discord: TradeModule Helpers
                 target[LocalizationKeys.DiscordUnableParseSpecies] = "Unable to parse Showdown set. Could not identify the Pokemon species.";
-                target[LocalizationKeys.DiscordUnableParseShowdown] = "Unable to parse Showdown Set:\n{0}";
+                target[LocalizationKeys.DiscordUnableParseShowdown] = "Unable to interpret the Showdown Set because of the following line:\n{0}";
                 target[LocalizationKeys.DiscordMewLgpeShinyLocked] = "Mew can **not** be Shiny in LGPE. PoGo Mew does not transfer and Pokeball Plus Mew is shiny locked.";
                 target[LocalizationKeys.DiscordAdNameDetected] = "Detected Adname in the Pokemon's name or trainer name, which is not allowed.";
                 target[LocalizationKeys.DiscordSpeciesSetTimeout] = "That {0} set took too long to generate.";
@@ -116,7 +116,7 @@ public static partial class AppLocalization
             case AppLanguage.Spanish:
                 // Discord: TradeModule Helpers
                 target[LocalizationKeys.DiscordUnableParseSpecies] = "No se pudo leer el Showdown set. No pude identificar la especie del Pokemon.";
-                target[LocalizationKeys.DiscordUnableParseShowdown] = "No se pudo leer el Showdown Set:\n{0}";
+                target[LocalizationKeys.DiscordUnableParseShowdown] = "No fue posible interpretar el Showdown Set por causa de la siguiente linea:\n{0}";
                 target[LocalizationKeys.DiscordMewLgpeShinyLocked] = "Mew **no** puede ser shiny en LGPE. Mew de PoGo no se transfiere y Mew de Pokeball Plus tiene shiny lock.";
                 target[LocalizationKeys.DiscordAdNameDetected] = "Se detecto publicidad en el nombre del Pokemon o del entrenador, y eso no esta permitido.";
                 target[LocalizationKeys.DiscordSpeciesSetTimeout] = "El set de {0} tomo demasiado tiempo en generarse.";

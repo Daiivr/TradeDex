@@ -84,7 +84,8 @@ public sealed class FlatTextBox : Panel
     {
         base.OnPaint(e);
         var g = e.Graphics;
-        Color border = _inner.Focused ? FocusBorderColor : (_hover ? HoverBorderColor : BorderColor);
+        var colors = ThemeManager.CurrentColors;
+        Color border = _inner.Focused ? colors.Accent : (_hover ? ThemeManager.Shade(colors.Shadow, 0.24f) : colors.Shadow);
         using var pen = new Pen(border, 1);
         g.DrawRectangle(pen, 0, 0, Width - 1, Height - 1);
     }

@@ -455,8 +455,7 @@ p {
 }
 
 .icon-button {
-    width: 44px;
-    min-height: 44px;
+    width: 40px;
     padding: 0;
     color: var(--ink-soft);
 }
@@ -544,24 +543,6 @@ p {
     padding: clamp(36px, 4.5vw, 64px) 0 72px;
     display: grid;
     gap: clamp(32px, 4vw, 64px);
-}
-
-/* ============ Footer ============ */
-
-.site-footer {
-    width: min(1320px, calc(100% - clamp(24px, 6vw, 96px)));
-    margin: 0 auto;
-    padding: 26px 0 48px;
-    border-top: 1px solid var(--hairline-soft);
-    text-align: center;
-}
-
-.site-footer p {
-    margin: 0;
-    color: var(--subtle);
-    font-size: 12px;
-    line-height: 1.6;
-    letter-spacing: 0.005em;
 }
 
 .hero,
@@ -665,59 +646,17 @@ p {
     margin: 0;
     position: relative;
     aspect-ratio: 16 / 10;
-    min-height: 280px;
-    max-height: 340px;
+    max-height: 320px;
     border-radius: var(--radius-2xl);
     background:
-        radial-gradient(42% 58% at 50% 52%, oklch(0.72 0.16 78 / 0.2), transparent 64%),
-        radial-gradient(60% 80% at 20% 12%, oklch(0.62 0.198 27 / 0.22), transparent 70%),
-        radial-gradient(72% 72% at 82% 80%, oklch(0.74 0.12 200 / 0.12), transparent 68%),
-        linear-gradient(145deg, oklch(0.255 0.025 45), oklch(0.17 0.015 55) 56%, oklch(0.2 0.02 36));
-    border: 1px solid oklch(0.46 0.035 52 / 0.72);
-    box-shadow:
-        0 26px 72px oklch(0.09 0.035 28 / 0.62),
-        0 8px 24px oklch(0.3 0.16 26 / 0.22),
-        inset 0 1px 0 oklch(1 0 0 / 0.09),
-        inset 0 0 0 1px oklch(1 0 0 / 0.025);
+        radial-gradient(120% 80% at 50% 0%, oklch(0.32 0.06 30 / 0.6), transparent 60%),
+        linear-gradient(180deg, var(--surface-2), var(--surface));
+    border: 1px solid var(--hairline);
+    box-shadow: var(--shadow-lg), inset 0 1px 0 oklch(1 0 0 / 0.06);
     overflow: hidden;
     display: grid;
     place-items: center;
-    padding: clamp(28px, 5vw, 52px) clamp(34px, 6vw, 64px);
-    isolation: isolate;
-}
-
-/* Transparent Master Ball outline behind the mode logo. */
-.hero-art-emblem {
-    --hero-emblem-size: clamp(140px, 14vw, 195px);
-    position: absolute;
-    z-index: 1;
-    inset: 0;
-    margin: auto;
-    width: var(--hero-emblem-size);
-    height: var(--hero-emblem-size);
-    aspect-ratio: 1;
-    border-radius: 50%;
-    pointer-events: none;
-    animation: heroEmblemSpin 44s linear infinite;
-}
-
-.hero-art .hero-art-emblem-mark {
-    display: block;
-    width: 100%;
-    height: 100%;
-    fill: none;
-    stroke: currentColor;
-    stroke-width: 8px;
-    stroke-linecap: round;
-    stroke-linejoin: round;
-    opacity: 0.34;
-    filter: drop-shadow(0 0 14px oklch(1 0 0 / 0.08));
-    color: oklch(1 0 0 / 0.56);
-    mix-blend-mode: screen;
-}
-
-@keyframes heroEmblemSpin {
-    to { transform: rotate(360deg); }
+    padding: 10% 14%;
 }
 
 .hero-art::before {
@@ -729,28 +668,28 @@ p {
         radial-gradient(2px 2px at 78% 24%, oklch(1 0 0 / 0.08), transparent 60%),
         radial-gradient(2px 2px at 22% 78%, oklch(1 0 0 / 0.1), transparent 60%),
         radial-gradient(2px 2px at 88% 82%, oklch(1 0 0 / 0.08), transparent 60%);
-    background-size:
-        auto,
-        auto,
-        auto,
-        auto;
-    mask-image: radial-gradient(ellipse at center, black 20%, transparent 78%);
-    -webkit-mask-image: radial-gradient(ellipse at center, black 20%, transparent 78%);
-    z-index: 0;
+    pointer-events: none;
+}
+
+.hero-art::after {
+    content: "";
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    right: 14px;
+    display: flex;
+    align-items: center;
+    height: 12px;
     pointer-events: none;
 }
 
 .hero-art img {
     position: relative;
-    z-index: 2;
-    width: min(72%, 370px);
-    min-width: 220px;
+    z-index: 1;
     max-width: 100%;
-    max-height: 46%;
+    max-height: 100%;
     object-fit: contain;
-    filter:
-        drop-shadow(0 14px 24px oklch(0 0 0 / 0.6))
-        drop-shadow(0 0 18px oklch(0.78 0.13 80 / 0.24));
+    filter: drop-shadow(0 18px 30px oklch(0 0 0 / 0.5));
 }
 
 .hero-art-chrome {
@@ -761,7 +700,7 @@ p {
     padding: 5px 10px;
     border: 1px solid var(--hairline);
     border-radius: var(--radius-pill);
-    background: oklch(0.16 0.014 55 / 0.76);
+    background: oklch(0.18 0.014 55 / 0.7);
     -webkit-backdrop-filter: blur(8px);
     backdrop-filter: blur(8px);
     color: var(--ink-soft);
@@ -771,7 +710,6 @@ p {
     text-transform: uppercase;
     letter-spacing: 0.18em;
     z-index: 2;
-    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.04);
 }
 
 .hero-art-chrome.top-left {
@@ -802,11 +740,10 @@ p {
 
 .hero-art-scan {
     position: absolute;
-    inset: 18px;
+    inset: 14px;
     border-radius: var(--radius-xl);
     pointer-events: none;
     background:
-        linear-gradient(90deg, oklch(1 0 0 / 0.07), transparent 18%, transparent 82%, oklch(1 0 0 / 0.07)),
         repeating-linear-gradient(
             180deg,
             transparent 0,
@@ -816,9 +753,6 @@ p {
         );
     mask-image: linear-gradient(180deg, transparent, black 30%, black 70%, transparent);
     z-index: 1;
-    box-shadow:
-        inset 0 0 0 1px oklch(1 0 0 / 0.035),
-        inset 0 0 28px oklch(0 0 0 / 0.26);
 }
 
 /* ============ Workspace ============ */
@@ -1152,38 +1086,19 @@ textarea:focus {
     position: relative;
     display: flex;
     align-items: center;
-    justify-content: flex-start;
-    gap: 14px;
+    justify-content: space-between;
+    gap: 16px;
     padding: 18px 24px;
     background: var(--surface);
     border-bottom: 1px solid var(--hairline);
 }
 
 .terminal-footer {
-    justify-content: space-between;
     border-top: 1px solid var(--hairline);
     border-bottom: 0;
 }
 
-/* Muted "window chrome" dots -- ties the card to a terminal-app metaphor.
-   box-shadow paints past the element's own box, so margin-right reserves
-   the full visual width (3 dots, 13px apart) to avoid overlapping the
-   state badge that follows it in the flex row. */
-.terminal-header::before {
-    content: "";
-    width: 8px;
-    height: 8px;
-    flex-shrink: 0;
-    margin-right: 26px;
-    border-radius: 50%;
-    background: oklch(0.62 0.18 25 / 0.55);
-    box-shadow:
-        13px 0 0 oklch(0.78 0.13 80 / 0.5),
-        26px 0 0 oklch(0.72 0.16 150 / 0.5);
-}
-
 .terminal-pokemon {
-    margin-left: auto;
     font-family: var(--display);
     font-size: 22px;
     font-weight: 600;
@@ -1215,30 +1130,6 @@ textarea:focus {
         );
 }
 
-/* Slow CRT scan beam drifting down the log -- reinforces the terminal feel. */
-.terminal-screen::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background: linear-gradient(
-        180deg,
-        transparent,
-        oklch(1 0 0 / 0.05) 48%,
-        transparent 96%
-    );
-    background-size: 100% 220px;
-    background-repeat: no-repeat;
-    background-position: 0 -220px;
-    animation: terminalScanBeam 7s linear infinite;
-    mix-blend-mode: overlay;
-}
-
-@keyframes terminalScanBeam {
-    0% { background-position: 0 -220px; }
-    100% { background-position: 0 100%; }
-}
-
 .terminal-screen::-webkit-scrollbar {
     width: 8px;
 }
@@ -1249,7 +1140,6 @@ textarea:focus {
 }
 
 .terminal-list {
-    position: relative;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -1257,74 +1147,39 @@ textarea:focus {
     gap: 10px;
 }
 
-/* Connector rail threading through every step, like a build/CI log. */
-.terminal-list::before {
-    content: "";
-    position: absolute;
-    top: 4px;
-    bottom: 4px;
-    left: 8px;
-    width: 1px;
-    background: linear-gradient(
-        180deg,
-        transparent,
-        var(--hairline-strong) 6%,
-        var(--hairline-strong) 94%,
-        transparent
-    );
-}
-
 .terminal-list li {
-    position: relative;
     display: grid;
     grid-template-columns: 18px minmax(0, 1fr);
     gap: 12px;
     align-items: start;
     color: var(--muted);
-    animation: terminalLineIn 320ms var(--ease-out-soft) both;
 }
 
 .terminal-list li::before {
     content: ">";
-    position: relative;
-    z-index: 1;
-    display: grid;
-    place-items: center;
-    width: 17px;
-    height: 17px;
-    margin-top: 2px;
-    border-radius: 50%;
-    background: var(--bg-deep);
-    border: 1px solid var(--hairline-strong);
     color: var(--muted);
-    font-size: 10px;
-    font-weight: 700;
-    line-height: 1;
+    font-weight: 500;
 }
 
 .terminal-list li.system::before {
     content: "$";
-    border-color: oklch(0.5 0.1 80 / 0.7);
     color: var(--gold);
 }
 
 .terminal-list li.ok::before {
     content: "✓";
-    background: var(--ok-soft);
-    border-color: var(--ok);
     color: var(--ok);
 }
 
 .terminal-list li.error::before {
     content: "!";
-    background: var(--danger-soft);
-    border-color: var(--danger);
     color: var(--danger);
 }
 
 .terminal-list li.muted::before {
     content: "…";
-    font-size: 13px;
+    color: var(--muted);
+    font-size: 14px;
 }
 
 .terminal-list li.active,
@@ -1336,176 +1191,17 @@ textarea:focus {
     color: oklch(0.88 0.06 25);
 }
 
-/* The step currently in progress -- the one thing the user should look
-   at right now -- gets a glowing, pulsing node and a soft text glow. */
-.terminal-list li.active::before {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent-bright);
-    box-shadow: 0 0 0 3px var(--accent-glow);
-    animation: terminalNodePulse 1.7s ease-in-out infinite;
-}
-
-.terminal-list li.active .terminal-text {
-    animation: terminalTextGlow 1.7s ease-in-out infinite;
-}
-
-@keyframes terminalNodePulse {
-    0%, 100% {
-        box-shadow: 0 0 0 3px var(--accent-glow);
-    }
-    50% {
-        box-shadow: 0 0 0 6px oklch(0.62 0.198 27 / 0.16);
-    }
-}
-
-@keyframes terminalTextGlow {
-    0%, 100% { text-shadow: none; }
-    50% { text-shadow: 0 0 14px var(--accent-glow); }
-}
-
-@keyframes terminalLineIn {
-    from {
-        opacity: 0;
-        transform: translateX(-8px);
-    }
-    to {
-        opacity: 1;
-        transform: translateX(0);
-    }
-}
-
-/* ---- Live "time remaining" badge under the queue position line. ---- */
-.terminal-eta {
-    grid-column: 2;
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    width: max-content;
-    max-width: 100%;
-    margin-top: 4px;
-    padding: 3px 10px 3px 8px;
-    border-radius: var(--radius-pill);
-    background: var(--accent-soft);
-    border: 1px solid oklch(0.45 0.16 27 / 0.6);
-    color: var(--accent-ink);
-    font-family: var(--mono);
-    font-size: 11.5px;
-    font-weight: 600;
-    font-variant-numeric: tabular-nums;
-    letter-spacing: 0.02em;
-}
-
-.terminal-eta::before {
-    content: "";
-    width: 5px;
-    height: 5px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: var(--accent-bright);
-    box-shadow: 0 0 6px var(--accent-glow);
-    animation: terminalEtaPulse 1.4s ease-in-out infinite;
-}
-
-@keyframes terminalEtaPulse {
-    0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.7); }
-}
-
-/* ---- Trainer ID card: a scan-style readout for the found trainer's
-   name / TID / SID, set apart in cyan so it reads as "verify this"
-   rather than just another log line. It still sits on the step rail
-   like every other entry, with its own cyan "verified" node, instead
-   of floating centered and disconnected from the flow. ---- */
-.terminal-list li.trainer-card::before {
-    content: "✓";
-    background: var(--cyan-soft);
-    border-color: var(--cyan);
-    color: var(--cyan);
-    box-shadow: 0 0 0 3px oklch(0.74 0.12 200 / 0.18);
-}
-
-.trainer-card-inner {
-    position: relative;
-    width: min(320px, 100%);
-    margin: 0;
-    display: grid;
-    gap: 8px;
-    padding: 13px 18px;
-    border-radius: var(--radius-md);
-    background:
-        linear-gradient(180deg, oklch(0.24 0.05 210 / 0.55), oklch(0.19 0.03 210 / 0.4));
-    border: 1px solid oklch(0.58 0.13 210 / 0.55);
-    box-shadow:
-        inset 0 1px 0 oklch(1 0 0 / 0.06),
-        0 0 30px -8px oklch(0.74 0.12 200 / 0.6);
-    overflow: hidden;
-    animation: trainerCardIn 480ms var(--ease-out-soft) both;
-}
-
-.trainer-card-corner {
-    position: absolute;
-    width: 11px;
-    height: 11px;
-    border: 1.5px solid var(--cyan);
-    opacity: 0.9;
-    pointer-events: none;
-}
-
-.trainer-card-corner.tl { top: 5px; left: 5px; border-right: 0; border-bottom: 0; }
-.trainer-card-corner.tr { top: 5px; right: 5px; border-left: 0; border-bottom: 0; }
-.trainer-card-corner.bl { bottom: 5px; left: 5px; border-right: 0; border-top: 0; }
-.trainer-card-corner.br { bottom: 5px; right: 5px; border-left: 0; border-top: 0; }
-
-.trainer-card-row {
-    position: relative;
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-}
-
-.trainer-card-label {
-    font-size: 10.5px;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--cyan);
-}
-
-.trainer-card-value {
-    min-width: 0;
-    overflow-wrap: anywhere;
-    text-align: right;
-    font-family: var(--mono);
-    font-size: 15px;
-    font-weight: 700;
+.terminal-list li.important {
     color: var(--ink);
-    letter-spacing: 0.01em;
-    text-shadow: 0 0 16px oklch(0.74 0.12 200 / 0.4);
 }
 
-.trainer-card-value.tabular {
-    font-variant-numeric: tabular-nums;
-}
-
-.trainer-card-sweep {
-    position: absolute;
-    inset: 0 0 auto 0;
-    height: 60%;
-    background: linear-gradient(180deg, oklch(0.85 0.13 200 / 0.4), transparent);
-    animation: trainerCardSweep 850ms var(--ease-out) both;
-    pointer-events: none;
-}
-
-@keyframes trainerCardIn {
-    from { opacity: 0; transform: translateY(6px) scale(0.98); }
-    to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
-@keyframes trainerCardSweep {
-    from { transform: translateY(-100%); opacity: 0.9; }
-    to { transform: translateY(220%); opacity: 0; }
+.terminal-list li.important .terminal-text {
+    display: inline-block;
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    background: var(--accent-soft);
+    border: 1px solid oklch(0.45 0.16 27);
+    color: var(--accent-ink);
 }
 
 .terminal-text {
@@ -1606,27 +1302,7 @@ textarea:focus {
 
 .status-panel,
 .profile-panel {
-    position: relative;
     min-width: 0;
-    padding: clamp(22px, 2.6vw, 30px);
-    background: var(--surface);
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-xl);
-    box-shadow:
-        var(--shadow-md),
-        inset 0 1px 0 oklch(1 0 0 / 0.05),
-        inset 0 0 0 1px oklch(0 0 0 / 0.2);
-    transition: transform var(--d-base) var(--ease-out-soft),
-                box-shadow var(--d-base) var(--ease-out-soft);
-}
-
-.status-panel:hover,
-.profile-panel:hover {
-    transform: translateY(-1px);
-    box-shadow:
-        var(--shadow-lg),
-        inset 0 1px 0 oklch(1 0 0 / 0.06),
-        inset 0 0 0 1px oklch(0 0 0 / 0.22);
 }
 
 .profile-panel {
@@ -1788,10 +1464,9 @@ textarea:focus {
     gap: 16px;
     align-items: center;
     padding: 14px;
-    background: linear-gradient(165deg, var(--surface-2), var(--surface));
+    background: var(--surface);
     border: 1px solid var(--hairline);
     border-radius: var(--radius-lg);
-    box-shadow: var(--shadow-sm), inset 0 1px 0 oklch(1 0 0 / 0.04);
 }
 
 .pokemon-art {
@@ -1801,9 +1476,8 @@ textarea:focus {
     place-items: center;
     background:
         radial-gradient(circle at 50% 35%, var(--surface-3), var(--surface-2));
-    border: 1px solid oklch(0.45 0.1 30 / 0.5);
+    border: 1px solid var(--hairline);
     border-radius: var(--radius-md);
-    box-shadow: var(--shadow-sm), inset 0 1px 0 oklch(1 0 0 / 0.05);
 }
 
 .pokemon-art img {
@@ -2094,24 +1768,20 @@ textarea:focus {
     height: 54px;
     display: grid;
     place-items: center;
-    background: var(--surface);
-    color: var(--ink-soft);
-    border: 1px solid var(--hairline-strong);
+    background: var(--accent);
+    color: var(--ink);
+    border: 1px solid var(--accent-deep);
     border-radius: 50%;
-    box-shadow: var(--shadow-md), inset 0 1px 0 oklch(1 0 0 / 0.06);
+    box-shadow: var(--shadow-accent), inset 0 1px 0 oklch(1 0 0 / 0.18);
     cursor: pointer;
     position: relative;
     transition:
         background var(--d-fast) var(--ease-out),
-        border-color var(--d-fast) var(--ease-out),
-        color var(--d-fast) var(--ease-out),
         transform var(--d-press) var(--ease-out);
 }
 
 .guide-button:hover {
-    background: var(--surface-2);
-    border-color: var(--accent);
-    color: var(--accent-bright);
+    background: var(--accent-bright);
 }
 
 .guide-glyph {
@@ -2119,6 +1789,22 @@ textarea:focus {
     font-size: 22px;
     font-weight: 700;
     line-height: 1;
+}
+
+.console-led {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--subtle);
+    box-shadow: 0 0 0 3px var(--accent-deep);
+}
+
+.console-led.live {
+    background: var(--ok);
+    animation: ledPulse 1.8s ease-in-out infinite;
 }
 
 .guide-popover {
@@ -2480,7 +2166,6 @@ textarea:focus {
 
     .hero-art {
         max-width: 540px;
-        min-height: 260px;
         max-height: 300px;
         justify-self: start;
         aspect-ratio: 16 / 10;
@@ -2542,29 +2227,16 @@ textarea:focus {
         padding-bottom: 48px;
     }
 
-    .hero,
-    .hero-text,
-    .hero-art,
-    .composer,
-    .sidebar,
-    .sidebar > * {
-        min-width: 0;
-        max-width: 100%;
-    }
-
     .display {
         font-size: clamp(28px, 8vw, 38px);
         margin: 0 0 14px;
         letter-spacing: -0.028em;
-        overflow-wrap: anywhere;
     }
 
     .lede {
         font-size: 14.5px;
         line-height: 1.5;
         margin-bottom: 18px;
-        max-width: 100%;
-        overflow-wrap: anywhere;
     }
 
     .hero {
@@ -2577,20 +2249,18 @@ textarea:focus {
 
     .hero-art {
         width: 100%;
-        min-height: auto;
-        max-width: 100%;
+        max-width: none;
         max-height: none;
         justify-self: stretch;
         aspect-ratio: 16 / 10;
-        padding: 4% 6%;
+        padding: 5% 7%;
         border-radius: var(--radius-xl);
     }
 
     .hero-art img {
-        width: min(78%, 360px);
-        min-width: 0;
         max-width: 100%;
-        max-height: 58%;
+        max-height: 78%;
+        width: 100%;
     }
 
     .hero-art-chrome {
@@ -2621,7 +2291,6 @@ textarea:focus {
     }
 
     .hero-meta > div {
-        min-width: 0;
         padding: 12px 8px 4px 0;
         border-right: 1px solid var(--hairline-soft);
         border-bottom: 0;
@@ -2991,47 +2660,498 @@ textarea:focus {
     }
 }
 
-/* ============================================================
-   Premium theme system (active)
-   ------------------------------------------------------------
-   The vibrant Poke Ball / trade-station look defined above is
-   the live design. The components below (downloads tray, live
-   activity ticker, scrollbars) are themed to match it.
-   ============================================================ */
+/* ============ Desktop application alignment ============ */
 
-/* ============ Scrollbars ============ */
+:root {
+    --bg: #0f1013;
+    --bg-deep: #0b0c0f;
+    --surface: #16171a;
+    --surface-2: #1e2024;
+    --surface-3: #25282e;
+    --surface-raised: #1a1c20;
+
+    --ink: #e8eaee;
+    --ink-soft: #c1c5cd;
+    --muted: #8c9098;
+    --subtle: #666b75;
+
+    --hairline: #24262a;
+    --hairline-soft: #202227;
+    --hairline-strong: #343841;
+
+    --accent: #60a5fa;
+    --accent-deep: #3978c5;
+    --accent-bright: #83b9fb;
+    --accent-soft: rgb(96 165 250 / 0.12);
+    --accent-glow: rgb(96 165 250 / 0.2);
+    --accent-ink: #dbeafe;
+
+    --gold: #60a5fa;
+    --gold-soft: rgb(96 165 250 / 0.1);
+    --cyan: #60a5fa;
+    --cyan-soft: rgb(96 165 250 / 0.1);
+    --violet: #60a5fa;
+    --violet-soft: rgb(96 165 250 / 0.1);
+    --ok: #42b883;
+    --ok-soft: rgb(66 184 131 / 0.12);
+    --danger: #f87171;
+    --danger-soft: rgb(248 113 113 / 0.12);
+
+    --shadow-xs: none;
+    --shadow-sm: none;
+    --shadow-md: none;
+    --shadow-lg: 0 16px 34px rgb(0 0 0 / 0.28);
+    --shadow-accent: none;
+
+    --radius-xs: 3px;
+    --radius-sm: 4px;
+    --radius-md: 4px;
+    --radius-lg: 5px;
+    --radius-xl: 6px;
+    --radius-2xl: 6px;
+    --radius-pill: 4px;
+
+    --display: "Segoe UI Variable Display", "Segoe UI Semibold", "Segoe UI", system-ui, sans-serif;
+    --sans: "Segoe UI Variable Text", "Segoe UI", system-ui, sans-serif;
+    --mono: "Cascadia Mono", "Consolas", ui-monospace, monospace;
+}
+
+body {
+    border-top: 1px solid var(--accent);
+    background: var(--bg);
+}
+
+.bg-aurora,
+body::after {
+    display: none;
+}
+
+.display,
+.display-2,
+.display-3 {
+    letter-spacing: -0.02em;
+    font-variation-settings: normal;
+}
+
+.display {
+    font-size: clamp(32px, 3.8vw, 48px);
+    line-height: 1.06;
+    font-weight: 600;
+}
+
+.display-2 {
+    font-size: clamp(26px, 2.8vw, 34px);
+    line-height: 1.1;
+}
+
+.display-3 {
+    font-size: clamp(18px, 1.7vw, 21px);
+}
+
+.eyebrow {
+    gap: 8px;
+    margin-bottom: 12px;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--muted);
+    font-size: 10px;
+    letter-spacing: 0.14em;
+}
+
+.eyebrow::before {
+    width: 3px;
+    height: 12px;
+    border-radius: 0;
+    box-shadow: none;
+}
+
+.topbar {
+    height: 56px;
+    margin: 0;
+    padding: 0 clamp(18px, 2.8vw, 30px);
+    top: 0;
+    background: var(--surface);
+    border: 0;
+    border-bottom: 1px solid var(--hairline);
+    border-radius: 0;
+    box-shadow: none;
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.brand {
+    gap: 12px;
+    font-family: var(--sans);
+    font-size: 19px;
+    font-weight: 600;
+    letter-spacing: -0.012em;
+    font-variation-settings: normal;
+}
+
+.brand-mark {
+    width: 26px;
+    height: 26px;
+    filter: none;
+}
+
+.brand:hover .brand-mark {
+    transform: none;
+}
+
+.brand-tag {
+    margin-left: 10px;
+    padding: 2px 0 2px 14px;
+    background: transparent;
+    border: 0;
+    border-left: 1px solid var(--hairline-strong);
+    border-radius: 0;
+    color: var(--muted);
+    letter-spacing: 0.12em;
+}
+
+.ghost-link,
+.icon-button,
+.text-button {
+    min-height: 36px;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--surface);
+    color: var(--ink-soft);
+}
+
+.ghost-link:hover,
+.icon-button:hover,
+.text-button:hover {
+    background: var(--surface-2);
+    color: var(--ink);
+}
+
+.primary-button {
+    min-height: 42px;
+    padding: 0 20px;
+    border-radius: var(--radius-sm);
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #091522;
+    box-shadow: none;
+    transform: none;
+}
+
+.primary-button::after {
+    display: none;
+}
+
+.primary-button:hover {
+    background: var(--accent-bright);
+    border-color: var(--accent-bright);
+    box-shadow: none;
+}
+
+.primary-button:active {
+    transform: translateY(1px);
+}
+
+:focus-visible {
+    outline-color: var(--accent);
+    outline-offset: 2px;
+}
+
+.shell {
+    width: min(1280px, calc(100% - clamp(28px, 5vw, 72px)));
+    padding: clamp(24px, 3vw, 36px) 0 56px;
+    gap: 16px;
+}
+
+.hero,
+.composer,
+.sidebar > * {
+    opacity: 1;
+    transform: none;
+    animation: none;
+}
+
+.hero {
+    gap: clamp(22px, 3vw, 40px);
+    padding: clamp(20px, 3vw, 30px);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+}
+
+.hero::after {
+    display: none;
+}
+
+.lede {
+    margin-bottom: 22px;
+    color: var(--ink-soft);
+    font-size: 15px;
+}
+
+.hero-meta {
+    background: var(--bg);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-sm);
+}
+
+.hero-meta > div {
+    padding: 12px 14px;
+}
+
+.hero-meta > div + div {
+    padding-left: 14px;
+}
+
+.hero-meta dd {
+    font-family: var(--sans);
+    font-variation-settings: normal;
+}
+
+.hero-art {
+    border-radius: var(--radius-md);
+    background: var(--bg);
+    border-color: var(--hairline);
+    box-shadow: none;
+}
+
+.hero-art::before,
+.hero-art-scan {
+    display: none;
+}
+
+.hero-art img {
+    filter: none;
+}
+
+.hero-art-chrome {
+    border-radius: var(--radius-xs);
+    background: var(--surface);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
+
+.hero-art-dot {
+    box-shadow: none;
+    animation: none;
+}
+
+.workspace {
+    gap: 16px;
+}
+
+.composer,
+.status-panel,
+.profile-panel {
+    padding: clamp(20px, 2.3vw, 28px);
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: var(--radius-md);
+    box-shadow: none;
+}
+
+.composer {
+    gap: 24px;
+}
+
+.composer:hover {
+    transform: none;
+    box-shadow: none;
+}
+
+.composer::before,
+.login-panel::before,
+.terminal::before,
+.empty-state::after {
+    display: none;
+}
+
+.composer-header {
+    padding-bottom: 20px;
+}
+
+.login-panel,
+.trade-summary,
+.empty-state {
+    background: var(--bg);
+    border-radius: var(--radius-sm);
+}
+
+input,
+textarea {
+    background: var(--bg-deep);
+    border-radius: var(--radius-sm);
+}
+
+input:focus,
+textarea:focus {
+    box-shadow: 0 0 0 2px var(--accent-soft);
+}
+
+.file-drop {
+    border-radius: var(--radius-sm);
+    background: var(--bg-deep);
+}
+
+.file-icon {
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+    color: var(--accent);
+    border-top: 3px solid var(--accent);
+    box-shadow: none;
+}
+
+.terminal,
+.code-box {
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+    text-shadow: none;
+}
+
+.terminal-screen {
+    background-image: none;
+}
+
+.terminal-list li.important .terminal-text {
+    border-color: rgb(96 165 250 / 0.28);
+}
+
+.sidebar {
+    gap: 16px;
+    top: 72px;
+}
+
+.panel-header {
+    margin-bottom: 16px;
+}
+
+.empty-state-mark {
+    color: var(--muted);
+    animation: none;
+}
+
+.state-queued,
+.state-initializing,
+.state-searching,
+.state-partner,
+.state-processing {
+    background: var(--accent-soft);
+    border-color: rgb(96 165 250 / 0.28);
+    color: var(--accent-ink);
+}
+
+.state-queued::before,
+.state-initializing::before,
+.state-searching::before,
+.state-partner::before,
+.state-processing::before {
+    background: var(--accent);
+    box-shadow: none;
+}
+
+.state-finished::before,
+.state-cancelled::before {
+    box-shadow: none;
+}
+
+.pokemon-art {
+    border-radius: var(--radius-sm);
+    background: var(--surface-2);
+}
+
+.code-box {
+    background: var(--bg-deep);
+    border-color: var(--hairline-strong);
+}
+
+.progress-track span {
+    background: var(--accent);
+    box-shadow: none;
+}
+
+.progress-track span::after {
+    display: none;
+}
+
+.trainer-popover,
+.code-editor,
+.guide-popover,
+.toast {
+    border-radius: var(--radius-sm);
+}
+
+.toast {
+    left: auto;
+    right: calc(clamp(16px, 3vw, 32px) + 60px);
+    bottom: clamp(16px, 3vw, 32px);
+    width: min(420px, calc(100vw - clamp(16px, 3vw, 32px) - 84px));
+}
+
+/* Mirror toast to the left edge, anchored next to the download button. */
+.toast.toast-anchor-left {
+    right: auto;
+    left: calc(clamp(16px, 3vw, 32px) + 60px);
+    bottom: clamp(16px, 3vw, 32px);
+    width: min(420px, calc(100vw - clamp(16px, 3vw, 32px) - 84px));
+}
+
+.legality-toast {
+    width: min(500px, calc(100vw - clamp(16px, 3vw, 32px) - 84px));
+}
+
+.guide-button {
+    width: 48px;
+    height: 48px;
+    background: var(--surface);
+    color: var(--accent);
+    border-color: var(--hairline-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
+}
+
+.guide-button:hover {
+    background: var(--surface-2);
+}
+
+.console-led {
+    box-shadow: none;
+}
+
+.guide-popover {
+    background: var(--surface-raised);
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+}
 
 * {
     scrollbar-width: thin;
-    scrollbar-color: var(--hairline-strong) transparent;
+    scrollbar-color: var(--hairline-strong) var(--bg);
 }
 
 *::-webkit-scrollbar {
-    width: 11px;
-    height: 11px;
+    width: 10px;
+    height: 10px;
 }
 
 *::-webkit-scrollbar-track {
-    background: transparent;
+    background: var(--bg);
 }
 
 *::-webkit-scrollbar-thumb {
     min-height: 42px;
     background: var(--hairline-strong);
-    border: 3px solid var(--bg);
-    border-radius: var(--radius-pill);
-    transition: background var(--d-fast) var(--ease-out);
+    border: 2px solid var(--bg);
+    border-radius: var(--radius-sm);
 }
 
 *::-webkit-scrollbar-thumb:hover {
-    background: var(--accent);
+    background: var(--muted);
 }
 
 *::-webkit-scrollbar-corner {
-    background: transparent;
+    background: var(--bg);
 }
-
-/* ============ Downloads tray ============ */
 
 .download-widget {
     position: fixed;
@@ -3041,31 +3161,30 @@ textarea:focus {
 }
 
 .download-button {
-    width: 54px;
-    height: 54px;
+    width: 48px;
+    height: 48px;
     display: grid;
     place-items: center;
     background: var(--surface);
-    color: var(--ink-soft);
+    color: var(--accent);
     border: 1px solid var(--hairline-strong);
-    border-radius: 50%;
-    box-shadow: var(--shadow-md), inset 0 1px 0 oklch(1 0 0 / 0.06);
+    border-radius: var(--radius-sm);
+    box-shadow: none;
     cursor: pointer;
     transition:
         background var(--d-fast) var(--ease-out),
         border-color var(--d-fast) var(--ease-out),
-        color var(--d-fast) var(--ease-out),
         transform var(--d-press) var(--ease-out);
 }
 
-.download-button:hover {
+.download-button:hover,
+.download-action:hover {
     background: var(--surface-2);
     border-color: var(--accent);
-    color: var(--accent-bright);
 }
 
 .download-button:active {
-    transform: scale(0.96);
+    transform: scale(0.97);
 }
 
 .download-glyph,
@@ -3075,49 +3194,40 @@ textarea:focus {
     fill: none;
     stroke: currentColor;
     stroke-width: 1.7;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
 }
 
 .download-popover {
     position: absolute;
     left: 0;
-    bottom: 66px;
+    bottom: 60px;
     width: min(390px, calc(100vw - 48px));
-    max-height: min(520px, calc(100vh - 120px));
+    max-height: min(500px, calc(100vh - 112px));
     overflow-y: auto;
     overscroll-behavior: contain;
-    padding: 24px;
-    background: oklch(0.215 0.014 55 / 0.96);
-    -webkit-backdrop-filter: saturate(160%) blur(18px);
-    backdrop-filter: saturate(160%) blur(18px);
+    padding: 20px;
+    background: var(--surface-raised);
     border: 1px solid var(--hairline-strong);
-    border-radius: var(--radius-xl);
+    border-radius: var(--radius-sm);
     box-shadow: var(--shadow-lg);
     transform-origin: bottom left;
     animation: popoverEnter 220ms var(--ease-out) both;
-    scrollbar-width: none;
-}
-
-.download-popover::-webkit-scrollbar {
-    width: 0;
-    display: none;
 }
 
 .download-popover .panel-header {
-    margin-bottom: 16px;
+    margin-bottom: 14px;
     padding-bottom: 14px;
 }
 
 .download-empty {
     margin: 0;
-    padding: 22px 18px;
+    padding: 20px 16px;
     color: var(--muted);
     font-size: 13px;
     line-height: 1.5;
-    text-align: center;
     border: 1px dashed var(--hairline-strong);
-    border-radius: var(--radius-lg);
+    border-radius: var(--radius-sm);
 }
 
 .download-list {
@@ -3133,7 +3243,7 @@ textarea:focus {
     align-items: center;
     gap: 12px;
     min-height: 62px;
-    padding: 13px 0;
+    padding: 11px 0;
     border-top: 1px solid var(--hairline-soft);
 }
 
@@ -3155,10 +3265,8 @@ textarea:focus {
 .download-copy strong {
     overflow: hidden;
     color: var(--ink);
-    font-family: var(--display);
-    font-size: 14.5px;
+    font-size: 14px;
     font-weight: 600;
-    letter-spacing: -0.012em;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
@@ -3168,73 +3276,61 @@ textarea:focus {
     color: var(--muted);
     font-family: var(--mono);
     font-size: 10.5px;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.04em;
     text-overflow: ellipsis;
     text-transform: uppercase;
     white-space: nowrap;
 }
 
 .download-action {
-    width: 40px;
-    height: 40px;
+    width: 38px;
+    height: 38px;
     display: grid;
     place-items: center;
-    color: var(--ink-soft);
-    background: var(--surface-2);
-    border: 1px solid var(--hairline);
-    border-radius: var(--radius-md);
+    color: var(--accent);
+    background: var(--surface);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-sm);
     transition:
         background var(--d-fast) var(--ease-out),
-        border-color var(--d-fast) var(--ease-out),
-        color var(--d-fast) var(--ease-out),
-        transform var(--d-press) var(--ease-out);
+        border-color var(--d-fast) var(--ease-out);
 }
 
-.download-action:hover {
-    background: var(--accent-soft);
-    border-color: var(--accent);
-    color: var(--accent-bright);
+.activity-bar {
+    position: fixed;
+    left: 50%;
+    bottom: clamp(16px, 3vw, 28px);
+    z-index: 58;
+    width: max-content;
+    max-width: calc(100vw - 188px);
+    min-height: 52px;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+    padding: 11px 18px 13px;
+    background: var(--surface-raised);
+    border: 1px solid var(--hairline-strong);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-md);
+    transform: translateX(-50%);
 }
 
-.download-action:active {
-    transform: scale(0.94);
-}
-
-/* ============ Live activity ticker (marquee strip) ============ */
-
-.activity-ticker {
-    position: sticky;
-    top: calc(clamp(12px, 1.6vw, 18px) + 64px + 10px);
-    z-index: 45;
-    display: flex;
-    align-items: stretch;
-    margin: 10px clamp(12px, 2.6vw, 28px) 0;
-    height: 40px;
-    background: oklch(0.215 0.014 55 / 0.72);
-    -webkit-backdrop-filter: saturate(170%) blur(20px);
-    backdrop-filter: saturate(170%) blur(20px);
-    border: 1px solid var(--hairline-soft);
-    border-radius: var(--radius-pill);
-    box-shadow: var(--shadow-sm), inset 0 1px 0 oklch(1 0 0 / 0.04);
-    overflow: hidden;
-}
-
-.ticker-label {
-    position: relative;
-    z-index: 2;
-    flex-shrink: 0;
+.activity-label {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 0 16px 0 18px;
-    color: oklch(0.88 0.13 150);
+    padding: 7px 11px;
+    color: var(--ok);
     background: var(--ok-soft);
-    border-right: 1px solid oklch(0.45 0.1 150 / 0.5);
+    border: 1px solid oklch(0.45 0.1 150);
+    border-radius: var(--radius-sm);
     font-family: var(--mono);
     font-size: 10px;
     font-weight: 500;
     text-transform: uppercase;
-    letter-spacing: 0.16em;
+    letter-spacing: 0.12em;
     white-space: nowrap;
 }
 
@@ -3248,525 +3344,117 @@ textarea:focus {
     animation: statusPulse 1.4s ease-in-out infinite;
 }
 
-.ticker-viewport {
-    position: relative;
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 44px, #000 calc(100% - 44px), transparent);
-}
-
-.ticker-track {
-    position: absolute;
-    top: 50%;
-    left: 0;
-    display: inline-flex;
-    align-items: center;
-    white-space: nowrap;
-    will-change: transform;
-    transform: translate(var(--ticker-from, 100%), -50%);
-}
-
-.activity-ticker:hover .ticker-track {
-    animation-play-state: paused;
-}
-
-.ticker-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5em;
-    padding: 0 18px;
+.activity-message {
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 0.32em;
     color: var(--ink-soft);
-    font-size: 13px;
-    line-height: 1;
-    white-space: nowrap;
+    font-size: 14px;
+    line-height: 1.45;
+    text-align: center;
 }
 
-.ticker-chip::before,
-.ticker-chip::after {
-    content: "";
-    flex-shrink: 0;
-    width: 5px;
-    height: 5px;
-    border-radius: 50%;
-    background: var(--accent);
-    box-shadow: 0 0 8px var(--accent-glow);
-    opacity: 0.7;
-}
-
-.ticker-chip strong {
+.activity-message strong {
     color: var(--ink);
     font-weight: 600;
+    overflow-wrap: anywhere;
 }
 
-.ticker-chip .ticker-mon {
-    color: var(--accent-bright);
-    font-weight: 600;
+.activity-bar.activity-enter {
+    animation: activityEnter 280ms var(--ease-out) both;
 }
 
-.ticker-empty {
-    padding: 0 22px;
-    color: var(--muted);
-    font-family: var(--mono);
-    font-size: 11px;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
+.activity-bar.activity-exit {
+    animation: activityExit 260ms var(--ease-out) both;
 }
 
-@keyframes tickerScroll {
-    from { transform: translate(var(--ticker-from, 100%), -50%); }
-    to { transform: translate(var(--ticker-to, -100%), -50%); }
-}
-
-/* Reduced motion: don't scroll off-screen -- show entries in place
-   and let the user scroll the strip horizontally instead. */
-@media (prefers-reduced-motion: reduce) {
-    .ticker-viewport {
-        overflow-x: auto;
-        scrollbar-width: none;
+@keyframes activityEnter {
+    from {
+        opacity: 0;
+        transform: translateX(-50%) translateY(12px) scale(0.985);
     }
-
-    .ticker-viewport::-webkit-scrollbar {
-        display: none;
-    }
-
-    .ticker-track {
-        position: static;
-        transform: none;
-        animation: none;
+    to {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
     }
 }
 
-/* Reduced motion: kill every other continuous/looping decoration
-   (aurora drift, hex grid pan, floating Poke Balls, hero float/aura,
-   holo shimmers, breathing glows, idle status pulses) and collapse
-   entrance/press transitions to near-instant. Loading/spin indicators
-   (ringSpin, progressShimmer, terminalBlink) are left alone -- they
-   communicate live system state, not idle decoration. */
-@media (prefers-reduced-motion: reduce) {
-    .bg-blob-1,
-    .bg-blob-2,
-    .bg-blob-3,
-    .bg-hexgrid,
-    .bg-orbit-1,
-    .bg-orbit-2,
-    .bg-orbit-3,
-    .bg-orbit-4,
-    .bg-orbit-5,
-    .bg-orbit-6,
-    .bg-orbit-7,
-    .bg-orbit-8,
-    .bg-orbit-9,
-    .bg-orbit-10,
-    .hero-art,
-    .hero-art img,
-    .pokemon-art::after,
-    .trade-summary::after,
-    .empty-state-mark,
-    .code-box,
-    .hero-art-dot,
-    .activity-dot,
-    .state-searching::before,
-    .state-partner::before,
-    .state-processing::before,
-    .terminal-screen::after,
-    .trainer-card-inner,
-    .terminal-list li,
-    .terminal-list li.active::before,
-    .terminal-list li.active .terminal-text,
-    .terminal-eta::before,
-    .hero-art-emblem {
-        animation: none !important;
+@keyframes activityExit {
+    from {
+        opacity: 1;
+        transform: translateX(-50%) translateY(0) scale(1);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(-50%) translateY(8px) scale(0.99);
+    }
+}
+
+@media (max-width: 760px) {
+    .topbar {
+        margin: 0;
+        top: 0;
+        padding: 0 14px;
+        border-radius: 0;
     }
 
-    .trainer-card-sweep {
-        display: none;
+    .shell {
+        padding-top: 16px;
+        gap: 12px;
     }
 
     .hero,
     .composer,
-    .sidebar > * {
-        animation: none !important;
-        opacity: 1;
-        transform: none;
+    .status-panel,
+    .profile-panel {
+        padding: 18px;
+        border-radius: var(--radius-sm);
     }
 
-    *,
-    *::before,
-    *::after {
-        scroll-behavior: auto !important;
+    .hero-art,
+    .terminal {
+        border-radius: var(--radius-sm);
     }
 
-    .ghost-link:active,
-    .icon-button:active,
-    .text-button:active,
-    .guide-button:active,
-    .primary-button:active {
-        transform: none;
+    .sidebar {
+        gap: 12px;
     }
-}
 
-/* Left-anchored toast variant (e.g. "trade file saved"), parked
-   above the downloads tray instead of the guide button. */
-.toast.toast-anchor-left {
-    right: auto;
-    left: clamp(16px, 3vw, 32px);
-    bottom: clamp(88px, 11vw, 104px);
-}
-
-/* ============================================================
-   Premium enhancements -- "better than before" polish layer
-   ============================================================ */
-
-/* Rotating energy ring behind the floating action buttons. */
-.guide-button,
-.download-button {
-    position: relative;
-    isolation: isolate;
-}
-
-.guide-button::before,
-.download-button::before {
-    content: "";
-    position: absolute;
-    inset: -3px;
-    z-index: -1;
-    border-radius: 50%;
-    padding: 2px;
-    background: conic-gradient(
-        from 0deg,
-        transparent 0deg,
-        var(--accent) 90deg,
-        transparent 200deg,
-        var(--accent-bright) 320deg,
-        transparent 360deg
-    );
-    -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    opacity: 0;
-    animation: ringSpin 6s linear infinite;
-    transition: opacity var(--d-base) var(--ease-out);
-}
-
-.guide-button:hover::before,
-.download-button:hover::before {
-    opacity: 0.9;
-}
-
-@keyframes ringSpin {
-    to { transform: rotate(360deg); }
-}
-
-/* Shine sweep across primary buttons on hover. */
-.primary-button {
-    overflow: hidden;
-}
-
-.primary-button::before {
-    content: "";
-    position: absolute;
-    top: 0;
-    left: -120%;
-    width: 60%;
-    height: 100%;
-    background: linear-gradient(
-        100deg,
-        transparent,
-        oklch(1 0 0 / 0.22),
-        transparent
-    );
-    transform: skewX(-18deg);
-    transition: left 620ms var(--ease-out);
-    pointer-events: none;
-}
-
-.primary-button:hover::before {
-    left: 150%;
-}
-
-/* Capture glow + ring behind the queued Pokemon sprite. */
-.pokemon-art {
-    position: relative;
-    overflow: hidden;
-}
-
-.pokemon-art::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(60% 60% at 50% 42%, var(--accent-glow), transparent 70%);
-    opacity: 0.85;
-    pointer-events: none;
-}
-
-.pokemon-art img {
-    position: relative;
-    z-index: 1;
-}
-
-/* Gentle breathing glow on the active trade link code. */
-.code-box {
-    animation: codeBreath 3.6s ease-in-out infinite;
-}
-
-@keyframes codeBreath {
-    0%, 100% {
-        box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.03), 0 0 36px var(--accent-glow);
+    .toast,
+    .legality-toast {
+        right: 74px;
+        bottom: 14px;
+        width: min(420px, calc(100vw - 88px));
     }
-    50% {
-        box-shadow: inset 0 0 0 1px oklch(1 0 0 / 0.05), 0 0 56px var(--accent-glow);
+
+    .toast.toast-anchor-left {
+        right: auto;
+        left: 74px;
+        bottom: 14px;
+        width: min(420px, calc(100vw - 88px));
     }
-}
 
-/* Accent-tinted selection that matches the trade theme. */
-::selection {
-    background: var(--accent-deep);
-    color: var(--ink);
-}
-
-/* ============ Responsive (downloads + activity) ============ */
-
-@media (max-width: 760px) {
     .download-widget {
         left: 14px;
         bottom: 14px;
     }
 
-    .download-button,
-    .guide-button {
-        width: 48px;
-        height: 48px;
-    }
-
     .download-popover {
         width: min(360px, calc(100vw - 28px));
-        padding: 20px;
     }
 
-    .toast.toast-anchor-left {
-        left: 14px;
-        right: 14px;
-        bottom: 76px;
+    .activity-bar {
+        bottom: 74px;
+        width: max-content;
+        max-width: calc(100vw - 28px);
+        display: flex;
+        gap: 9px;
+        padding: 11px 14px 13px;
     }
 
-    .activity-ticker {
-        top: calc(10px + 56px + 8px);
-        margin: 8px 12px 0;
-        height: 36px;
+    .activity-label {
+        width: max-content;
     }
-
-    .ticker-label {
-        padding: 0 12px 0 14px;
-        font-size: 9.5px;
-        letter-spacing: 0.12em;
-    }
-
-    .ticker-chip {
-        font-size: 12px;
-        padding: 0 14px;
-    }
-}
-
-@media (max-width: 420px) {
-    .activity-ticker {
-        top: calc(8px + 52px + 6px);
-    }
-}
-
-/* ============================================================
-   Advanced visual layer -- holographic foil + living hero
-   ============================================================ */
-
-@property --holo-angle {
-    syntax: "<angle>";
-    initial-value: 0deg;
-    inherits: false;
-}
-
-/* --- Living hero artwork: gentle float + breathing accent aura --- */
-.hero-art {
-    animation: heroAura 8s var(--ease-in-out) infinite;
-}
-
-.hero-art img {
-    animation: heroFloat 5.6s var(--ease-in-out) infinite;
-}
-
-@keyframes heroFloat {
-    0%, 100% {
-        transform: translateY(0) rotate(-0.5deg);
-        filter:
-            drop-shadow(0 14px 24px oklch(0 0 0 / 0.6))
-            drop-shadow(0 0 18px oklch(0.78 0.13 80 / 0.24));
-    }
-    50% {
-        transform: translateY(-8px) rotate(0.6deg);
-        filter:
-            drop-shadow(0 22px 38px oklch(0 0 0 / 0.6))
-            drop-shadow(0 0 26px oklch(0.78 0.13 80 / 0.32));
-    }
-}
-
-@keyframes heroAura {
-    0%, 100% {
-        box-shadow:
-            0 26px 72px oklch(0.09 0.035 28 / 0.62),
-            0 8px 24px oklch(0.3 0.16 26 / 0.22),
-            inset 0 1px 0 oklch(1 0 0 / 0.09),
-            inset 0 0 0 1px oklch(1 0 0 / 0.025);
-    }
-    50% {
-        box-shadow:
-            0 30px 76px oklch(0.09 0.035 28 / 0.68),
-            0 10px 26px oklch(0.3 0.16 26 / 0.26),
-            inset 0 1px 0 oklch(1 0 0 / 0.1),
-            inset 0 0 0 1px oklch(1 0 0 / 0.03),
-            0 0 64px -10px oklch(0.72 0.16 78 / 0.24);
-    }
-}
-
-/* --- Holographic foil over the queued Pokemon sprite -- a single soft
-   sheen drifting across the card, not a busy repeating stripe pattern. --- */
-.pokemon-art::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 2;
-    pointer-events: none;
-    background: linear-gradient(
-        115deg,
-        transparent 28%,
-        oklch(1 0 0 / 0.16) 45%,
-        oklch(0.82 0.14 200 / 0.14) 50%,
-        oklch(0.82 0.14 320 / 0.12) 55%,
-        transparent 72%
-    );
-    background-size: 220% 220%;
-    mix-blend-mode: overlay;
-    animation: holoShift 7s ease-in-out infinite;
-}
-
-@keyframes holoShift {
-    0%, 100% { background-position: 0% 0%; }
-    50% { background-position: 100% 0%; }
-}
-
-/* --- Active trade reads like a holo card: animated rainbow rim --- */
-.trade-summary {
-    position: relative;
-    overflow: hidden;
-}
-
-.trade-summary::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: 0;
-    border-radius: inherit;
-    padding: 1px;
-    background: conic-gradient(
-        from var(--holo-angle),
-        oklch(0.72 0.18 30),
-        oklch(0.72 0.16 140),
-        oklch(0.72 0.16 220),
-        oklch(0.72 0.18 320),
-        oklch(0.72 0.18 30)
-    );
-    -webkit-mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask:
-        linear-gradient(#000 0 0) content-box,
-        linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    opacity: 0.4;
-    pointer-events: none;
-    animation: holoSpin 8s linear infinite;
-}
-
-.trade-summary > * {
-    position: relative;
-    z-index: 1;
-}
-
-@keyframes holoSpin {
-    to { --holo-angle: 360deg; }
-}
-
-/* ============================================================
-   Refinement pass (ui-ux-pro-max) -- branding + structure
-   Static polish; no new idle motion.
-   ============================================================ */
-
-/* --- Official Discord mark on the login button ---
-   Driven entirely from CSS so it survives the i18n textContent
-   rewrite (TradePortal.js sets node.textContent for [data-i18n]). */
-#login-button::after {
-    content: "";
-    width: 19px;
-    height: 19px;
-    flex-shrink: 0;
-    background-color: currentColor;
-    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z'/></svg>") center / contain no-repeat;
-    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M20.317 4.3698a19.7913 19.7913 0 00-4.8851-1.5152.0741.0741 0 00-.0785.0371c-.211.3753-.4447.8648-.6083 1.2495-1.8447-.2762-3.68-.2762-5.4868 0-.1636-.3933-.4058-.8742-.6177-1.2495a.077.077 0 00-.0785-.037 19.7363 19.7363 0 00-4.8852 1.515.0699.0699 0 00-.0321.0277C.5334 9.0458-.319 13.5799.0992 18.0578a.0824.0824 0 00.0312.0561c2.0528 1.5076 4.0413 2.4228 5.9929 3.0294a.0777.0777 0 00.0842-.0276c.4616-.6304.8731-1.2952 1.226-1.9942a.076.076 0 00-.0416-.1057c-.6528-.2476-1.2743-.5495-1.8722-.8923a.077.077 0 01-.0076-.1277c.1258-.0943.2517-.1923.3718-.2914a.0743.0743 0 01.0776-.0105c3.9278 1.7933 8.18 1.7933 12.0614 0a.0739.0739 0 01.0785.0095c.1202.099.246.1981.3728.2924a.077.077 0 01-.0066.1276 12.2986 12.2986 0 01-1.873.8914.0766.0766 0 00-.0407.1067c.3604.698.7719 1.3628 1.225 1.9932a.076.076 0 00.0842.0286c1.961-.6067 3.9495-1.5219 6.0023-3.0294a.077.077 0 00.0313-.0552c.5004-5.177-.8382-9.6739-3.5485-13.6604a.061.061 0 00-.0312-.0286zM8.02 15.3312c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9555-2.4189 2.157-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.9555 2.4189-2.1569 2.4189zm7.9748 0c-1.1825 0-2.1569-1.0857-2.1569-2.419 0-1.3332.9554-2.4189 2.1569-2.4189 1.2108 0 2.1757 1.0952 2.1568 2.419 0 1.3332-.946 2.4189-2.1568 2.4189Z'/></svg>") center / contain no-repeat;
-    transform: none;
-}
-
-/* Cancel the inherited arrow nudge so the logo stays put on hover. */
-#login-button:hover::after {
-    transform: none;
-}
-
-/* --- Login panel: accent edge + firmer frame (first thing a guest sees) --- */
-.login-panel {
-    border-color: var(--hairline-strong);
-}
-
-.login-panel::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background: linear-gradient(180deg, var(--accent-bright), var(--accent-deep));
-    box-shadow: 0 0 18px var(--accent-glow);
-    z-index: 1;
-}
-
-/* --- Section headers: short gradient accent sitting on the divider --- */
-.composer-header,
-.panel-header {
-    position: relative;
-}
-
-.composer-header::after,
-.panel-header::after {
-    content: "";
-    position: absolute;
-    left: 0;
-    bottom: -1px;
-    width: 46px;
-    height: 2px;
-    border-radius: var(--radius-pill);
-    background: linear-gradient(90deg, var(--accent), transparent);
-}
-
-/* --- Profile values: tabular, accent-tinted trainer/code links --- */
-.trainer-link:hover,
-.code-link:hover {
-    text-shadow: 0 0 18px var(--accent-glow);
-}
-
-/* --- Live queue indicator: tint the value by state for instant read --- */
-#queue-state {
-    transition: color var(--d-base) var(--ease-out);
 }

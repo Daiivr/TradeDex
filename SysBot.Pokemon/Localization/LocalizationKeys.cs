@@ -8,6 +8,8 @@ public static class LocalizationKeys
     public const string LanguageButtonEnglish = nameof(LanguageButtonEnglish);
     public const string LanguageButtonSpanish = nameof(LanguageButtonSpanish);
     public const string LanguageButtonTooltip = nameof(LanguageButtonTooltip);
+    public const string LanguageButtonTooltipEnglish = nameof(LanguageButtonTooltipEnglish);
+    public const string LanguageButtonTooltipSpanish = nameof(LanguageButtonTooltipSpanish);
     public const string LanguageChangeBlockedBotRunning = nameof(LanguageChangeBlockedBotRunning);
     public const string Loading = nameof(Loading);
     public const string DownloadFonts = nameof(DownloadFonts);

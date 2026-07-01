@@ -639,6 +639,11 @@ public partial class BotServer
         }
 
         var position = hub.Queues.Info.CheckPosition(session.DiscordId, active.UniqueTradeId, PokeRoutineType.LinkTrade);
+        var botct = hub.Bots.Count;
+        var etaMinutes = position.InQueue && position.Position > botct
+            ? hub.Config.Queues.EstimateDelay(position.Position, botct)
+            : 0;
+
         return JsonSerializer.Serialize(new
         {
             success = true,
@@ -659,6 +664,7 @@ public partial class BotServer
                 inQueue = position.InQueue,
                 position = position.Position,
                 total = position.QueueCount,
+                etaSeconds = (int)Math.Round(etaMinutes * 60),
                 active.UpdatedAt
             }
         }, JsonOptions);

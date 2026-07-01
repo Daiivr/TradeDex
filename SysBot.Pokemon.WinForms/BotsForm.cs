@@ -291,6 +291,7 @@ namespace SysBot.Pokemon.WinForms
             // draw their own text, so recolor them explicitly per theme.
             foreach (var fb in new[] { _B_Start, _B_Stop, _B_RebootStop, _updater, _B_Reload, _B_New })
                 fb.ForeColor = colors.CommandButtonForeColor;
+            ApplyCommandButtonPalette();
 
             // Cascade to the bot controllers hosted in the list
             foreach (Control c in _FLP_Bots.Controls)
@@ -298,6 +299,21 @@ namespace SysBot.Pokemon.WinForms
                 if (c is BotController controller)
                     controller.ApplyTheme();
             }
+        }
+
+        private void ApplyCommandButtonPalette()
+        {
+            bool cute = string.Equals(ThemeManager.CurrentThemeName, "Cute", StringComparison.OrdinalIgnoreCase);
+
+            _B_Start.GlowColor = cute ? Color.FromArgb(252, 204, 96) : Color.FromArgb(74, 222, 128);
+            _B_Stop.GlowColor = cute ? Color.FromArgb(228, 84, 132) : Color.FromArgb(248, 113, 113);
+            _B_RebootStop.GlowColor = cute ? Color.FromArgb(240, 120, 156) : Color.FromArgb(192, 132, 252);
+            _updater.GlowColor = cute ? Color.FromArgb(240, 132, 168) : Color.Empty;
+            _B_Reload.GlowColor = cute ? Color.FromArgb(252, 204, 96) : Color.FromArgb(251, 191, 36);
+            _B_New.GlowColor = cute ? Color.FromArgb(228, 84, 132) : Color.Empty;
+
+            foreach (var fb in new[] { _B_Start, _B_Stop, _B_RebootStop, _updater, _B_Reload, _B_New })
+                fb.Invalidate();
         }
 
         public void ApplyLocalization()

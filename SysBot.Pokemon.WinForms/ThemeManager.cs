@@ -51,6 +51,17 @@ public static class ThemeManager
             Muted     = Color.FromArgb(140, 140, 140),
             Background = Color.FromArgb(10, 10, 10),
         },
+
+        ["Cute"] = new ThemeColors
+        {
+            PanelBase = Color.FromArgb(24, 24, 24),
+            Shadow    = Color.FromArgb(84, 48, 60),
+            Hover     = Color.FromArgb(48, 36, 48),
+            Accent    = Color.FromArgb(228, 84, 132),
+            ForeColor = Color.FromArgb(252, 252, 252),
+            Muted     = Color.FromArgb(240, 120, 156),
+            Background = Color.FromArgb(12, 12, 12),
+        },
     };
 
     public static string CurrentThemeName { get; private set; } = "Graphite";
@@ -101,6 +112,7 @@ public static class ThemeManager
 
         // Reapply hover handlers so they pick up the new palette.
         form.SetupThemeAwareButtons();
+        form.ApplyThemeArtwork();
 
         // Cascade the theme into the child forms (Bots/Hub/Logs) and their controls
         form.RefreshChildThemes();

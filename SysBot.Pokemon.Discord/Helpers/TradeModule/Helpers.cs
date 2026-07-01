@@ -817,7 +817,7 @@ public static class Helpers<T> where T : PKM, new()
                     "Legality");
             }
             var reason = GetFailureReason(result, spec);
-            var hint = result == "Failed" ? GetLegalizationHint(template, sav, pkm, spec) : null;
+            var hint = GetDetailedFailureReason(template, sav, pkm, la, result);
             return Task.FromResult(new ProcessedPokemonResult<T>
             {
                 Error = reason,
@@ -1194,6 +1194,30 @@ public static class Helpers<T> where T : PKM, new()
         return AutoLegalityWrapper.GetLegalizationHint(template, sav, pkm);
     }
 
+    private static string? GetDetailedFailureReason(IBattleTemplate template, ITrainerInfo sav, PKM? pkm, LegalityAnalysis la, string result)
+    {
+        var details = new List<string>();
+
+        if (result == "Failed" && pkm != null)
+        {
+            var legalizationHint = GetLegalizationHint(template, sav, pkm, string.Empty);
+            if (!string.IsNullOrWhiteSpace(legalizationHint))
+                details.Add(legalizationHint.Trim());
+        }
+
+        if (pkm != null && !la.Valid)
+        {
+            var legalityReport = SimpleLegalityFeedback.GetLocalizedLegalityReport(la);
+            if (!string.IsNullOrWhiteSpace(legalityReport) &&
+                !details.Any(d => d.Contains(legalityReport, StringComparison.OrdinalIgnoreCase)))
+            {
+                details.Add(legalityReport.Trim());
+            }
+        }
+
+        return details.Count == 0 ? null : string.Join("\n", details);
+    }
+
     public static async Task SendTradeErrorEmbedAsync(SocketCommandContext context, ProcessedPokemonResult<T> result)
     {
         var spec = result.ShowdownSet != null && result.ShowdownSet.Species > 0
@@ -1201,7 +1225,8 @@ public static class Helpers<T> where T : PKM, new()
             : AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies);
 
         var rawError = result.Error ?? AppLocalization.Get(LocalizationKeys.BotStatusUnknown);
-        var errorText = GetTradeErrorText(rawError, result.LegalizationHint);
+        var errorText = GetTradeErrorText(rawError);
+        var reasonText = GetTradeReasonText(rawError, result.LegalizationHint);
         var displaySpec = !string.IsNullOrWhiteSpace(result.RequestedSpeciesName)
             ? result.RequestedSpeciesName
             : GetDisplaySpeciesName(spec);
@@ -1213,10 +1238,14 @@ public static class Helpers<T> where T : PKM, new()
 
         var includeParseSolutions = IsUnableParseSpeciesError(rawError);
         var invalidLines = result.ShowdownSet is { InvalidLines.Count: > 0 }
-            ? result.ShowdownSet.InvalidLines.Select(x => x.ToString().Trim()).ToList()
+            ? result.ShowdownSet.InvalidLines
+                .Select(x => x.Value?.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!)
+                .ToList()
             : [];
 
-        var component = BuildTradeErrorComponent(context, displaySpec, errorText, thumbnailUrl, includeParseSolutions, invalidLines);
+        var component = BuildTradeErrorComponent(context, displaySpec, errorText, reasonText, thumbnailUrl, includeParseSolutions, invalidLines);
         var messageContent = AppLocalization.Format(LocalizationKeys.DiscordReportForRequest, context.User.Mention);
         var reportMessage = await context.Channel.SendMessageAsync(messageContent).ConfigureAwait(false);
 
@@ -1243,6 +1272,7 @@ public static class Helpers<T> where T : PKM, new()
         SocketCommandContext context,
         string displaySpec,
         string errorText,
+        string? reasonText,
         string thumbnailUrl,
         bool includeParseSolutions,
         IReadOnlyList<string> invalidLines)
@@ -1254,7 +1284,7 @@ public static class Helpers<T> where T : PKM, new()
 
         var header = new SectionBuilder()
             .AddComponent(new TextDisplayBuilder(TrimComponentText(
-                $"## ⚠️ {title}\n{AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, displaySpec)}")))
+                $"## ⚠️ {title}\n> {AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, displaySpec)}")))
             .WithAccessory(new ThumbnailBuilder(
                 new UnfurledMediaItemProperties(thumbnailUrl),
                 title,
@@ -1265,13 +1295,20 @@ public static class Helpers<T> where T : PKM, new()
         container.WithTextDisplay(TrimComponentText(FormatTradeErrorBody(errorText)));
 
         var detailBlocks = new List<string>();
+        if (!string.IsNullOrWhiteSpace(reasonText))
+        {
+            detailBlocks.Add(
+                $"### {AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentReasonIntro)}\n" +
+                $"```\n{TrimEmbedField(reasonText, 2200)}\n```");
+        }
+
         if (includeParseSolutions)
             detailBlocks.Add($"```{GetUnableParseSpeciesSolutions()}```");
 
         if (invalidLines.Count > 0)
         {
             var invalidLinesText = string.Join("\n", invalidLines);
-            detailBlocks.Add($"{AppLocalization.Get(LocalizationKeys.DiscordBatchInvalidLines)}\n```\n{TrimEmbedField(invalidLinesText, 1016)}\n```");
+            detailBlocks.Add($"### {GetInvalidLinesLabel()}\n```\n{TrimEmbedField(invalidLinesText, 1016)}\n```");
         }
 
         if (detailBlocks.Count > 0)
@@ -1296,7 +1333,7 @@ public static class Helpers<T> where T : PKM, new()
         if (trimmed.StartsWith("###", StringComparison.Ordinal))
             return trimmed;
 
-        return $"### {AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}\n• {trimmed}";
+        return $"## {AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}\n• {trimmed}";
     }
 
     private static async Task<(MemoryStream Stream, string FileName)?> CreatePokemonErrorThumbnailAsync(ProcessedPokemonResult<T> result)
@@ -1478,12 +1515,26 @@ public static class Helpers<T> where T : PKM, new()
         return previous[target.Length];
     }
 
-    private static string GetTradeErrorText(string rawError, string? legalizationHint)
-    {
-        if (!string.IsNullOrWhiteSpace(legalizationHint))
-            return legalizationHint.Trim();
+    private static string GetTradeErrorText(string rawError) => rawError;
 
-        return rawError;
+    private static string? GetTradeReasonText(string rawError, string? legalizationHint)
+    {
+        if (string.IsNullOrWhiteSpace(legalizationHint))
+            return null;
+
+        var trimmedHint = legalizationHint.Trim();
+        return trimmedHint.Equals(rawError.Trim(), StringComparison.OrdinalIgnoreCase)
+            ? null
+            : trimmedHint;
+    }
+
+    private static string GetInvalidLinesLabel()
+    {
+        var label = AppLocalization.Get(LocalizationKeys.DiscordBatchInvalidLines)
+            .Replace("{0}", string.Empty, StringComparison.Ordinal)
+            .Trim();
+
+        return label.EndsWith(':') ? label : $"{label}:";
     }
 
     private static bool IsUnableParseSpeciesError(string rawError)

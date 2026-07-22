@@ -983,9 +983,43 @@ public static class Helpers<T> where T : PKM, new()
         // illegal trade — for fixed-OT encounters the bot defaults survive.
         if (userOT is not null || userTID is not null || userSID is not null)
         {
-            LogUtil.LogInfo($"Trade TrainerOverride = Requested OT: {userOT} | Requested TID: {userTID} | Requested SID: {userSID} | Species: {pk.Species} | Before OT: {pk.OriginalTrainerName} | Before TID: {pk.TrainerTID7} | Before SID: {pk.TrainerSID7}", "TrainerOverride");
-            ApplyUserTrainerOverride(pk, userOT, userTID, userSID);
-            LogUtil.LogInfo($"Trade TrainerOverride = Final OT: {pk.OriginalTrainerName} | Final TID: {pk.TrainerTID7} | Final SID: {pk.TrainerSID7} | Legal: {new LegalityAnalysis(pk).Valid}", "TrainerOverride");
+            // The OT/TID/SID lines were already stripped from the set above. Only
+            // re-apply them when custom trainer data is enabled in configuration.
+            if (Info.Hub.Config.Legality.AllowTrainerDataOverride)
+            {
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogTradeTrainerOverrideRequested,
+                        userOT ?? string.Empty,
+                        userTID?.ToString() ?? string.Empty,
+                        userSID?.ToString() ?? string.Empty,
+                        pk.Species,
+                        pk.OriginalTrainerName,
+                        pk.TrainerTID7,
+                        pk.TrainerSID7),
+                    "TrainerOverride");
+                ApplyUserTrainerOverride(pk, userOT, userTID, userSID);
+                var isLegal = new LegalityAnalysis(pk).Valid;
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogTradeTrainerOverrideFinal,
+                        pk.OriginalTrainerName,
+                        pk.TrainerTID7,
+                        pk.TrainerSID7,
+                        AppLocalization.Get(isLegal ? LocalizationKeys.LogBooleanTrue : LocalizationKeys.LogBooleanFalse)),
+                    "TrainerOverride");
+            }
+            else
+            {
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogTradeTrainerOverrideSkipped,
+                        userOT ?? string.Empty,
+                        userTID?.ToString() ?? string.Empty,
+                        userSID?.ToString() ?? string.Empty,
+                        pk.Species),
+                    "TrainerOverride");
+            }
         }
 
         // Check for spam names
@@ -1110,7 +1144,9 @@ public static class Helpers<T> where T : PKM, new()
         if (!la.Valid)
         {
             var fails = string.Join("; ", la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}"));
-            LogUtil.LogInfo($"TrainerOverride: REVERT — legality failed: {fails}", "TrainerOverride");
+            LogUtil.LogInfo(
+                AppLocalization.Format(LocalizationKeys.LogTradeTrainerOverrideReverted, fails),
+                "TrainerOverride");
             pk.OriginalTrainerTrash.Clear();
             backup.OriginalTrainerTrash.CopyTo(pk.OriginalTrainerTrash);
             pk.TrainerTID7 = backup.TrainerTID7;

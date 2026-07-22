@@ -76,13 +76,58 @@ public static class AutoLegalityExtensionsDiscord
             // the bot's default trainer info unless we explicitly override it here.
             if (trainerOverride is not null && trainerOverride.HasAny)
             {
-                LogUtil.LogInfo($"Convert TrainerOverride = Requested OT: {trainerOverride.OT} | Requested TID: {trainerOverride.TID} | Requested SID: {trainerOverride.SID} | Species: {pkm.Species} | Before OT: {pkm.OriginalTrainerName} | Before TID: {pkm.TrainerTID7} | Before SID: {pkm.TrainerSID7}", "TrainerOverride");
-                ApplyTrainerOverride(pkm, trainerOverride);
-                LogUtil.LogInfo($"Convert TrainerOverride = Final OT: {pkm.OriginalTrainerName} | Final TID: {pkm.TrainerTID7} | Final SID: {pkm.TrainerSID7} | Legal: {new LegalityAnalysis(pkm).Valid}", "TrainerOverride");
+                // Respect the AllowTrainerDataOverride config flag. When disabled we do
+                // not apply the user's OT/TID/SID/OTGender and let ALM's generated
+                // trainer info stand.
+                if (SysCordSettings.HubConfig.Legality.AllowTrainerDataOverride)
+                {
+                    LogUtil.LogInfo(
+                        AppLocalization.Format(
+                            LocalizationKeys.LogConvertTrainerOverrideRequested,
+                            trainerOverride.OT ?? string.Empty,
+                            trainerOverride.TID?.ToString() ?? string.Empty,
+                            trainerOverride.SID?.ToString() ?? string.Empty,
+                            GetTrainerGenderLabel(trainerOverride.OTGender),
+                            pkm.Species,
+                            pkm.OriginalTrainerName,
+                            pkm.TrainerTID7,
+                            pkm.TrainerSID7,
+                            GetTrainerGenderLabel(pkm.OriginalTrainerGender)),
+                        "TrainerOverride");
+                    ApplyTrainerOverride(pkm, trainerOverride);
+                    var isLegal = new LegalityAnalysis(pkm).Valid;
+                    LogUtil.LogInfo(
+                        AppLocalization.Format(
+                            LocalizationKeys.LogConvertTrainerOverrideFinal,
+                            pkm.OriginalTrainerName,
+                            pkm.TrainerTID7,
+                            pkm.TrainerSID7,
+                            GetTrainerGenderLabel(pkm.OriginalTrainerGender),
+                            GetBooleanLabel(isLegal)),
+                        "TrainerOverride");
+                }
+                else
+                {
+                    LogUtil.LogInfo(
+                        AppLocalization.Format(
+                            LocalizationKeys.LogConvertTrainerOverrideSkipped,
+                            trainerOverride.OT ?? string.Empty,
+                            trainerOverride.TID?.ToString() ?? string.Empty,
+                            trainerOverride.SID?.ToString() ?? string.Empty,
+                            pkm.Species),
+                        "TrainerOverride");
+                }
             }
             else
             {
-                LogUtil.LogInfo($"Convert TrainerOverride = NO OVERRIDE requested in content. ALM's defaults consequentially applied. Trainer Override: {(trainerOverride is null ? "null" : "empty")}", "TrainerOverride");
+                var overrideStateKey = trainerOverride is null
+                    ? LocalizationKeys.LogTrainerOverrideStateNull
+                    : LocalizationKeys.LogTrainerOverrideStateEmpty;
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogConvertTrainerOverrideNotRequested,
+                        AppLocalization.Get(overrideStateKey)),
+                    "TrainerOverride");
             }
 
             var la = new LegalityAnalysis(pkm);
@@ -98,7 +143,7 @@ public static class AutoLegalityExtensionsDiscord
                     pkm = fallback;
                     if (requestedLanguage != 0)
                         ApplyLanguageToSet(pkm, set, requestedLanguage);
-                    if (trainerOverride is not null && trainerOverride.HasAny)
+                    if (trainerOverride is not null && trainerOverride.HasAny && SysCordSettings.HubConfig.Legality.AllowTrainerDataOverride)
                         ApplyTrainerOverride(pkm, trainerOverride);
                     la = new LegalityAnalysis(pkm);
                 }
@@ -183,11 +228,18 @@ public static class AutoLegalityExtensionsDiscord
         string? ot = null;
         uint? tid = null;
         uint? sid = null;
+        byte? otGender = null;
         var kept = new List<string>();
 
         foreach (var raw in content.Split('\n'))
         {
             var trimmed = raw.TrimStart();
+            // Check OTGender before OT so the shorter "OT:" prefix does not swallow it.
+            if (TryConsumePrefix(trimmed, "OTGender:", out var genderVal) && TryParseTrainerGender(genderVal, out var genderParsed))
+            {
+                otGender = genderParsed;
+                continue;
+            }
             if (TryConsumePrefix(trimmed, "OT:", out var otVal))
             {
                 ot = otVal;
@@ -206,11 +258,27 @@ public static class AutoLegalityExtensionsDiscord
             kept.Add(raw);
         }
 
-        if (ot is null && tid is null && sid is null)
+        if (ot is null && tid is null && sid is null && otGender is null)
             return null;
 
         content = string.Join('\n', kept);
-        return new TrainerOverride(ot, tid, sid);
+        return new TrainerOverride(ot, tid, sid, otGender);
+    }
+
+    private static bool TryParseTrainerGender(string value, out byte gender)
+    {
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "male" or "m" or "0":
+                gender = 0;
+                return true;
+            case "female" or "f" or "1":
+                gender = 1;
+                return true;
+            default:
+                gender = 0;
+                return false;
+        }
     }
 
     private static bool TryConsumePrefix(string line, string prefix, out string value)
@@ -239,6 +307,8 @@ public static class AutoLegalityExtensionsDiscord
             pkm.TrainerTID7 = o.TID.Value;
         if (o.SID is not null)
             pkm.TrainerSID7 = o.SID.Value;
+        if (o.OTGender is not null)
+            pkm.OriginalTrainerGender = o.OTGender.Value;
 
         if (wasShiny && (o.TID is not null || o.SID is not null))
             pkm.PID = (uint)((pkm.TID16 ^ pkm.SID16 ^ (pkm.PID & 0xFFFF) ^ originalShinyXor) << 16) | (pkm.PID & 0xFFFF);
@@ -249,20 +319,33 @@ public static class AutoLegalityExtensionsDiscord
         if (!la.Valid)
         {
             var fails = string.Join("; ", la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}"));
-            LogUtil.LogInfo($"Convert TrainerOverride: REVERT - legality failed: {fails}", "TrainerOverride");
+            LogUtil.LogInfo(
+                AppLocalization.Format(LocalizationKeys.LogConvertTrainerOverrideReverted, fails),
+                "TrainerOverride");
             pkm.OriginalTrainerTrash.Clear();
             backup.OriginalTrainerTrash.CopyTo(pkm.OriginalTrainerTrash);
             pkm.TrainerTID7 = backup.TrainerTID7;
             pkm.TrainerSID7 = backup.TrainerSID7;
+            pkm.OriginalTrainerGender = backup.OriginalTrainerGender;
             pkm.PID = backup.PID;
             pkm.RefreshChecksum();
         }
     }
 
-    public sealed record TrainerOverride(string? OT, uint? TID, uint? SID)
+    public sealed record TrainerOverride(string? OT, uint? TID, uint? SID, byte? OTGender)
     {
-        public bool HasAny => OT is not null || TID is not null || SID is not null;
+        public bool HasAny => OT is not null || TID is not null || SID is not null || OTGender is not null;
     }
+
+    private static string GetTrainerGenderLabel(byte? gender) => gender switch
+    {
+        0 => AppLocalization.Get(LocalizationKeys.LogTrainerGenderMale),
+        1 => AppLocalization.Get(LocalizationKeys.LogTrainerGenderFemale),
+        _ => AppLocalization.Get(LocalizationKeys.LogTrainerGenderNone),
+    };
+
+    private static string GetBooleanLabel(bool value) => AppLocalization.Get(
+        value ? LocalizationKeys.LogBooleanTrue : LocalizationKeys.LogBooleanFalse);
 
     public static async Task ReplyWithLegalizedSetAsync(this ISocketMessageChannel channel, IAttachment att, IUser? authorUser = null)
     {

@@ -302,8 +302,10 @@ public class PokeTradeBotBS : PokeRoutineExecutor8BS, ICountBot, ITradeBot, IDis
         }
         else
         {
+            // Partner info made the Pokemon illegal. Restore the original in the box
+            // so the box always matches the value returned to the confirm path.
             Log("El Pokémon no es válido después de usar la información del compañero de intercambio.");
-            await SetBoxPokemonAbsolute(BoxStartOffset, cln, token, sav).ConfigureAwait(false);
+            await SetBoxPokemonAbsolute(BoxStartOffset, toSend, token, sav).ConfigureAwait(false);
             return toSend;
         }
     }

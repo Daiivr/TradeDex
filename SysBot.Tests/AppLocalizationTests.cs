@@ -30,4 +30,19 @@ public class AppLocalizationTests
         AppLocalization.SetLanguage(AppLanguage.Spanish);
         AppLocalization.Get(LocalizationKeys.BotsNewRelease).Should().Be("NUEVA VERSION!");
     }
+
+    [Fact]
+    public void TrainerOverrideLogsUseSelectedLanguage()
+    {
+        AppLocalization.SetLanguage(AppLanguage.English);
+        AppLocalization.Format(LocalizationKeys.LogConvertTrainerOverrideSkipped, "Ash", "123", "456", 25)
+            .Should().StartWith("Convert TrainerOverride: skipped");
+
+        AppLocalization.SetLanguage(AppLanguage.Spanish);
+        AppLocalization.Format(LocalizationKeys.LogConvertTrainerOverrideSkipped, "Ash", "123", "456", 25)
+            .Should().StartWith("Conversión TrainerOverride: omitida");
+        AppLocalization.Get(LocalizationKeys.LogTrainerGenderFemale).Should().Be("femenino");
+
+        AppLocalization.SetLanguage(AppLanguage.English);
+    }
 }

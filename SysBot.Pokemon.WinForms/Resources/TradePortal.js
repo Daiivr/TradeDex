@@ -1,0 +1,1720 @@
+const state = {
+    authenticated: false,
+    polling: null,
+    language: 'English',
+    mode: 'SV',
+    lastTradeState: null,
+    pkmFile: null,
+    composerOpen: false,
+    terminalSignature: '',
+    terminalTypingRun: 0,
+    terminalTradeKey: '',
+    terminalTypingQueue: Promise.resolve(),
+    confettiTradeKey: '',
+    profileRefreshTradeKey: '',
+    recentFiles: [],
+    activityPolling: null,
+    activitySeen: new Set(),
+    activityQueue: [],
+    activityPlaying: false,
+    activityBootstrapped: false,
+};
+
+const $ = (id) => document.getElementById(id);
+
+const ES = {
+    pageTitle: 'Trades TradeDex',
+    brandSuffix: 'Trades Web',
+    controlPanel: 'Control',
+    webTrades: 'Trades web',
+    heroTitle: 'Tradea sin estar en Discord',
+    heroText: 'Inicia sesion una vez, pega tu set de Pokemon Showdown y sigue las instrucciones en vivo hasta completar el trade.',
+    queue: 'Cola',
+    checking: 'Revisando',
+    session: 'Sesion',
+    guest: 'Invitado',
+    mode: 'Modo',
+    request: 'Solicitud',
+    requestTitle: 'Crear un trade',
+    terminalTitle: 'Sigue el trade',
+    discordLogin: 'Login de Discord requerido',
+    loginText: 'Tu Discord ID se usa para codigos de trade, datos guardados de entrenador y seguimiento de cola.',
+    loginButton: 'Login con Discord',
+    logoutButtonTitle: 'Cerrar sesion',
+    trainerName: 'Nombre de entrenador',
+    trainerPlaceholder: 'Tu nombre dentro del juego',
+    tradeCode: 'Codigo de trade',
+    showdownSet: 'Set de Pokemon Showdown',
+    showdownPlaceholder: 'Flutter Mane @ Booster Energy\nAbility: Protosynthesis\nTera Type: Fairy\nEVs: 4 HP / 252 SpA / 252 Spe\nTimid Nature\n- Moonblast\n- Shadow Ball\n- Protect\n- Icy Wind',
+    pkhexUpload: 'Subir archivo PKHeX',
+    pkhexHelp: 'Opcional: usa un archivo .pk/.pb/.pa en lugar de un set Showdown.',
+    clearFile: 'Quitar',
+    fileSelected: 'Archivo seleccionado: {name}',
+    fileTooLarge: 'El archivo PKHeX es demasiado grande.',
+    fileReadFailed: 'No se pudo leer el archivo.',
+    legalToastTitle: 'Pokemon no legal',
+    legalToastIntro: 'PKHeX encontro estos problemas:',
+    legalMoveInvalid: 'Movimiento {slot}: no es valido para este Pokemon.',
+    legalEncounterMismatch: 'No coincide con ningun encuentro valido del juego de origen.',
+    legalEggLanguageMismatch: 'El nombre de huevo no coincide con el idioma del archivo.',
+    legalEggHeldItem: 'Los huevos no pueden llevar objetos.',
+    legalIssueUnknown: 'Revisa el archivo en PKHeX antes de enviarlo.',
+    ignoreAutoOt: 'No aplicar AutoOT guardado',
+    joinQueue: 'Entrar a la cola',
+    liveStatus: 'Estado en vivo',
+    currentTrade: 'Trade actual',
+    cancel: 'Cancelar',
+    emptyTrade: 'Tu trade en cola aparecera aqui.',
+    guide: 'Guia',
+    tradeConsole: 'Guia del website',
+    guideButtonTitle: 'Abrir guia de trade',
+    downloads: 'Archivos',
+    recentFiles: 'Ultimos recibidos',
+    downloadsButtonTitle: 'Abrir archivos recientes',
+    noRecentFiles: 'Aun no hay Pokemon recibidos para descargar.',
+    downloadFile: 'Descargar',
+    linkCode: 'Codigo',
+    requestAnotherTrade: 'Solicitar otro trade',
+    profile: 'Perfil',
+    totalTrades: 'Trades totales',
+    trainer: 'Entrenador',
+    discordUser: 'Discord',
+    lastTrade: 'Ultimo trade',
+    editTradeCode: 'Editar codigo de trade',
+    tradeCodePlaceholder: '0000 0000',
+    saveCode: 'Guardar codigo',
+    deleteCode: 'Borrar',
+    tradeCodeHelp: 'Usa ocho digitos. Este codigo se guarda en tu Discord ID.',
+    invalidTradeCode: 'Ingresa un codigo de trade de ocho digitos.',
+    tradeCodeSaved: 'Codigo de trade guardado.',
+    tradeCodeDeleted: 'Codigo de trade borrado.',
+    tradeCodeSaveFailed: 'No se pudo guardar el codigo de trade.',
+    tradeCodeDeleteFailed: 'No se pudo borrar el codigo de trade.',
+    guideLogin: 'Inicia sesion con Discord para que el website use tu perfil, codigo guardado y datos de entrenador.',
+    guideCreate: 'Pega un set Showdown o sube un archivo PKHeX. No necesitas escribir nombre ni codigo.',
+    guideQueue: 'Pulsa Entrar a la cola. Cuando el bot tome tu trade, el formulario cambiara a la terminal.',
+    guideTerminal: 'Sigue la terminal en vivo: ahi veras cuando buscar el codigo, el entrenador encontrado y que confirmar.',
+    guideProfile: 'Usa Perfil para revisar tu historial y editar o borrar tu codigo de trade guardado.',
+    open: 'Abierta',
+    closed: 'Cerrada',
+    unavailable: 'No disponible',
+    loggedIn: 'Conectado',
+    queued: 'En cola',
+    searching: 'Buscando',
+    initializing: 'Preparando',
+    partner: 'Encontrado',
+    processing: 'Procesando',
+    finished: 'Finalizado',
+    cancelled: 'Cancelado',
+    working: 'Procesando...',
+    loginUnconfigured: 'Discord OAuth aun no esta configurado. Agrega Client ID, Client Secret y Redirect URI en los ajustes de WebServer.',
+    loginCouldNotStart: 'No se pudo iniciar el login.',
+    discordLoginComplete: 'Login de Discord completado.',
+    discordLoginFailed: 'Fallo el login de Discord.',
+    profileLoadFailed: 'No se pudo cargar el perfil.',
+    pasteShowdownFirst: 'Pega primero un set de Pokemon Showdown.',
+    pasteShowdownOrFileFirst: 'Pega un set Showdown o sube un archivo PKHeX primero.',
+    tradeQueueFailed: 'No se pudo agregar el trade a la cola.',
+    queueClosedOrNoBots: 'La cola de trade esta cerrada o no hay bots listos.',
+    tradeRunnerNotReady: 'El bot de trades aun no esta listo.',
+    alreadyInQueue: 'Ya tienes un trade en la cola.',
+    queueFull: 'La cola de trade esta llena.',
+    notAllowedItem: 'Ese Pokemon lleva un objeto que no se puede intercambiar.',
+    tradeAdded: 'Trade agregado a la cola.',
+    cancelFailed: 'No se pudo cancelar el trade.',
+    tradeCancelled: 'Trade cancelado.',
+    tradeFinishedFileSaved: 'Trade completado. Tu archivo esta disponible en la bandeja de Archivos recientes.',
+    positionLine: 'Posicion {position} de {total}',
+    etaRemaining: 'Tiempo estimado: ~{time}',
+    etaAlmostThere: 'Ya casi es tu turno',
+    waitingLatest: 'Esperando el ultimo estado.',
+    noTradeConsole: 'Pega un set, entra a la cola y esta consola te dira cuando buscar el codigo.',
+    loginConsole: 'Inicia sesion con Discord para usar tu codigo guardado y tu perfil.',
+    submitConsole: 'Cuando tu trade entre a la cola, prepara tu consola y espera tu turno.',
+    queuedConsole: 'Estas en cola. Mantente listo y no cierres esta pagina.',
+    initializingConsole: 'El bot esta preparando el menu de intercambio. Mantente listo.',
+    searchConsole: 'Busca intercambio por codigo ahora: {code}.',
+    partnerConsole: 'Entrenador encontrado. Verifica la informacion antes de confirmar.',
+    processingConsole: 'Trade encontrado. Sigue las indicaciones del juego y confirma cuando corresponda.',
+    finishedConsole: 'Trade completado. Gracias por usar TradeDex.',
+    cancelledConsole: 'El trade fue cancelado.',
+    cancelledWithReason: 'Trade cancelado: {reason}',
+    terminalConnect: '[TradeDex] Sesion web conectada con Discord.',
+    terminalQueue: '[COLA] Tu trade de {pokemon} fue agregado. Codigo asignado: {code}.',
+    terminalQueuePosition: '[COLA] Posicion actual: {position} de {total}. Mantente listo y no cierres esta pagina.',
+    terminalPrepare: '[BOT] Preparando el menu de intercambio. Abre Poke Portal > Link Trade en tu consola.',
+    terminalSearch: '[BUSCAR] Busca intercambio por codigo ahora: {code}.',
+    terminalFound: '[BOT] Entrenador encontrado. Verifica los datos antes de confirmar.',
+    trainerCardTrainer: 'Entrenador',
+    terminalOffer: '[BOT] Esperando que ofrezcas un Pokemon en el juego.',
+    terminalComplete: '[LISTO] Trade completado. Disfruta tu {pokemon}.',
+    terminalCancel: '[CANCELADO] {reason}',
+    terminalWait: '[INFO] Esperando la siguiente actualizacion del bot...',
+    terminalFallbackCancel: 'El trade fue cancelado.',
+    liveActivity: 'Actividad en vivo',
+    activityFinished: 'acaba de intercambiar un',
+    footerDisclaimer: 'TradeDex es una herramienta hecha por fans y no esta afiliada con Nintendo, Game Freak ni The Pokemon Company.',
+};
+
+const EN = {
+    pageTitle: 'TradeDex Trades',
+    brandSuffix: 'Web Trades',
+    controlPanel: 'Control',
+    webTrades: 'Web trades',
+    heroTitle: 'Trade without Discord chat',
+    heroText: 'Log in once, paste your Pokemon Showdown set or upload a PKHeX file, then follow the live instructions until the trade is complete.',
+    queue: 'Queue',
+    checking: 'Checking',
+    session: 'Session',
+    guest: 'Guest',
+    mode: 'Mode',
+    request: 'Request',
+    requestTitle: 'Create a trade',
+    terminalTitle: 'Follow the trade',
+    discordLogin: 'Discord login required',
+    loginText: 'Your Discord ID is used for trade codes, saved trainer data, and queue tracking.',
+    loginButton: 'Login with Discord',
+    logoutButtonTitle: 'Log out',
+    trainerName: 'Trainer name',
+    trainerPlaceholder: 'Your in-game name',
+    tradeCode: 'Trade code',
+    showdownSet: 'Pokemon Showdown set',
+    showdownPlaceholder: 'Flutter Mane @ Booster Energy\nAbility: Protosynthesis\nTera Type: Fairy\nEVs: 4 HP / 252 SpA / 252 Spe\nTimid Nature\n- Moonblast\n- Shadow Ball\n- Protect\n- Icy Wind',
+    pkhexUpload: 'Upload PKHeX file',
+    pkhexHelp: 'Optional: use a .pk/.pb/.pa file instead of a Showdown set.',
+    clearFile: 'Clear',
+    fileSelected: 'Selected file: {name}',
+    fileTooLarge: 'The PKHeX file is too large.',
+    fileReadFailed: 'Could not read the file.',
+    legalToastTitle: 'Pokemon is not legal',
+    legalToastIntro: 'PKHeX found these issues:',
+    legalMoveInvalid: 'Move {slot}: not valid for this Pokemon.',
+    legalEncounterMismatch: 'No valid encounter matches this Pokemon in its origin game.',
+    legalEggLanguageMismatch: 'The egg name does not match the file language.',
+    legalEggHeldItem: 'Eggs cannot hold held items.',
+    legalIssueUnknown: 'Check the file in PKHeX before submitting it.',
+    ignoreAutoOt: 'Do not apply cached AutoOT',
+    joinQueue: 'Join queue',
+    open: 'Open',
+    closed: 'Closed',
+    unavailable: 'Unavailable',
+    loggedIn: 'Logged in',
+    queued: 'Queued',
+    searching: 'Searching',
+    initializing: 'Preparing',
+    partner: 'Found',
+    processing: 'Processing',
+    finished: 'Finished',
+    cancelled: 'Cancelled',
+    working: 'Working...',
+    loginUnconfigured: 'Discord OAuth is not configured yet. Add Client ID, Client Secret, and Redirect URI in WebServer settings.',
+    loginCouldNotStart: 'Login could not start.',
+    discordLoginComplete: 'Discord login complete.',
+    discordLoginFailed: 'Discord login failed.',
+    profileLoadFailed: 'Could not load profile.',
+    pasteShowdownFirst: 'Paste a Pokemon Showdown set first.',
+    pasteShowdownOrFileFirst: 'Paste a Showdown set or upload a PKHeX file first.',
+    tradeQueueFailed: 'The trade could not be queued.',
+    queueClosedOrNoBots: 'The trade queue is closed or no trade bots are ready.',
+    tradeRunnerNotReady: 'The trade runner is not ready yet.',
+    alreadyInQueue: 'You already have a trade in the queue.',
+    queueFull: 'The trade queue is full.',
+    notAllowedItem: 'That Pokemon is holding an item that cannot be traded.',
+    tradeAdded: 'Trade added to the queue.',
+    cancelFailed: 'Could not cancel the trade.',
+    tradeCancelled: 'Trade cancelled.',
+    tradeFinishedFileSaved: 'Trade complete. Your file is now available in the Recent files tray.',
+    liveStatus: 'Live status',
+    currentTrade: 'Current trade',
+    cancel: 'Cancel',
+    emptyTrade: 'Your queued trade will appear here.',
+    guide: 'Guide',
+    tradeConsole: 'Website guide',
+    guideButtonTitle: 'Open trade guide',
+    downloads: 'Files',
+    recentFiles: 'Recently received',
+    downloadsButtonTitle: 'Open recent trade files',
+    noRecentFiles: 'No received Pokemon files to download yet.',
+    downloadFile: 'Download',
+    linkCode: 'Link code',
+    requestAnotherTrade: 'Request another trade',
+    profile: 'Profile',
+    totalTrades: 'Total trades',
+    trainer: 'Trainer',
+    discordUser: 'Discord',
+    lastTrade: 'Last trade',
+    editTradeCode: 'Edit trade code',
+    tradeCodePlaceholder: '0000 0000',
+    saveCode: 'Save code',
+    deleteCode: 'Delete',
+    tradeCodeHelp: 'Use eight digits. This code is saved to your Discord ID.',
+    invalidTradeCode: 'Enter an eight-digit trade code.',
+    tradeCodeSaved: 'Trade code saved.',
+    tradeCodeDeleted: 'Trade code deleted.',
+    tradeCodeSaveFailed: 'Could not save the trade code.',
+    tradeCodeDeleteFailed: 'Could not delete the trade code.',
+    guideLogin: 'Log in with Discord so the website can use your profile, saved code, and trainer data.',
+    guideCreate: 'Paste a Showdown set or upload a PKHeX file. You do not need to type trainer name or code.',
+    guideQueue: 'Press Join queue. When the bot takes your trade, the form changes into the live terminal.',
+    guideTerminal: 'Follow the live terminal: it tells you when to search the code, who was found, and what to confirm.',
+    guideProfile: 'Use Profile to review your history and edit or delete your saved trade code.',
+    positionLine: 'Position {position} of {total}',
+    etaRemaining: 'Estimated time: ~{time}',
+    etaAlmostThere: "You're almost up",
+    waitingLatest: 'Waiting for the latest status.',
+    noTradeConsole: 'Paste a set, join the queue, and this console will tell you when to search the code.',
+    loginConsole: 'Login with Discord to use your saved code and profile.',
+    submitConsole: 'When your trade enters the queue, prepare your console and wait for your turn.',
+    queuedConsole: 'You are in queue. Stay ready and keep this page open.',
+    initializingConsole: 'The bot is loading the trade menu. Stay ready.',
+    searchConsole: 'Search for a link trade with this code now: {code}.',
+    partnerConsole: 'Trainer found. Check the info before confirming.',
+    processingConsole: 'Trade partner found. Follow the game prompts and confirm when needed.',
+    finishedConsole: 'Trade complete. Thanks for using TradeDex.',
+    cancelledConsole: 'The trade was cancelled.',
+    cancelledWithReason: 'Trade cancelled: {reason}',
+    terminalConnect: '[TradeDex] Web session connected with Discord.',
+    terminalQueue: '[QUEUE] Your {pokemon} trade was added. Assigned code: {code}.',
+    terminalQueuePosition: '[QUEUE] Current position: {position} of {total}. Stay ready and keep this page open.',
+    terminalPrepare: '[BOT] Loading the trade menu. Open Poke Portal > Link Trade on your console.',
+    terminalSearch: '[SEARCH] Search for a link trade with this code now: {code}.',
+    terminalFound: '[BOT] Trainer found. Verify the details before confirming.',
+    trainerCardTrainer: 'Trainer',
+    terminalOffer: '[BOT] Waiting for you to offer a Pokemon in game.',
+    terminalComplete: '[DONE] Trade complete. Enjoy your {pokemon}.',
+    terminalCancel: '[CANCELLED] {reason}',
+    terminalWait: '[INFO] Waiting for the next bot update...',
+    terminalFallbackCancel: 'The trade was cancelled.',
+    liveActivity: 'Live activity',
+    activityFinished: 'just traded a',
+    footerDisclaimer: 'TradeDex is a fan-made tool and is not affiliated with Nintendo, Game Freak, or The Pokémon Company.',
+};
+
+const t = (key, values = {}) => {
+    const table = isSpanish() ? ES : EN;
+    let text = table[key] || key;
+    for (const [name, value] of Object.entries(values)) {
+        text = text.replaceAll(`{${name}}`, value);
+    }
+    return text;
+};
+
+const isSpanish = () => ['Spanish', 'SpanishLatinAmerica', 'es'].includes(state.language);
+
+async function api(path, options = {}) {
+    const response = await fetch(path, {
+        cache: 'no-cache',
+        headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
+        ...options,
+    });
+
+    const contentType = response.headers.get('content-type') || '';
+    if (!contentType.includes('application/json')) {
+        return { success: false, error: await response.text() };
+    }
+
+    return response.json();
+}
+
+async function initLocalization() {
+    try {
+        const info = await api('/api/bot/localization');
+        state.language = info.language || 'English';
+    } catch {
+        state.language = document.documentElement.lang?.startsWith('es') ? 'Spanish' : 'English';
+    }
+
+    document.documentElement.lang = isSpanish() ? 'es' : 'en';
+    document.querySelectorAll('[data-i18n]').forEach((node) => {
+        node.textContent = t(node.dataset.i18n);
+    });
+    document.querySelectorAll('[data-i18n-placeholder]').forEach((node) => {
+        node.placeholder = t(node.dataset.i18nPlaceholder);
+    });
+    document.querySelectorAll('[data-i18n-title]').forEach((node) => {
+        const label = t(node.dataset.i18nTitle);
+        // Use a styled custom tooltip (data-tooltip + ::after in CSS) instead of
+        // the browser-native title chip. aria-label keeps it accessible.
+        node.removeAttribute('title');
+        node.setAttribute('aria-label', label);
+        node.setAttribute('data-tooltip', label);
+    });
+    document.title = t('pageTitle');
+    renderSiteGuide();
+}
+
+async function initMode() {
+    try {
+        const info = await api('/api/bot/instances');
+        const mode = info.instances?.[0]?.mode || info.Instances?.[0]?.Mode || 'SV';
+        state.mode = String(mode || 'SV').toUpperCase();
+    } catch {
+        state.mode = 'SV';
+    }
+
+    $('mode-state').textContent = modeLabel(state.mode);
+    const image = $('mode-image');
+    const imageMap = {
+        SV: '/sv_mode_image.png',
+        PLZA: '/plza_mode_image.png',
+        SWSH: '/swsh_mode_image.png',
+        BDSP: '/bdsp_mode_image.png',
+        LA: '/pla_mode_image.png',
+        PLA: '/pla_mode_image.png',
+        LGPE: '/lgpe_mode_image.png',
+    };
+    image.src = imageMap[state.mode] || '/sv_mode_image.png';
+    image.alt = modeLabel(state.mode);
+}
+
+function modeLabel(mode) {
+    return {
+        SV: 'Scarlet / Violet',
+        PLZA: 'Legends Z-A',
+        SWSH: 'Sword / Shield',
+        BDSP: 'Brilliant Diamond / Shining Pearl',
+        LA: 'Legends Arceus',
+        PLA: 'Legends Arceus',
+        LGPE: "Let's Go",
+    }[mode] || mode || 'Trade';
+}
+
+function showToast(message, options = {}) {
+    const toast = $('toast');
+    toast.className = `toast ${options.type || 'info'} ${options.className || ''}`.trim();
+    toast.replaceChildren();
+
+    const body = document.createElement('div');
+    body.className = 'toast-body';
+
+    if (options.title) {
+        const title = document.createElement('strong');
+        title.className = 'toast-title';
+        title.textContent = options.title;
+        body.appendChild(title);
+    }
+
+    const text = document.createElement(options.title ? 'p' : 'span');
+    text.className = 'toast-message';
+    text.textContent = message || options.message || '';
+    body.appendChild(text);
+
+    if (Array.isArray(options.items) && options.items.length) {
+        const list = document.createElement('ul');
+        list.className = 'toast-list';
+        for (const item of options.items) {
+            const li = document.createElement('li');
+            li.textContent = item;
+            list.appendChild(li);
+        }
+        body.appendChild(list);
+    }
+
+    toast.appendChild(body);
+    toast.hidden = false;
+    clearTimeout(showToast.timer);
+    showToast.timer = setTimeout(() => { toast.hidden = true; }, options.duration || 4200);
+}
+
+function showApiError(result, fallbackKey) {
+    if (result?.errorCode === 'pkm_legal') {
+        showLegalityToast(result);
+        return;
+    }
+
+    showToast(translateApiError(result?.error) || t(fallbackKey), { type: 'error' });
+}
+
+function translateApiError(message) {
+    const text = String(message || '').trim();
+    if (!text) return '';
+
+    const normalized = text
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .toLowerCase();
+
+    if (
+        normalized.includes('queue is currently closed') ||
+        normalized.includes('cola de trade is currently closed') ||
+        normalized.includes('cola de trades is currently closed') ||
+        normalized.includes('no trade bots are ready')
+    ) {
+        return t('queueClosedOrNoBots');
+    }
+
+    if (normalized.includes('trade runner is not ready') || normalized.includes('bot de trades aun no esta listo')) {
+        return t('tradeRunnerNotReady');
+    }
+
+    if (normalized.includes('already have') && normalized.includes('trade') && normalized.includes('queue')) {
+        return t('alreadyInQueue');
+    }
+
+    if (normalized.includes('queue is full') || normalized.includes('cola de trade esta llena')) {
+        return t('queueFull');
+    }
+
+    if (normalized.includes('holding an item') || normalized.includes('item that cannot be traded') || normalized.includes('objeto que no se puede intercambiar')) {
+        return t('notAllowedItem');
+    }
+
+    return text;
+}
+
+function showLegalityToast(result) {
+    const issues = Array.isArray(result?.issues) ? result.issues : [];
+    const translated = issues.map(translateLegalityIssue).filter(Boolean);
+    showToast(t('legalToastIntro'), {
+        type: 'error',
+        className: 'legality-toast',
+        title: t('legalToastTitle'),
+        items: translated.length ? translated : [t('legalIssueUnknown')],
+        duration: 11000,
+    });
+}
+
+function translateLegalityIssue(issue) {
+    const clean = String(issue || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/^invalid:\s*/i, '')
+        .replace(/^invalido:\s*/i, '')
+        .replace(/^invalid\s+/i, '')
+        .replace(/^invalido\s+/i, '')
+        .trim();
+    const lower = clean.toLowerCase();
+    const move = clean.match(/move\s*(\d+)/i) || clean.match(/movimiento\s*(\d+)/i);
+
+    if (move && (lower.includes('invalid') || lower.includes('invalido'))) {
+        return t('legalMoveInvalid', { slot: move[1] });
+    }
+
+    if (lower.includes('unable to match an encounter') || lower.includes('encounter from origin game')) {
+        return t('legalEncounterMismatch');
+    }
+
+    if (lower.includes('egg name') && lower.includes('language')) {
+        return t('legalEggLanguageMismatch');
+    }
+
+    if (lower.includes('eggs cannot hold items')) {
+        return t('legalEggHeldItem');
+    }
+
+    return clean || t('legalIssueUnknown');
+}
+
+function setBusy(button, busy) {
+    button.disabled = busy;
+    button.dataset.originalText ??= button.textContent;
+    button.textContent = busy ? t('working') : button.dataset.originalText;
+}
+
+async function initAuth() {
+    const me = await api('/api/trade/auth/me');
+    state.authenticated = Boolean(me.authenticated);
+
+    $('control-link').hidden = !me.isAdmin;
+    $('login-panel').hidden = state.authenticated;
+    $('trade-panel').hidden = !state.authenticated;
+    $('trade-terminal').hidden = true;
+    $('user-actions').hidden = !state.authenticated;
+    $('download-widget').hidden = !state.authenticated;
+    toggleDownloads(false);
+    toggleCodePopover(false);
+    $('session-state').textContent = state.authenticated ? t('loggedIn') : t('guest');
+
+    if (state.authenticated) {
+        $('user-name').textContent = me.user.username;
+        if (me.user.avatar) {
+            $('user-avatar').src = me.user.avatar;
+            $('user-avatar').hidden = false;
+        }
+        await Promise.all([refreshProfile(), refreshRecentFiles()]);
+        startPolling();
+    } else {
+        state.recentFiles = [];
+        renderRecentFiles([]);
+        const config = await api('/api/trade/auth/config');
+        if (!config.discordConfigured) {
+            $('login-help').textContent = t('loginUnconfigured');
+            $('login-button').disabled = true;
+        }
+    }
+}
+
+async function login() {
+    const button = $('login-button');
+    setBusy(button, true);
+    try {
+        const result = await api('/api/trade/auth/login');
+        if (!result.success) {
+            showToast(result.error || t('loginCouldNotStart'));
+            return;
+        }
+
+        const popup = window.open(result.url, 'tradedex-discord-login', 'width=520,height=760');
+        if (!popup) {
+            window.location.href = result.url;
+        }
+    } finally {
+        setBusy(button, false);
+    }
+}
+
+async function logout() {
+    await api('/api/trade/auth/logout');
+    stopPolling();
+    state.authenticated = false;
+    await initAuth();
+    renderQueue({ success: true, queueOpen: false, activeTrade: null });
+}
+
+async function refreshProfile() {
+    const profile = await api('/api/trade/profile');
+    if (!profile.success) {
+        showToast(profile.error || t('profileLoadFailed'));
+        return;
+    }
+
+    const code = formatCode(profile.tradeCode);
+    $('profile-code').textContent = code || '-';
+    $('profile-code').disabled = !state.authenticated;
+    $('profile-code').classList.toggle('is-empty', !code);
+    $('trade-code-input').value = code;
+    $('profile-count').textContent = profile.tradeCount ?? 0;
+    setTrainerProfile(profile);
+    $('profile-last').textContent = cleanPokemonName(profile.lastTrade) || '-';
+}
+
+async function refreshRecentFiles() {
+    if (!state.authenticated) {
+        state.recentFiles = [];
+        renderRecentFiles([]);
+        return;
+    }
+
+    const result = await api('/api/trade/files');
+    state.recentFiles = result.success && Array.isArray(result.files)
+        ? result.files.slice(0, 5)
+        : [];
+    renderRecentFiles(state.recentFiles);
+}
+
+function renderRecentFiles(files) {
+    const list = $('download-list');
+    const empty = $('download-empty');
+    list.replaceChildren();
+    empty.hidden = files.length > 0;
+
+    for (const file of files) {
+        const item = document.createElement('li');
+        item.className = 'download-item';
+
+        const copy = document.createElement('div');
+        copy.className = 'download-copy';
+
+        const name = document.createElement('strong');
+        name.textContent = cleanPokemonName(file.pokemon) || cleanPokemonName(file.fileName) || 'Pokemon';
+
+        const details = document.createElement('span');
+        const when = file.receivedAt ? new Date(file.receivedAt) : null;
+        const timestamp = when && !Number.isNaN(when.getTime())
+            ? when.toLocaleString(isSpanish() ? 'es' : 'en', { dateStyle: 'short', timeStyle: 'short' })
+            : '';
+        details.textContent = [file.fileName, timestamp].filter(Boolean).join(' / ');
+
+        const link = document.createElement('a');
+        link.className = 'download-action';
+        link.href = `/api/trade/files/${encodeURIComponent(file.id)}`;
+        link.download = file.fileName || 'pokemon.pkm';
+        link.setAttribute('aria-label', `${t('downloadFile')} ${name.textContent}`);
+        link.title = t('downloadFile');
+        link.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v10m0 0 4-4m-4 4-4-4M5 19h14"></path></svg>';
+
+        copy.append(name, details);
+        item.append(copy, link);
+        list.append(item);
+    }
+}
+
+function setTrainerProfile(profile) {
+    const name = profile.ot || '-';
+    const button = $('profile-trainer');
+    button.textContent = name;
+    button.disabled = !profile.ot;
+    button.classList.toggle('is-empty', !profile.ot);
+
+    $('trainer-popover-name').textContent = name;
+    $('trainer-popover-tid').textContent = profile.tid ? String(profile.tid) : '-';
+    $('trainer-popover-sid').textContent = profile.sid ? String(profile.sid) : '-';
+    $('trainer-popover-discord').textContent = profile.username || profile.discordId || '-';
+}
+
+function formatCode(value) {
+    if (!value) return '';
+    const digits = String(value).replace(/\D/g, '').padStart(8, '0').slice(-8);
+    return `${digits.slice(0, 4)} ${digits.slice(4)}`;
+}
+
+function cleanPokemonName(value) {
+    const text = String(value || '').trim();
+    if (!text) return '';
+    return text.replace(/\s+\([^)]*\.(pk|pb|pa)\d?[^)]*\)$/i, '').trim();
+}
+
+function normalizeCodeInput(value) {
+    return String(value || '').replace(/\D/g, '').slice(0, 8);
+}
+
+function formatCodeInput(value) {
+    const digits = normalizeCodeInput(value);
+    return digits.length > 4 ? `${digits.slice(0, 4)} ${digits.slice(4)}` : digits;
+}
+
+async function saveTradeCode() {
+    const digits = normalizeCodeInput($('trade-code-input').value);
+    if (digits.length !== 8) {
+        showToast(t('invalidTradeCode'));
+        $('trade-code-input').focus();
+        return;
+    }
+
+    const button = $('save-code-button');
+    setBusy(button, true);
+    try {
+        const result = await api('/api/trade/code', {
+            method: 'POST',
+            body: JSON.stringify({ tradeCode: digits }),
+        });
+
+        if (!result.success) {
+            showToast(result.error || t('tradeCodeSaveFailed'));
+            return;
+        }
+
+        showToast(t('tradeCodeSaved'));
+        await refreshProfile();
+    } finally {
+        setBusy(button, false);
+    }
+}
+
+async function deleteTradeCode() {
+    const button = $('delete-code-button');
+    setBusy(button, true);
+    try {
+        const result = await api('/api/trade/code/delete', { method: 'POST', body: '{}' });
+        if (!result.success) {
+            showToast(result.error || t('tradeCodeDeleteFailed'));
+            return;
+        }
+
+        $('trade-code-input').value = '';
+        showToast(t('tradeCodeDeleted'));
+        await refreshProfile();
+    } finally {
+        setBusy(button, false);
+    }
+}
+
+async function submitTrade(event) {
+    event.preventDefault();
+
+    const showdownSet = $('showdown-set').value.trim();
+    if (!showdownSet && !state.pkmFile) {
+        showToast(t('pasteShowdownOrFileFirst'));
+        $('showdown-set').focus();
+        return;
+    }
+
+    const button = $('submit-button');
+    setBusy(button, true);
+    try {
+        const result = await api('/api/trade/submit', {
+            method: 'POST',
+            body: JSON.stringify({
+                showdownSet,
+                trainerName: '',
+                ignoreAutoOT: $('ignore-autoot').checked,
+                pkmFileName: state.pkmFile?.name || '',
+                pkmFileBase64: state.pkmFile?.base64 || '',
+            }),
+        });
+
+        if (!result.success) {
+            showApiError(result, 'tradeQueueFailed');
+            return;
+        }
+
+        showToast(t('tradeAdded'));
+        state.composerOpen = false;
+        renderQueue(result);
+        await refreshProfile();
+    } finally {
+        setBusy(button, false);
+    }
+}
+
+async function handlePkmFileChange(event) {
+    const file = event.target.files?.[0];
+    if (!file) {
+        clearPkmFile();
+        return;
+    }
+
+    if (file.size > 4096) {
+        showToast(t('fileTooLarge'));
+        clearPkmFile();
+        return;
+    }
+
+    try {
+        const buffer = await file.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (const byte of bytes) {
+            binary += String.fromCharCode(byte);
+        }
+
+        state.pkmFile = {
+            name: file.name,
+            base64: btoa(binary),
+        };
+        $('pkm-file-label').textContent = t('fileSelected', { name: file.name });
+        $('clear-file-button').hidden = false;
+    } catch {
+        showToast(t('fileReadFailed'));
+        clearPkmFile();
+    }
+}
+
+function clearPkmFile() {
+    state.pkmFile = null;
+    $('pkm-file').value = '';
+    $('pkm-file-label').textContent = t('pkhexHelp');
+    $('clear-file-button').hidden = true;
+}
+
+async function cancelTrade() {
+    const result = await api('/api/trade/cancel', { method: 'POST', body: '{}' });
+    if (!result.success) {
+        showToast(result.error || t('cancelFailed'));
+        return;
+    }
+
+    showToast(result.message || t('tradeCancelled'));
+    await pollQueue();
+}
+
+async function pollQueue() {
+    if (!state.authenticated) return;
+    const result = await api('/api/trade/queue');
+    renderQueue(result);
+    await maybeRefreshProfileAfterCompletedTrade(result.activeTrade);
+}
+
+function renderQueue(result) {
+    if (!result.success) {
+        $('queue-state').textContent = t('unavailable');
+        return;
+    }
+
+    $('queue-state').textContent = result.queueOpen ? t('open') : t('closed');
+    const trade = result.activeTrade;
+    renderPrimaryTradePanel(trade);
+
+    $('empty-trade').hidden = Boolean(trade);
+    $('active-trade').hidden = !trade;
+    const stateKey = getEffectiveTradeState(trade);
+    $('cancel-button').hidden = !trade || ['finished', 'cancelled'].includes(stateKey);
+
+    if (!trade) return;
+
+    applyStateBadge($('trade-state'), stateKey);
+    $('trade-pokemon').textContent = cleanPokemonName(trade.pokemon) || 'Pokemon';
+    const image = $('trade-pokemon-image');
+    if (trade.spriteUrl) {
+        image.src = trade.spriteUrl;
+        image.hidden = false;
+    } else {
+        image.hidden = true;
+    }
+    $('trade-code').textContent = formatCode(trade.code);
+    $('trade-message').textContent = '';
+    $('trade-message').hidden = true;
+
+    const inQueue = Boolean(trade.inQueue) && stateKey === 'queued';
+    const position = trade.position > 0 ? trade.position : 1;
+    const total = trade.total > 0 ? trade.total : position;
+    const pct = getTradeProgressPercent(trade, stateKey, inQueue, position, total);
+    $('queue-progress').style.width = `${pct}%`;
+    $('trade-position').textContent = getTradeProgressText(trade, stateKey, inQueue, position, total);
+}
+
+function renderPrimaryTradePanel(trade) {
+    const stateKey = trade ? getEffectiveTradeState(trade) : null;
+    const done = ['finished', 'cancelled'].includes(stateKey);
+    const showTerminal = state.authenticated && trade && (!done || !state.composerOpen);
+    const showComposer = state.authenticated && (!trade || state.composerOpen);
+
+    $('login-panel').hidden = state.authenticated;
+    $('trade-panel').hidden = !showComposer;
+    $('trade-terminal').hidden = !showTerminal;
+    $('request-title').textContent = showTerminal ? t('terminalTitle') : t('requestTitle');
+
+    if (!showTerminal) return;
+
+    applyStateBadge($('terminal-state'), stateKey);
+    $('terminal-pokemon').textContent = cleanPokemonName(trade.pokemon) || 'Pokemon';
+    $('terminal-code').textContent = formatCode(trade.code) || '0000 0000';
+    $('new-trade-button').hidden = !done;
+    renderTerminal(trade);
+    maybeCelebrateTrade(trade, stateKey);
+}
+
+function applyStateBadge(element, stateKey) {
+    element.textContent = t(stateKey);
+    element.className = `state-badge state-${stateKey}`;
+}
+
+async function maybeRefreshProfileAfterCompletedTrade(trade) {
+    if (!trade) return;
+
+    const stateKey = getEffectiveTradeState(trade);
+    if (stateKey !== 'finished') return;
+
+    const tradeKey = getTradeKey(trade);
+    if (!tradeKey || state.profileRefreshTradeKey === tradeKey) return;
+
+    state.profileRefreshTradeKey = tradeKey;
+    await Promise.all([refreshProfile(), refreshRecentFiles()]);
+    scheduleProfileRefreshRetry(tradeKey, 1500);
+    scheduleProfileRefreshRetry(tradeKey, 4000);
+}
+
+function scheduleProfileRefreshRetry(tradeKey, delayMs) {
+    window.setTimeout(async () => {
+        if (!state.authenticated || state.profileRefreshTradeKey !== tradeKey) return;
+        await Promise.all([refreshProfile(), refreshRecentFiles()]);
+    }, delayMs);
+}
+
+function getTradeKey(trade) {
+    return `${trade?.uniqueTradeId || trade?.UniqueTradeId || cleanPokemonName(trade?.pokemon) || ''}:${trade?.code || ''}`;
+}
+
+function normalizeTradeState(value) {
+    const text = String(value || 'queued').toLowerCase();
+    if (text.includes('partner') || text.includes('found')) return 'partner';
+    if (text.includes('search')) return 'searching';
+    if (text.includes('initial') || text.includes('prepar')) return 'initializing';
+    if (text.includes('process')) return 'processing';
+    if (text.includes('finish') || text.includes('complete')) return 'finished';
+    if (text.includes('cancel')) return 'cancelled';
+    return 'queued';
+}
+
+function getEffectiveTradeState(trade) {
+    if (!trade) return 'queued';
+    const raw = normalizeTradeState(trade.state);
+    if (trade.inQueue && ['queued', 'processing'].includes(raw) && !hasLiveBotUpdate(trade)) {
+        return 'queued';
+    }
+    return raw;
+}
+
+function hasLiveBotUpdate(trade) {
+    const raw = normalizeTradeState(trade?.state);
+    const message = String(trade?.message || '');
+    return ['initializing', 'searching', 'partner'].includes(raw)
+        || isTrainerFoundMessage(message)
+        || /loading trade menu|initializing trade|searching with link code|bot trainer/i.test(message);
+}
+
+function localizeTradeMessage(message, trade) {
+    const stateKey = getEffectiveTradeState(trade);
+    const key = getConsoleMessageKey(stateKey);
+    if (stateKey === 'cancelled') {
+        return t('cancelledWithReason', { reason: cleanTerminalReason(message, stateKey) });
+    }
+    if (!isSpanish() && message && !looksLikeInternalKey(message)) {
+        return cleanStatusMessage(message);
+    }
+    return t(key, { code: formatCode(trade?.code) });
+}
+
+function cleanTerminalReason(message, stateKey) {
+    const fallback = stateKey === 'cancelled' ? t('terminalFallbackCancel') : t(getConsoleMessageKey(stateKey));
+    const text = String(message || fallback || '').trim();
+    if (!text) return fallback;
+
+    const cleaned = text
+        .replace(/^[-\s]*(trade\s*)?(cancelled|canceled|complete|completed|finished)[:.\s-]*/i, '')
+        .trim();
+
+    return humanizeRawReason(cleanStatusMessage(cleaned || fallback));
+}
+
+function getConsoleMessageKey(stateKey) {
+    return {
+        queued: 'queuedConsole',
+        initializing: 'initializingConsole',
+        searching: 'searchConsole',
+        partner: 'partnerConsole',
+        processing: 'processingConsole',
+        finished: 'finishedConsole',
+        cancelled: 'cancelledConsole',
+    }[stateKey] || 'waitingLatest';
+}
+
+function looksLikeInternalKey(message) {
+    return /^[a-z]+Console$/i.test(String(message || '').trim());
+}
+
+function cleanStatusMessage(message) {
+    return String(message || '').replace(/[*_`▲▼]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function humanizeRawReason(reason) {
+    const text = String(reason || '').trim();
+    const known = {
+        TrainerTooSlow: isSpanish() ? 'El compañero de intercambio fue demasiado lento.' : 'The trade partner was too slow.',
+        NoTrainerFound: isSpanish() ? 'No se encontro ningun entrenador.' : 'No trainer was found.',
+        TrainerLeft: isSpanish() ? 'El entrenador salio del intercambio.' : 'The trainer left the trade.',
+        TrainerOfferCanceledQuick: isSpanish() ? 'El entrenador cancelo la oferta demasiado rapido.' : 'The trainer cancelled the offer too quickly.',
+        TrainerRequestBad: isSpanish() ? 'La solicitud del entrenador no fue valida.' : 'The trainer request was not valid.',
+        IllegalTrade: isSpanish() ? 'El intercambio no fue permitido por el juego.' : 'The trade was not allowed by the game.',
+        SuspiciousActivity: isSpanish() ? 'Se detecto actividad sospechosa.' : 'Suspicious activity was detected.',
+        UserCanceled: isSpanish() ? 'El usuario cancelo el trade.' : 'The user cancelled the trade.',
+        RoutineCancel: isSpanish() ? 'La rutina fue cancelada.' : 'The routine was cancelled.',
+        ExceptionConnection: isSpanish() ? 'Hubo un problema de conexion.' : 'There was a connection problem.',
+        ExceptionInternal: isSpanish() ? 'Hubo un error interno.' : 'There was an internal error.',
+        RecoverStart: isSpanish() ? 'El bot tuvo que recuperarse al iniciar.' : 'The bot had to recover while starting.',
+        RecoverPostLinkCode: isSpanish() ? 'El bot tuvo que recuperarse despues del codigo.' : 'The bot had to recover after entering the link code.',
+        RecoverOpenBox: isSpanish() ? 'El bot tuvo que recuperarse al abrir la caja.' : 'The bot had to recover while opening the box.',
+        RecoverReturnOverworld: isSpanish() ? 'El bot tuvo que volver al mapa para recuperarse.' : 'The bot had to return to the overworld to recover.',
+        RecoverEnterUnionRoom: isSpanish() ? 'El bot tuvo que recuperarse al entrar al Union Room.' : 'The bot had to recover while entering the Union Room.',
+        TradeEvolveNotAllowed: isSpanish() ? 'No puedes intercambiar un Pokemon que va a evolucionar.' : 'Pokemon that will evolve cannot be traded.',
+    };
+
+    if (known[text]) return known[text];
+    return text.replace(/([a-z])([A-Z])/g, '$1 $2');
+}
+
+function getTradeProgressPercent(trade, stateKey, inQueue, position, total) {
+    if (inQueue) {
+        return Math.max(10, Math.min(28, (1 - ((position - 1) / total)) * 28));
+    }
+
+    return {
+        queued: 18,
+        initializing: 36,
+        searching: 54,
+        partner: 72,
+        processing: 88,
+        finished: 100,
+        cancelled: 100,
+    }[stateKey] || 18;
+}
+
+function getTradeProgressText(trade, stateKey, inQueue, position, total) {
+    if (inQueue) {
+        return t('positionLine', { position, total });
+    }
+
+    return t(getConsoleMessageKey(stateKey), { code: formatCode(trade?.code) });
+}
+
+function cleanTerminalValue(value) {
+    const text = String(value || '').replace(/[*_`▲▼]/g, '').trim();
+    return text || '-';
+}
+
+function extractTrainerFound(message) {
+    const text = String(message || '');
+    const trainerMatch = text.match(/Entrenador(?:\s+[\p{L}\w]+){0,4}\s+encontrado:\s*\**([^*\n.]+)\**/iu)
+        || text.match(/Link trade trainer found:\s*([^,\n.]+)/i)
+        || text.match(/Trainer found:\s*([^,\n.]+)/i);
+    const tidMatch = text.match(/\bTID(?:7)?\**\s*:?\s*_*([0-9]+)_*/i);
+    const sidMatch = text.match(/\bSID(?:7)?\**\s*:?\s*_*([0-9]+)_*/i);
+    return {
+        name: cleanTerminalValue(trainerMatch?.[1]),
+        tid: cleanTerminalValue(tidMatch?.[1]),
+        sid: cleanTerminalValue(sidMatch?.[1]),
+    };
+}
+
+function isTrainerFoundMessage(message) {
+    return extractTrainerFound(message).name !== '-';
+}
+
+function localizeRuntimeInstruction(message) {
+    const text = String(message || '').trim();
+    if (!text || isTrainerFoundMessage(text)) return '';
+    return text.replace(/[*_`▲▼]/g, '').replace(/\s+/g, ' ').trim();
+}
+
+function renderSiteGuide() {
+    const list = $('site-guide-list');
+    if (!list) return;
+
+    const steps = getWebsiteGuideSteps();
+
+    list.innerHTML = steps.map((step, index) => {
+        return `<li data-step="${index + 1}">${t(step.key)}</li>`;
+    }).join('');
+}
+
+function getWebsiteGuideSteps() {
+    return [
+        { key: 'guideLogin' },
+        { key: 'guideCreate' },
+        { key: 'guideQueue' },
+        { key: 'guideTerminal' },
+        { key: 'guideProfile' },
+    ];
+}
+
+function renderTerminal(trade) {
+    const list = $('terminal-list');
+    const tradeKey = getTradeKey(trade);
+    if (tradeKey !== state.terminalTradeKey) {
+        state.terminalTradeKey = tradeKey;
+        state.terminalSignature = '';
+        state.terminalTypingRun++;
+        list.innerHTML = '';
+        state.terminalTypingQueue = Promise.resolve();
+    }
+
+    const lines = getTerminalLines(trade);
+    const signature = JSON.stringify(lines);
+
+    if (signature === state.terminalSignature && list.children.length) {
+        return;
+    }
+
+    state.terminalSignature = signature;
+    syncTerminalLines(lines);
+}
+
+function maybeCelebrateTrade(trade, stateKey) {
+    if (stateKey !== 'finished') return;
+
+    const tradeKey = getTradeKey(trade);
+    if (!tradeKey || state.confettiTradeKey === tradeKey) return;
+
+    state.confettiTradeKey = tradeKey;
+    launchTerminalConfetti();
+    showToast(t('tradeFinishedFileSaved'), { type: 'info', duration: 6500, className: 'toast-anchor-left' });
+}
+
+function launchTerminalConfetti() {
+    const terminal = $('trade-terminal');
+    if (!terminal) return;
+
+    const burst = document.createElement('div');
+    burst.className = 'terminal-confetti';
+    burst.setAttribute('aria-hidden', 'true');
+
+    const colors = ['#e94e3b', '#ff7d3a', '#f4ecdc', '#f5c557', '#67d39a', '#7aa9ff'];
+    const piecesPerSide = 36;
+    // Two cannons firing inward and up from the bottom corners.
+    const sides = [
+        { left: 0, baseAngle: -65, drift: 1 },   // bottom-left -> up and to the right
+        { left: 100, baseAngle: -115, drift: -1 }, // bottom-right -> up and to the left
+    ];
+
+    sides.forEach((side, sideIndex) => {
+        for (let i = 0; i < piecesPerSide; i++) {
+            const piece = document.createElement('span');
+            const spread = -28 + Math.random() * 56;
+            const angle = side.baseAngle + spread;
+            const distance = 260 + Math.random() * 320;
+            const drift = side.drift * (40 + Math.random() * 80);
+            const size = 6 + Math.random() * 7;
+            const duration = 1200 + Math.random() * 900;
+            const delay = Math.random() * 220;
+
+            piece.style.setProperty('--x', `${Math.cos(angle * Math.PI / 180) * distance + drift}px`);
+            piece.style.setProperty('--y', `${Math.sin(angle * Math.PI / 180) * distance}px`);
+            piece.style.setProperty('--r', `${Math.random() * 720 - 360}deg`);
+            piece.style.setProperty('--s', `${size}px`);
+            piece.style.setProperty('--d', `${duration}ms`);
+            piece.style.setProperty('--delay', `${delay}ms`);
+            piece.style.background = colors[(i + sideIndex) % colors.length];
+            piece.style.left = `${side.left}%`;
+            piece.style.top = '100%';
+            burst.append(piece);
+        }
+    });
+
+    terminal.append(burst);
+    playCelebrationChime();
+    setTimeout(() => burst.remove(), 2400);
+}
+
+function playCelebrationChime() {
+    try {
+        const Ctx = window.AudioContext || window.webkitAudioContext;
+        if (!Ctx) return;
+        if (!state.audioCtx) state.audioCtx = new Ctx();
+        const ctx = state.audioCtx;
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {});
+
+        const now = ctx.currentTime;
+        const master = ctx.createGain();
+        master.gain.value = 0.0001;
+        master.gain.exponentialRampToValueAtTime(0.18, now + 0.02);
+        master.gain.exponentialRampToValueAtTime(0.0001, now + 0.9);
+        master.connect(ctx.destination);
+
+        // Quick rising arpeggio: C5, E5, G5, C6
+        const notes = [523.25, 659.25, 783.99, 1046.5];
+        notes.forEach((freq, i) => {
+            const start = now + i * 0.08;
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(freq, start);
+            gain.gain.setValueAtTime(0.0001, start);
+            gain.gain.exponentialRampToValueAtTime(0.6, start + 0.02);
+            gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.35);
+            osc.connect(gain).connect(master);
+            osc.start(start);
+            osc.stop(start + 0.4);
+        });
+
+        // Soft pop / shimmer on top
+        const pop = ctx.createOscillator();
+        const popGain = ctx.createGain();
+        pop.type = 'sine';
+        pop.frequency.setValueAtTime(1760, now);
+        pop.frequency.exponentialRampToValueAtTime(2640, now + 0.18);
+        popGain.gain.setValueAtTime(0.0001, now);
+        popGain.gain.exponentialRampToValueAtTime(0.25, now + 0.02);
+        popGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.45);
+        pop.connect(popGain).connect(master);
+        pop.start(now);
+        pop.stop(now + 0.5);
+    } catch {
+        // Audio is non-critical; ignore failures (autoplay blocked, no device, etc.)
+    }
+}
+
+function getTerminalLines(trade) {
+    const stateKey = getEffectiveTradeState(trade);
+    const pokemon = cleanPokemonName(trade?.pokemon) || 'Pokemon';
+    const code = formatCode(trade?.code) || '0000 0000';
+    const inQueue = Boolean(trade?.inQueue);
+    const position = trade?.position > 0 ? trade.position : 1;
+    const total = trade?.total > 0 ? trade.total : position;
+    const trainer = cleanTerminalValue(trade?.partnerTrainerName || trade?.trainerName || extractTrainerFound(trade?.message).name || '-');
+    const tid = cleanTerminalValue(trade?.partnerTid || extractTrainerFound(trade?.message).tid || '-');
+    const sid = cleanTerminalValue(trade?.partnerSid || extractTrainerFound(trade?.message).sid || '-');
+    const lines = [
+        { id: 'connect', text: t('terminalConnect'), kind: 'system' },
+        { id: 'queue', text: t('terminalQueue', { pokemon, code }), kind: 'ok' },
+    ];
+
+    if (stateKey === 'queued') {
+        lines.push({
+            id: 'position',
+            text: t('terminalQueuePosition', { position, total }),
+            kind: 'active',
+            etaSeconds: trade?.etaSeconds > 0 ? trade.etaSeconds : 0,
+        });
+    }
+
+    if (['initializing', 'searching', 'partner', 'processing', 'finished'].includes(stateKey)) {
+        lines.push({ id: 'prepare', text: t('terminalPrepare'), kind: stateKey === 'initializing' ? 'active' : 'system' });
+    }
+
+    if (['searching', 'partner', 'processing', 'finished'].includes(stateKey)) {
+        lines.push({ id: 'search', text: t('terminalSearch', { code }), kind: stateKey === 'searching' ? 'active' : 'ok' });
+    }
+
+    if (['partner', 'processing', 'finished'].includes(stateKey)) {
+        lines.push({ id: 'found', text: t('terminalFound', { trainer, tid, sid }), kind: stateKey === 'partner' ? 'active' : 'ok' });
+        lines.push({ id: 'found-card', kind: 'trainer-card', trainer, tid, sid });
+    }
+
+    if (stateKey === 'processing') {
+        lines.push({ id: 'offer', text: localizeRuntimeInstruction(trade?.message) || t('terminalOffer'), kind: 'active' });
+    }
+
+    if (stateKey === 'finished') {
+        lines.push({ id: 'finished', text: t('terminalComplete', { pokemon }), kind: 'ok' });
+    } else if (stateKey === 'cancelled') {
+        lines.push({ id: 'cancelled', text: t('terminalCancel', { reason: cleanTerminalReason(trade?.message, stateKey) }), kind: 'error' });
+    } else if (!['queued', 'initializing', 'searching', 'partner', 'processing'].includes(stateKey)) {
+        lines.push({ id: 'wait', text: t('terminalWait'), kind: 'muted' });
+    }
+
+    return lines;
+}
+
+function syncTerminalLines(lines) {
+    const list = $('terminal-list');
+    const current = new Map([...list.children].map((item) => [item.dataset.lineId, item]));
+    const activeIds = new Set(lines.map((line) => line.id));
+
+    for (const item of [...list.children]) {
+        if (!activeIds.has(item.dataset.lineId)) {
+            item.remove();
+        }
+    }
+
+    // The trainer-card line always arrives right after the "found" line in
+    // the same render pass -- capture its typing promise so the card can
+    // wait for it instead of popping in before the message is readable.
+    let foundTypingPromise = null;
+
+    for (const line of lines) {
+        const existing = current.get(line.id);
+
+        if (line.kind === 'trainer-card') {
+            const reveal = () => {
+                if (existing) {
+                    updateTrainerCard(existing, line);
+                    list.append(existing);
+                } else {
+                    list.append(buildTrainerCard(line));
+                }
+            };
+            const foundText = current.get('found')?.querySelector('.terminal-text');
+            if (foundTypingPromise) {
+                foundTypingPromise.then(reveal);
+            } else if (!foundText?.classList.contains('typing')) {
+                reveal();
+            }
+            continue;
+        }
+
+        if (existing) {
+            existing.className = `terminal-line ${line.kind || 'system'}${line.important ? ' important' : ''}`;
+            const text = existing.querySelector('.terminal-text');
+            const stillTyping = text?.classList.contains('typing');
+            if (text && text.textContent !== line.text && !stillTyping) {
+                text.textContent = line.text;
+            }
+            // While the line is still being typed out, the in-flight
+            // queueTerminalTyping().then() from its creation will reveal
+            // the badge once it's done -- don't jump the gun here.
+            if (!stillTyping) {
+                syncEtaBadge(existing, line.etaSeconds);
+            }
+            list.append(existing);
+            continue;
+        }
+
+        const item = document.createElement('li');
+        item.className = `terminal-line ${line.kind || 'system'}${line.important ? ' important' : ''}`;
+        item.dataset.lineId = line.id;
+        const text = document.createElement('span');
+        text.className = 'terminal-text';
+        item.append(text);
+        list.append(item);
+        const typingRun = state.terminalTypingRun;
+        const typingPromise = queueTerminalTyping(text, line.text);
+        if (line.id === 'found') {
+            foundTypingPromise = typingPromise;
+        }
+        // Don't reveal the ETA badge until the line has finished typing out --
+        // otherwise it pops in before the message it belongs to is readable.
+        typingPromise.then(() => {
+            if (typingRun !== state.terminalTypingRun) return;
+            syncEtaBadge(item, line.etaSeconds);
+        });
+    }
+}
+
+/** Live "time remaining" badge next to the queue position line. Lives
+ * outside the typed `.terminal-text` node so the per-second tick never
+ * fights with the typewriter effect or retypes the sentence.
+ * `etaSeconds` is undefined for any line that isn't the position line
+ * (no badge at all), 0 once the server stops giving a meaningful
+ * estimate (the badge stays, just settles on "almost there" instead of
+ * disappearing), and a positive count while there's time left to show. */
+function syncEtaBadge(item, etaSeconds) {
+    let badge = item.querySelector('.terminal-eta');
+    if (etaSeconds === undefined) {
+        badge?.remove();
+        return;
+    }
+
+    if (!badge) {
+        badge = document.createElement('span');
+        badge.className = 'terminal-eta';
+        item.append(badge);
+    }
+
+    if (etaSeconds > 0) {
+        badge.dataset.target = String(Date.now() + etaSeconds * 1000);
+    } else {
+        delete badge.dataset.target;
+    }
+    updateEtaBadge(badge);
+}
+
+function updateEtaBadge(badge) {
+    if (!badge.dataset.target) {
+        badge.textContent = t('etaAlmostThere');
+        return;
+    }
+    const remainingMs = Number(badge.dataset.target) - Date.now();
+    const remainingSeconds = Math.max(0, Math.round(remainingMs / 1000));
+    badge.textContent = remainingSeconds > 0
+        ? t('etaRemaining', { time: formatEtaClock(remainingSeconds) })
+        : t('etaAlmostThere');
+}
+
+function formatEtaClock(totalSeconds) {
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${String(seconds).padStart(2, '0')}`;
+}
+
+function trainerCardField(label, value, tabular) {
+    const row = document.createElement('div');
+    row.className = 'trainer-card-row';
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'trainer-card-label';
+    labelEl.textContent = label;
+
+    const valueEl = document.createElement('strong');
+    valueEl.className = tabular ? 'trainer-card-value tabular' : 'trainer-card-value';
+    valueEl.textContent = value;
+
+    row.append(labelEl, valueEl);
+    return row;
+}
+
+function buildTrainerCard(line) {
+    const item = document.createElement('li');
+    item.className = 'terminal-line trainer-card';
+    item.dataset.lineId = line.id;
+
+    const inner = document.createElement('div');
+    inner.className = 'trainer-card-inner';
+    for (const corner of ['tl', 'tr', 'bl', 'br']) {
+        const span = document.createElement('span');
+        span.className = `trainer-card-corner ${corner}`;
+        inner.append(span);
+    }
+    const sweep = document.createElement('span');
+    sweep.className = 'trainer-card-sweep';
+    inner.append(sweep);
+
+    inner.append(
+        trainerCardField(t('trainerCardTrainer'), line.trainer, false),
+        trainerCardField('TID', line.tid, true),
+        trainerCardField('SID', line.sid, true),
+    );
+
+    item.append(inner);
+    return item;
+}
+
+function updateTrainerCard(item, line) {
+    const values = item.querySelectorAll('.trainer-card-value');
+    if (values[0]) values[0].textContent = line.trainer;
+    if (values[1]) values[1].textContent = line.tid;
+    if (values[2]) values[2].textContent = line.sid;
+}
+
+function queueTerminalTyping(node, text) {
+    const run = state.terminalTypingRun;
+    state.terminalTypingQueue = state.terminalTypingQueue.then(async () => {
+        if (run !== state.terminalTypingRun) return;
+        node.classList.add('typing');
+        await typeText(node, text, run);
+        node.classList.remove('typing');
+        const screen = $('terminal-list').closest('.terminal-screen');
+        screen.scrollTop = screen.scrollHeight;
+        await delay(90);
+    });
+    return state.terminalTypingQueue;
+}
+
+async function typeText(node, text, run) {
+    node.textContent = '';
+    const speed = text.length > 90 ? 8 : 14;
+    for (const char of text) {
+        if (run !== state.terminalTypingRun) return;
+        node.textContent += char;
+        await delay(char === '.' || char === ':' ? speed * 4 : speed);
+    }
+}
+
+function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function startPolling() {
+    stopPolling();
+    pollQueue();
+    state.polling = setInterval(pollQueue, 5000);
+}
+
+function stopPolling() {
+    if (state.polling) {
+        clearInterval(state.polling);
+        state.polling = null;
+    }
+}
+
+function startActivityPolling() {
+    pollActivity();
+    state.activityPolling = setInterval(pollActivity, 4000);
+}
+
+async function pollActivity() {
+    const result = await api('/api/trade/activity');
+    if (!result.success || !Array.isArray(result.events)) return;
+
+    const events = result.events.filter((event) => event?.id && event?.username && event?.pokemon);
+
+    // First poll: remember everything already finished without replaying the
+    // whole backlog -- only surface the most recent one as a welcome.
+    if (!state.activityBootstrapped) {
+        events.forEach((event) => state.activitySeen.add(String(event.id)));
+        state.activityBootstrapped = true;
+        const latest = events.at(-1);
+        if (latest) state.activityQueue.push(latest);
+        playActivity();
+        return;
+    }
+
+    // Each new trade is shown exactly once, then never again.
+    events.forEach((event) => {
+        const id = String(event.id);
+        if (state.activitySeen.has(id)) return;
+        state.activitySeen.add(id);
+        state.activityQueue.push(event);
+    });
+    playActivity();
+}
+
+function escapeHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+// Sweep the queued trade(s) across once -- enter right, exit left -- then
+// clear. New trades that arrive mid-sweep are shown in the next pass.
+function playActivity() {
+    if (state.activityPlaying) return;
+
+    const ticker = $('activity-ticker');
+    const track = $('ticker-track');
+    if (!ticker || !track) return;
+
+    const batch = state.activityQueue.splice(0);
+    if (!batch.length) {
+        track.innerHTML = '';
+        ticker.hidden = true;
+        return;
+    }
+
+    state.activityPlaying = true;
+    const verb = escapeHtml(t('activityFinished'));
+    const chip = (event) => {
+        const user = escapeHtml(event.username);
+        const mon = escapeHtml(cleanPokemonName(event.pokemon) || event.pokemon);
+        return `<span class="ticker-chip"><strong>${user}</strong> ${verb} <span class="ticker-mon">${mon}</span></span>`;
+    };
+
+    track.innerHTML = batch.map(chip).join('');
+    ticker.hidden = false;
+
+    const finish = () => {
+        track.innerHTML = '';
+        ticker.hidden = true;
+        state.activityPlaying = false;
+        if (state.activityQueue.length) playActivity();
+    };
+
+    // Reduced motion: show statically for a moment instead of sweeping.
+    if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) {
+        window.setTimeout(finish, 6000);
+        return;
+    }
+
+    requestAnimationFrame(() => {
+        const viewport = ticker.querySelector('.ticker-viewport');
+        const viewWidth = viewport ? viewport.clientWidth : ticker.clientWidth;
+        const trackWidth = track.scrollWidth;
+        const duration = Math.max(10, (viewWidth + trackWidth) / 90);
+
+        track.style.setProperty('--ticker-from', `${viewWidth}px`);
+        track.style.setProperty('--ticker-to', `${-trackWidth}px`);
+        track.style.animation = 'none';
+        void track.offsetWidth;
+        track.style.animation = `tickerScroll ${duration}s linear 1`;
+        track.addEventListener('animationend', finish, { once: true });
+    });
+}
+
+function toggleGuide(forceOpen = null) {
+    const popover = $('guide-popover');
+    const button = $('guide-button');
+    const open = forceOpen ?? popover.hidden;
+    popover.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    if (open) toggleDownloads(false);
+}
+
+function toggleDownloads(forceOpen = null) {
+    const popover = $('download-popover');
+    const button = $('download-button');
+    const open = forceOpen ?? popover.hidden;
+    popover.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    if (open) {
+        toggleGuide(false);
+        refreshRecentFiles();
+    }
+}
+
+function toggleTrainerPopover(forceOpen = null) {
+    const popover = $('trainer-popover');
+    const button = $('profile-trainer');
+    const row = button.closest('.trainer-row');
+    const open = forceOpen ?? popover.hidden;
+    popover.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    row?.classList.toggle('popover-open', open);
+    if (open && row) placePopover(popover, row);
+    else row?.classList.remove('flip-up');
+}
+
+function toggleCodePopover(forceOpen = null) {
+    const popover = $('code-editor');
+    const button = $('profile-code');
+    const row = button.closest('.trade-code-row');
+    const open = forceOpen ?? popover.hidden;
+    popover.hidden = !open;
+    button.setAttribute('aria-expanded', String(open));
+    row?.classList.toggle('popover-open', open);
+    if (open && row) {
+        placePopover(popover, row);
+        window.setTimeout(() => $('trade-code-input').focus(), 0);
+    } else {
+        row?.classList.remove('flip-up');
+    }
+}
+
+function placePopover(popover, row) {
+    row.classList.remove('flip-up');
+    const popRect = popover.getBoundingClientRect();
+    const rowRect = row.getBoundingClientRect();
+    const margin = 16;
+    const overflowBottom = popRect.bottom + margin > window.innerHeight;
+    const fitsAbove = rowRect.top - margin > popRect.height;
+    if (overflowBottom && fitsAbove) {
+        row.classList.add('flip-up');
+    }
+}
+
+window.addEventListener('message', async (event) => {
+    if (event.origin !== window.location.origin || event.data?.type !== 'tradedex-auth') {
+        return;
+    }
+
+    if (event.data.success) {
+        showToast(t('discordLoginComplete'));
+        await initAuth();
+    } else {
+        showToast(t('discordLoginFailed'));
+    }
+});
+
+document.addEventListener('DOMContentLoaded', async () => {
+    // Localization, mode, and auth are independent -- run them concurrently
+    // instead of chaining awaits, so a logged-in user's session resolves
+    // (and the login panel never flashes) as soon as possible.
+    const localizationPromise = initLocalization();
+    const modePromise = initMode();
+    const authPromise = initAuth();
+    startActivityPolling();
+    setInterval(() => {
+        document.querySelectorAll('.terminal-eta[data-target]').forEach(updateEtaBadge);
+    }, 1000);
+    $('login-button').addEventListener('click', login);
+    $('logout-button').addEventListener('click', logout);
+    $('trade-form').addEventListener('submit', submitTrade);
+    $('cancel-button').addEventListener('click', cancelTrade);
+    $('pkm-file').addEventListener('change', handlePkmFileChange);
+    $('trade-code-input').addEventListener('input', (event) => {
+        event.target.value = formatCodeInput(event.target.value);
+    });
+    $('save-code-button').addEventListener('click', saveTradeCode);
+    $('delete-code-button').addEventListener('click', deleteTradeCode);
+    $('profile-code').addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!$('profile-code').disabled) {
+            toggleTrainerPopover(false);
+            toggleCodePopover();
+        }
+    });
+    $('profile-trainer').addEventListener('click', (event) => {
+        event.stopPropagation();
+        if (!$('profile-trainer').disabled) {
+            toggleCodePopover(false);
+            toggleTrainerPopover();
+        }
+    });
+    $('new-trade-button').addEventListener('click', () => {
+        state.composerOpen = true;
+        clearPkmFile();
+        $('showdown-set').focus();
+        pollQueue();
+    });
+    $('guide-button').addEventListener('click', () => toggleGuide());
+    $('download-button').addEventListener('click', () => toggleDownloads());
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') {
+            toggleGuide(false);
+            toggleDownloads(false);
+            toggleTrainerPopover(false);
+            toggleCodePopover(false);
+        }
+    });
+    document.addEventListener('click', (event) => {
+        const widget = $('guide-widget');
+        if (!widget.contains(event.target)) {
+            toggleGuide(false);
+        }
+        const downloadWidget = $('download-widget');
+        if (!downloadWidget.contains(event.target)) {
+            toggleDownloads(false);
+        }
+        const trainerPopover = $('trainer-popover');
+        const trainerButton = $('profile-trainer');
+        if (!trainerPopover.contains(event.target) && event.target !== trainerButton) {
+            toggleTrainerPopover(false);
+        }
+        const codePopover = $('code-editor');
+        const codeButton = $('profile-code');
+        if (!codePopover.contains(event.target) && event.target !== codeButton) {
+            toggleCodePopover(false);
+        }
+    });
+    $('clear-file-button').addEventListener('click', (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        clearPkmFile();
+    });
+    await Promise.all([localizationPromise, modePromise, authPromise]);
+    // initLocalization()'s i18n sweep and initAuth()'s session-state update
+    // race each other; re-apply the session label last so it can't get
+    // stuck on the static "Checking" fallback either way.
+    $('session-state').textContent = state.authenticated ? t('loggedIn') : t('guest');
+});

@@ -8,8 +8,8 @@ namespace SysBot.Pokemon
 {
     public class ShowdownTranslator<T> where T : PKM
     {
-        public static GameStrings GameStringsZh = GameInfo.GetStrings("zh");
-        public static GameStrings GameStringsEn = GameInfo.GetStrings("en");
+        private static readonly ChineseTranslationStrings GameStringsZh = new();
+        private static readonly GameStrings GameStringsEn = GameInfo.GetStrings("en");
         public static string Chinese2Showdown(string zh)
         {
             string result = "";
@@ -67,7 +67,7 @@ namespace SysBot.Pokemon
             foreach (var holdItemKeyword in ShowdownTranslatorDictionary.holdItemKeywords)
             {
                 if (!zh.Contains(holdItemKeyword)) continue;
-                for (int i = 1; i < GameStringsZh.Item.Count; i++)
+                for (int i = 1; i < GameStringsZh.Item.Length; i++)
                 {
                     if (GameStringsZh.Item[i].Length == 0) continue;
                     if (!zh.Contains(holdItemKeyword + GameStringsZh.Item[i])) continue;
@@ -123,7 +123,7 @@ namespace SysBot.Pokemon
             }
 
             // 添加特性
-            for (int i = 1; i < GameStringsZh.Ability.Count; i++)
+            for (int i = 1; i < GameStringsZh.Ability.Length; i++)
             {
                 if (GameStringsZh.Ability[i].Length == 0) continue;
                 if (!zh.Contains(GameStringsZh.Ability[i] + "特性")) continue;
@@ -133,7 +133,7 @@ namespace SysBot.Pokemon
             }
 
             // 添加性格
-            for (int i = 0; i < GameStringsZh.Natures.Count; i++)
+            for (int i = 0; i < GameStringsZh.Natures.Length; i++)
             {
                 if (GameStringsZh.Natures[i].Length == 0) continue;
                 if (!zh.Contains(GameStringsZh.Natures[i])) continue;
@@ -188,7 +188,7 @@ namespace SysBot.Pokemon
             // 添加太晶属性
             if (typeof(T) == typeof(PK9))
             {
-                for (int i = 0; i < GameStringsZh.Types.Count; i++)
+                for (int i = 0; i < GameStringsZh.Types.Length; i++)
                 {
                     if (GameStringsZh.Types[i].Length == 0) continue;
                     if (!zh.Contains("太晶" + GameStringsZh.Types[i])) continue;

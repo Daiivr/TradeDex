@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SysBot.Pokemon.Localization;
 
 namespace SysBot.Pokemon;
 
@@ -16,11 +17,9 @@ public abstract class BaseConfig
 
     [Category(FeatureToggle), Description("Cuando está habilitado, el bot presionará el botón B ocasionalmente cuando no esté procesando nada (para evitar suspenderse)."), DisplayName("Modo Anti Suspenso")]
     public bool AntiIdle { get; set; } = true;
-
     [Category(Operation)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public FolderSettings Folder { get; set; } = new();
-
     [Category(Operation)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public LegalitySettings Legality { get; set; } = new();

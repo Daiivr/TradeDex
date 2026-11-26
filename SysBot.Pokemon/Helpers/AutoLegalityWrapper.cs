@@ -115,6 +115,10 @@ public static class AutoLegalityWrapper
         if (Directory.Exists(externalSource))
             TrainerSettings.LoadTrainerDatabaseFromPath(externalSource);
 
+        TrainerSettings.DefaultOT = string.IsNullOrEmpty(cfg.GenerateOT) ? "Blank" : cfg.GenerateOT;
+        TrainerSettings.DefaultTID16 = cfg.GenerateTID16;
+        TrainerSettings.DefaultSID16 = cfg.GenerateSID16;
+
         // Seed the Trainer Database with enough fake save files so that we return a generation sensitive format when needed.  
         var fallback = GetDefaultTrainer(cfg);
         for (byte generation = 1; generation <= GameUtil.get_Generation(GameVersion.Gen9); generation++)
@@ -385,19 +389,29 @@ public static class AutoLegalityWrapper
                     if (OT.Length == 0)
                         OT = "Blank";
 
+                    var beforeOverride = pk.Clone();
+                    bool wasLegal = new LegalityAnalysis(pk).Valid;
+
+                    // Capture shiny state before overwriting TID/SID. Reading pk.IsShiny
+                    // afterwards reflects the new trainer IDs against the old PID and would
+                    // skip the PID rebuild below — losing the shiny we just generated.
+                    bool wasShiny = pk.IsShiny;
+                    uint originalShinyXor = pk.ShinyXor;
+
                     // Replace with configured defaults
+                    pk.OriginalTrainerTrash.Clear();
                     pk.OriginalTrainerName = OT;
-                    pk.TrainerTID7 = (uint)((ConfiguredSettings.GenerateSID16 << 16) | ConfiguredSettings.GenerateTID16);
+                    pk.TID16 = ConfiguredSettings.GenerateTID16;
+                    pk.SID16 = ConfiguredSettings.GenerateSID16;
                     pk.Language = (int)ConfiguredSettings.GenerateLanguage;
 
-                    // Recalculate PID for shiny Pokemon to maintain shiny status
-                    if (pk.IsShiny)
-                    {
-                        var shinyXor = pk.ShinyXor;
-                        pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ shinyXor) << 16) | (pk.PID & 0xFFFF);
-                    }
+                    // Rebuild PID against the new TID/SID so the original shiny type is preserved.
+                    if (wasShiny)
+                        pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ originalShinyXor) << 16) | (pk.PID & 0xFFFF);
 
                     pk.RefreshChecksum();
+                    if (wasLegal && !new LegalityAnalysis(pk).Valid)
+                        pk = beforeOverride;
                 }
 
                 // CRITICAL FIX: Force shiny if requested but not generated.
@@ -455,4 +469,68 @@ public static class AutoLegalityWrapper
     public static string GetLegalizationHint(IBattleTemplate set, ITrainerInfo sav, PKM pk) => set.SetAnalysis(sav, pk);
     public static PKM LegalizePokemon(this PKM pk) => pk.Legalize();
     public static RegenTemplate GetTemplate(ShowdownSet set) => new RegenTemplate(set);
+
+    /// <summary>
+    /// Generates an egg from <paramref name="template"/> via Auto Legality Mod, then applies the
+    /// user's batch commands (e.g. <c>.Scale=</c>, marks, friendship) to it.
+    /// </summary>
+    /// <remarks>
+    /// ALM's egg generator applies the requested Ball but never the RegenTemplate's batch
+    /// instructions — only the normal (non-egg) GetLegal path runs the batch pipeline. On top of
+    /// that, PKHeX's batch editor skips any entity whose checksum is invalid
+    /// (<c>BatchEditingBase.ShouldModify</c>), which is exactly the state the freshly generated egg
+    /// is left in, so even a manual batch pass is silently dropped. We refresh the checksum and run
+    /// the same batch pipeline the non-egg path uses, reverting if a command makes the egg illegal.
+    /// Callers should use this instead of ALM's <c>ITrainerInfo.GenerateEgg</c> so eggs honor custom
+    /// scale/size and other batch edits the way regular trades do.
+    /// </remarks>
+    public static PKM GenerateEgg(ITrainerInfo sav, RegenTemplate template, out LegalizationResult result)
+    {
+        var pkm = sav.GenerateEgg(template, out result);
+        if (result != LegalizationResult.Regenerated || pkm is null)
+            return pkm;
+
+        var regen = template.Regen;
+        var requestedBall = regen.HasExtraSettings ? regen.Extra.Ball : Ball.None;
+
+        // The egg leaves ALM with an invalid checksum; refresh so legality checks and PKHeX's
+        // batch editor (which skips invalid-checksum entities) operate on a valid entity.
+        pkm.RefreshChecksum();
+
+        // Re-assert the user's requested Ball. ALM's GenerateEgg runs SetSuggestedBall, which —
+        // when ForceSpecifiedBall is off and SetMatchingBalls is on — silently replaces the
+        // requested ball with a color-matched one if its egg ball verifier rejects it. Re-apply
+        // the request and keep it when the egg stays legal (or when the host has ForceSpecifiedBall
+        // on), so a user-specified ball wins over color-matching exactly like regular trades.
+        if (requestedBall != Ball.None && (Ball)pkm.Ball != requestedBall)
+        {
+            var prevBall = pkm.Ball;
+            pkm.Ball = (byte)requestedBall;
+            pkm.RefreshChecksum();
+            bool ballOk = APILegality.ForceSpecifiedBall || new LegalityAnalysis(pkm).Valid;
+            if (!ballOk)
+            {
+                pkm.Ball = prevBall;
+                pkm.RefreshChecksum();
+            }
+        }
+
+        // Apply batch commands (.Scale=, marks, friendship, etc). ALM's egg generator never runs
+        // the batch pipeline — only the non-egg GetLegal path does — so without this eggs ignore
+        // every batch edit. Mirror that path; revert if a command makes the egg illegal.
+        if (APILegality.AllowBatchCommands && regen.HasBatchSettings)
+        {
+            var beforeBatch = pkm.Clone();
+            var batch = regen.Batch;
+            EntityBatchEditor.ScreenStrings(batch.Filters);
+            EntityBatchEditor.ScreenStrings(batch.Instructions);
+            EntityBatchEditor.Instance.TryModifyIsSuccess(pkm, batch.Filters, batch.Instructions);
+            pkm.ApplyPostBatchFixes();
+            pkm.RefreshChecksum();
+            if (!new LegalityAnalysis(pkm).Valid)
+                pkm = beforeBatch; // revert just the batch; keep the ball/egg from above
+        }
+
+        return pkm;
+    }
 }

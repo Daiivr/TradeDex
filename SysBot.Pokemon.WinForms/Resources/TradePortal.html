@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="TradeDex web trades">
+    <meta name="theme-color" content="#16171a">
+    <title data-i18n="pageTitle">TradeDex Trades</title>
+    <link rel="icon" type="image/x-icon" href="/icon.ico">
+    <link rel="stylesheet" href="/TradePortal.css?v=__ASSET_VER__">
+</head>
+<body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <div class="bg-aurora" aria-hidden="true">
+        <span class="bg-blob bg-blob-1"></span>
+        <span class="bg-blob bg-blob-2"></span>
+        <span class="bg-blob bg-blob-3"></span>
+    </div>
+
+    <div class="bg-hexgrid" aria-hidden="true"></div>
+
+    <div class="bg-orbits" aria-hidden="true">
+        <span class="bg-orbit bg-orbit-1"><img class="pokeball" src="/Pokeball1SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-2"><img class="pokeball" src="/Pokeball9SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-3"><img class="pokeball" src="/Pokeball3SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-4"><img class="pokeball" src="/Pokeball8SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-5"><img class="pokeball" src="/Pokeball7SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-6"><img class="pokeball" src="/Pokeball5SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-7"><img class="pokeball" src="/Pokeball6SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-8"><img class="pokeball" src="/Pokeball4SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-9"><img class="pokeball" src="/Pokeball2SVG.svg" alt="" aria-hidden="true" loading="lazy"></span>
+        <span class="bg-orbit bg-orbit-10"><img class="pokeball" src="/NormalPokeball.svg" alt="" aria-hidden="true" loading="lazy"></span>
+    </div>
+
+    <header class="topbar">
+        <a class="brand" href="/trade" aria-label="TradeDex">
+            <svg class="brand-mark" viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+                <circle cx="16" cy="16" r="14.5" class="pb-shell"/>
+                <path d="M1.5 16 A14.5 14.5 0 0 1 30.5 16 Z" class="pb-top"/>
+                <rect x="1.5" y="14.5" width="29" height="3" class="pb-band"/>
+                <circle cx="16" cy="16" r="4.5" class="pb-button-outer"/>
+                <circle cx="16" cy="16" r="2.2" class="pb-button-inner"/>
+            </svg>
+            <span class="brand-word">TradeDex</span>
+            <span class="brand-tag" data-i18n="brandSuffix">Web Trades</span>
+        </a>
+        <nav class="nav-actions" aria-label="Navigation">
+            <a id="control-link" class="ghost-link" href="/" data-i18n="controlPanel" hidden>Control</a>
+        </nav>
+    </header>
+
+    <div id="activity-ticker" class="activity-ticker" aria-label="Live trade activity" hidden>
+        <span class="ticker-label">
+            <span class="activity-dot" aria-hidden="true"></span>
+            <span data-i18n="liveActivity">Live activity</span>
+        </span>
+        <div class="ticker-viewport">
+            <div id="ticker-track" class="ticker-track"></div>
+        </div>
+    </div>
+
+    <main id="main" class="shell">
+        <section class="hero">
+            <div class="hero-text">
+                <p class="eyebrow" data-i18n="webTrades">Web trades</p>
+                <h1 class="display" data-i18n="heroTitle">Trade without Discord chat</h1>
+                <p class="lede" data-i18n="heroText">Login once, paste your Pokemon Showdown set, and follow the live instructions until the trade is complete.</p>
+                <dl class="hero-meta">
+                    <div>
+                        <dt data-i18n="queue">Queue</dt>
+                        <dd id="queue-state" data-i18n="checking">Checking</dd>
+                    </div>
+                    <div>
+                        <dt data-i18n="session">Session</dt>
+                        <dd id="session-state" data-i18n="guest">Guest</dd>
+                    </div>
+                    <div>
+                        <dt data-i18n="mode">Mode</dt>
+                        <dd id="mode-state">Trade</dd>
+                    </div>
+                </dl>
+            </div>
+            <figure class="hero-art" aria-hidden="true">
+                <span class="hero-art-chrome top-left">Trade Station</span>
+                <span class="hero-art-chrome top-right">
+                    <span class="hero-art-dot"></span>Online
+                </span>
+                <span class="hero-art-scan"></span>
+                <span class="hero-art-emblem" aria-hidden="true">
+                    <svg class="hero-art-emblem-mark" viewBox="760 340 400 400" focusable="false">
+                        <path d="M1125.2,549.8h11.6l-.6,5.5-.5,4.5c-4.8,43-25.2,82.6-57.4,111.7-32.5,29.3-74.5,45.4-118.3,45.4s-85.8-16.1-118.3-45.4c-32.3-29-52.7-68.7-57.4-111.7l-.5-4.5-.6-5.5h11.6c-.2-3.3-.3-6.5-.3-9.8s0-6.5.3-9.8h-11.6l.6-5.5.5-4.5c.8-7.5,2.1-14.9,3.9-22.2l-2.2-11.3c-.4-2.2-9.7-53.4,24.2-89.7,19.4-20.8,42.9-25.1,59.3-25.1s24.2,3.2,24.6,3.4l.8.3c20.5-8.1,42.5-12.3,65-12.3s44.5,4.2,65,12.3l.8-.3c.4-.1,10.6-3.4,24.6-3.4s39.9,4.4,59.3,25.1c33.9,36.3,24.7,87.5,24.2,89.7l-2.2,11.3c1.8,7.3,3.1,14.7,3.9,22.2l.5,4.5.6,5.5h-11.6c.2,3.3.3,6.5.3,9.8s0,6.5-.1,9.8Z"/>
+                        <path d="M1126.8,521.2h-107.4c-8-25.2-31.6-43.5-59.4-43.5s-51.5,18.3-59.4,43.5h-107.4c1.1-9.6,2.9-19,5.6-28l.9-.6c57-35.9,97.7-101.3,99.4-104.1l4-6.5c17.8-6.4,37-9.9,57-9.9s39.2,3.5,57,9.9l4,6.5c1.7,2.8,42.4,68.2,99.4,104.1l.9.6c2.4,9.1,4.3,18.4,5.4,28Z"/>
+                        <path d="M891.4,383.8s-.9,1.5-2.7,4.2c-9.3,14.1-42,60.9-85.2,91.3-2.8,2-5.7,3.9-8.6,5.8,0,0-.4-2.3-.8-6.3-1.3-14.2-1.6-49.5,22.8-75.6,21.8-23.3,49.6-23.5,64.3-21.5,6.3.9,10.2,2.1,10.2,2.1Z"/>
+                        <path d="M1125.9,478.8h0c-.4,4-.8,6.3-.8,6.3-2.9-1.8-5.8-3.8-8.6-5.8-43.2-30.4-75.9-77.1-85.2-91.3-1.8-2.7-2.7-4.2-2.7-4.2,0,0,3.9-1.3,10.2-2.1h0c14.7-2,42.5-1.9,64.3,21.5,24.4,26,24.1,61.4,22.8,75.6Z"/>
+                        <path d="M960,499.6c-15.5,0-29,8.8-35.7,21.6-3,5.6-4.6,12-4.6,18.8s1.7,13.2,4.6,18.8c6.8,12.8,20.2,21.6,35.7,21.6s29-8.8,35.7-21.6c3-5.6,4.6-12,4.6-18.8s-1.6-13.2-4.6-18.8c-6.8-12.8-20.2-21.6-35.7-21.6ZM979.9,558.8c-5,5.3-12,8.6-19.9,8.6s-14.9-3.3-19.9-8.6c-4.6-4.9-7.5-11.5-7.5-18.8s2.8-13.9,7.5-18.8c5-5.3,12-8.6,19.9-8.6s14.9,3.3,19.9,8.6c4.6,4.9,7.5,11.5,7.5,18.8s-2.9,13.9-7.5,18.8Z"/>
+                        <circle cx="960" cy="540" r="22.4"/>
+                        <path d="M1019.4,558.8c-7.9,25.2-31.6,43.5-59.4,43.5s-51.4-18.3-59.4-43.5h-107.4c9.3,83.8,80.4,149,166.8,149s157.5-65.1,166.8-149h-107.4Z"/>
+                        <path d="M937,419.1l23,39.2,23-39.2,21.5,45.5,22.5,4.4s-28.8-62.6-46.8-81.2l-20.1,27.9-20.1-27.9c-18.1,18.6-47,81.2-47,81.2l22.5-4.4,21.5-45.5Z"/>
+                    </svg>
+                </span>
+                <img id="mode-image" src="/sv_mode_image.png" alt="">
+                <span class="hero-art-chrome bottom-left">SYS // TRADE.BOT</span>
+            </figure>
+        </section>
+
+        <section class="workspace">
+            <form id="trade-form" class="composer">
+                <header class="composer-header">
+                    <div>
+                        <p class="eyebrow" data-i18n="request">Request</p>
+                        <h2 id="request-title" class="display-2" data-i18n="requestTitle">Create a trade</h2>
+                    </div>
+                    <div id="user-actions" class="user-actions" hidden>
+                        <div id="user-pill" class="user-pill">
+                            <img id="user-avatar" alt="" hidden>
+                            <span id="user-name"></span>
+                        </div>
+                        <button id="logout-button" class="icon-button" type="button" data-i18n-title="logoutButtonTitle" data-tooltip="Log out" aria-label="Log out">
+                            <svg viewBox="0 0 20 20" aria-hidden="true" focusable="false">
+                                <path d="M12.5 4.5L17 9m0 0l-4.5 4.5M17 9H7M9 16H4.5A1.5 1.5 0 013 14.5v-9A1.5 1.5 0 014.5 4H9" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </button>
+                    </div>
+                </header>
+
+                <div id="login-panel" class="login-panel" hidden>
+                    <div class="login-copy">
+                        <h3 data-i18n="discordLogin">Discord login required</h3>
+                        <p data-i18n="loginText">Your Discord ID is used for trade codes, saved trainer data, and queue tracking.</p>
+                    </div>
+                    <button id="login-button" type="button" class="primary-button" data-i18n="loginButton">Login with Discord</button>
+                    <p id="login-help" class="help-text"></p>
+                </div>
+
+                <div id="trade-panel" class="trade-panel" hidden>
+                    <label class="field">
+                        <span class="field-label" data-i18n="showdownSet">Pokemon Showdown set</span>
+                        <textarea id="showdown-set" name="showdownSet" rows="13" spellcheck="false" data-i18n-placeholder="showdownPlaceholder" placeholder="Flutter Mane @ Booster Energy&#10;Ability: Protosynthesis&#10;Tera Type: Fairy&#10;EVs: 4 HP / 252 SpA / 252 Spe&#10;Timid Nature&#10;- Moonblast&#10;- Shadow Ball&#10;- Protect&#10;- Icy Wind"></textarea>
+                    </label>
+
+                    <label class="file-drop" for="pkm-file">
+                        <input id="pkm-file" type="file" accept=".pk3,.pk4,.pk5,.pk6,.pk7,.pb7,.pk8,.pb8,.pa8,.pk9,.pa9">
+                        <span class="file-icon" aria-hidden="true">PK</span>
+                        <span class="file-copy">
+                            <strong data-i18n="pkhexUpload">Upload PKHeX file</strong>
+                            <small id="pkm-file-label" data-i18n="pkhexHelp">Optional: use a .pk/.pb/.pa file instead of a Showdown set.</small>
+                        </span>
+                        <button id="clear-file-button" type="button" class="text-button" hidden data-i18n="clearFile">Clear</button>
+                    </label>
+
+                    <div class="form-row">
+                        <label class="check-field">
+                            <input id="ignore-autoot" type="checkbox">
+                            <span data-i18n="ignoreAutoOt">Do not apply cached AutoOT</span>
+                        </label>
+                        <button id="submit-button" type="submit" class="primary-button" data-i18n="joinQueue">Join queue</button>
+                    </div>
+                </div>
+
+                <section id="trade-terminal" class="terminal" hidden>
+                    <header class="terminal-header">
+                        <span id="terminal-state" class="state-badge">Queued</span>
+                        <span id="terminal-pokemon" class="terminal-pokemon">Pokemon</span>
+                    </header>
+                    <div class="terminal-screen" role="log" aria-live="polite">
+                        <ol id="terminal-list" class="terminal-list"></ol>
+                    </div>
+                    <footer class="terminal-footer">
+                        <div class="terminal-code-block">
+                            <p class="eyebrow" data-i18n="linkCode">Link code</p>
+                            <strong id="terminal-code" class="terminal-code">0000 0000</strong>
+                        </div>
+                        <button id="new-trade-button" type="button" class="primary-button" hidden data-i18n="requestAnotherTrade">Request another trade</button>
+                    </footer>
+                </section>
+            </form>
+
+            <aside class="sidebar">
+                <section class="status-panel">
+                    <header class="panel-header">
+                        <div>
+                            <p class="eyebrow" data-i18n="liveStatus">Live status</p>
+                            <h2 class="display-3" data-i18n="currentTrade">Current trade</h2>
+                        </div>
+                        <button id="cancel-button" class="text-button" type="button" hidden data-i18n="cancel">Cancel</button>
+                    </header>
+                    <div id="empty-trade" class="empty-state">
+                        <svg class="empty-state-mark" viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+                            <circle cx="32" cy="32" r="29" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                            <path d="M3 32 H61" stroke="currentColor" stroke-width="1.2"/>
+                            <circle cx="32" cy="32" r="8" fill="none" stroke="currentColor" stroke-width="1.2"/>
+                            <circle cx="32" cy="32" r="3" fill="currentColor"/>
+                        </svg>
+                        <p data-i18n="emptyTrade">Your queued trade will appear here.</p>
+                    </div>
+                    <div id="active-trade" class="active-trade" hidden>
+                        <div class="trade-status-row">
+                            <span id="trade-state" class="state-badge">Queued</span>
+                        </div>
+                        <div class="trade-summary">
+                            <div class="pokemon-art">
+                                <img id="trade-pokemon-image" alt="" hidden>
+                            </div>
+                            <h3 id="trade-pokemon" class="display-3">Pokemon</h3>
+                        </div>
+                        <div class="code-box" id="trade-code">0000 0000</div>
+                        <p id="trade-message"></p>
+                        <div class="progress-track">
+                            <span id="queue-progress"></span>
+                        </div>
+                        <p id="trade-position" class="help-text"></p>
+                    </div>
+                </section>
+
+                <section class="profile-panel">
+                    <header class="panel-header">
+                        <h2 class="display-3" data-i18n="profile">Profile</h2>
+                    </header>
+                    <dl class="profile-list">
+                        <div class="trade-code-row">
+                            <dt data-i18n="tradeCode">Trade code</dt>
+                            <dd>
+                                <button id="profile-code" class="trainer-link code-link" type="button" aria-expanded="false" aria-controls="code-editor">-</button>
+                            </dd>
+                            <div id="code-editor" class="code-editor" hidden>
+                                <label class="field compact-code-field">
+                                    <span class="field-label" data-i18n="editTradeCode">Edit trade code</span>
+                                    <input id="trade-code-input" inputmode="numeric" maxlength="9" data-i18n-placeholder="tradeCodePlaceholder" placeholder="0000 0000">
+                                </label>
+                                <div class="code-actions">
+                                    <button id="save-code-button" type="button" class="primary-button" data-i18n="saveCode">Save code</button>
+                                    <button id="delete-code-button" type="button" class="text-button danger-button" data-i18n="deleteCode">Delete</button>
+                                </div>
+                                <p class="help-text" data-i18n="tradeCodeHelp">Use eight digits. This code is saved to your Discord ID.</p>
+                            </div>
+                        </div>
+                        <div class="profile-row"><dt data-i18n="totalTrades">Total trades</dt><dd id="profile-count">-</dd></div>
+                        <div class="trainer-row">
+                            <dt data-i18n="trainer">Trainer</dt>
+                            <dd>
+                                <button id="profile-trainer" class="trainer-link" type="button" aria-expanded="false" aria-controls="trainer-popover">-</button>
+                            </dd>
+                            <div id="trainer-popover" class="trainer-popover" hidden>
+                                <div><span data-i18n="trainerName">Trainer name</span><strong id="trainer-popover-name">-</strong></div>
+                                <div><span>TID</span><strong id="trainer-popover-tid">-</strong></div>
+                                <div><span>SID</span><strong id="trainer-popover-sid">-</strong></div>
+                                <div><span data-i18n="discordUser">Discord</span><strong id="trainer-popover-discord">-</strong></div>
+                            </div>
+                        </div>
+                        <div class="profile-row"><dt data-i18n="lastTrade">Last trade</dt><dd id="profile-last">-</dd></div>
+                    </dl>
+                </section>
+            </aside>
+        </section>
+    </main>
+
+    <footer class="site-footer">
+        <p data-i18n="footerDisclaimer">TradeDex is a fan-made tool and is not affiliated with Nintendo, Game Freak, or The Pokémon Company.</p>
+    </footer>
+
+    <div id="download-widget" class="download-widget" hidden>
+        <button id="download-button" class="download-button" type="button" data-i18n-title="downloadsButtonTitle" data-tooltip="Recent trade files" aria-label="Recent trade files" aria-expanded="false" aria-controls="download-popover">
+            <svg class="download-glyph" viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M12 3v11m0 0 4-4m-4 4-4-4M4.5 18.5v2h15v-2"></path>
+            </svg>
+        </button>
+        <section id="download-popover" class="download-popover" hidden>
+            <header class="panel-header">
+                <div>
+                    <p class="eyebrow" data-i18n="downloads">Files</p>
+                    <h2 class="display-3" data-i18n="recentFiles">Recent trades</h2>
+                </div>
+            </header>
+            <p id="download-empty" class="download-empty" data-i18n="noRecentFiles">No received Pokemon files yet.</p>
+            <ol id="download-list" class="download-list"></ol>
+        </section>
+    </div>
+    <div id="guide-widget" class="guide-widget">
+        <button id="guide-button" class="guide-button" type="button" data-i18n-title="guideButtonTitle" data-tooltip="Trade guide" aria-label="Trade guide" aria-expanded="false" aria-controls="guide-popover">
+            <span class="guide-glyph" aria-hidden="true">?</span>
+        </button>
+        <section id="guide-popover" class="guide-popover" hidden>
+            <header class="panel-header">
+                <div>
+                    <p class="eyebrow" data-i18n="guide">Guide</p>
+                    <h2 class="display-3" data-i18n="tradeConsole">Website guide</h2>
+                </div>
+            </header>
+            <ol id="site-guide-list" class="console-list site-guide-list"></ol>
+        </section>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite" hidden></div>
+    <script src="/TradePortal.js?v=__ASSET_VER__" type="module"></script>
+</body>
+</html>

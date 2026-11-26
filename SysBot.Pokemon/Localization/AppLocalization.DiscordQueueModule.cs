@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 namespace SysBot.Pokemon.Localization;
 public static partial class AppLocalization
 {
@@ -19,11 +19,11 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordQueueDisabled] = "{0} Queue settings changed: **Users CANNOT join the queue until it is turned back on.**";
                 target[LocalizationKeys.DiscordTradeCodeDeleted] = "{0}, your stored trade code has been deleted successfully.";
                 target[LocalizationKeys.DiscordTradeCodeNotFound] = "{0}, no stored trade code was found for your user ID.";
-                target[LocalizationKeys.DiscordClearTradeRemoved] = "{0}, I removed your pending trades from the queue.";
+                target[LocalizationKeys.DiscordClearTradeRemoved] = "✅ {0}, I removed your pending trades from the queue.";
                 target[LocalizationKeys.DiscordClearTradeProcessing] = "{0}, it looks like you have trades currently being processed! I did not remove those from the queue.";
                 target[LocalizationKeys.DiscordClearTradeProcessingRemoved] = "{0}, it looks like you have trades currently being processed. I removed other pending trades from the queue.";
                 target[LocalizationKeys.DiscordClearTradeNotInQueue] = "Sorry {0}, you are not currently in the queue.";
-                target[LocalizationKeys.DiscordTradeCodeUpdated] = "{0}, your trade code has been successfully updated.";
+                target[LocalizationKeys.DiscordTradeCodeUpdated] = "✅ {0}, your trade code has been successfully updated.";
                 target[LocalizationKeys.DiscordTradeCodeMissing] = "{0}, you don't have a trade code set. Use the trade command to generate one first.";
                 target[LocalizationKeys.DiscordTradeCodeChangeError] = "{0}, an error occurred while changing your trade code. Please try again later.";
                 target[LocalizationKeys.DiscordTradeCodeLength] = "{0}, trade code must be exactly 8 digits long.";
@@ -38,7 +38,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordQueueListDmSentTotal] = "📩 {0}, the queue list (total: **{1}**) was sent to your direct messages.";
                 target[LocalizationKeys.DiscordTradeCodeRangeMention] = "{0}, sorry, trade code must be between **00000000** and **99999999**.";
                 target[LocalizationKeys.DiscordTradeCodeStoredTitle] = "Trade Code Stored";
-                target[LocalizationKeys.DiscordTradeCodeStoredDescription] = "{0}, your trade code has been stored successfully.\n\n__**Code:**__\n# {1}";
+                target[LocalizationKeys.DiscordTradeCodeStoredDescription] = "✅ {0}, your trade code has been stored successfully.\n\n__**Code:**__\n# {1}";
                 target[LocalizationKeys.DiscordTradeCodeExistingTitle] = "Existing Trade Code";
                 target[LocalizationKeys.DiscordTradeCodeExistingDescription] = "{0}, you already have a trade code set.";
                 target[LocalizationKeys.DiscordTradeCodeExistingField] = "__**Existing Code**__";
@@ -72,11 +72,11 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordQueueDisabled] = "{0} Configuracion de cola modificada: **Los usuarios NO pueden unirse a la cola hasta que se reactive.**";
                 target[LocalizationKeys.DiscordTradeCodeDeleted] = "{0}, tu codigo de trade guardado se elimino correctamente.";
                 target[LocalizationKeys.DiscordTradeCodeNotFound] = "{0}, no se encontro un codigo de trade guardado para tu ID de usuario.";
-                target[LocalizationKeys.DiscordClearTradeRemoved] = "{0}, elimine tus trades pendientes de la cola.";
+                target[LocalizationKeys.DiscordClearTradeRemoved] = "✅ {0}, elimine tus trades pendientes de la cola.";
                 target[LocalizationKeys.DiscordClearTradeProcessing] = "{0}, parece que actualmente tienes trades en proceso! No los elimine de la cola.";
                 target[LocalizationKeys.DiscordClearTradeProcessingRemoved] = "{0}, parece que tienes trades en proceso. Se eliminaron otros trades pendientes de la cola.";
                 target[LocalizationKeys.DiscordClearTradeNotInQueue] = "Lo siento {0}, actualmente no estas en la cola.";
-                target[LocalizationKeys.DiscordTradeCodeUpdated] = "{0}, tu codigo de trade se actualizo correctamente.";
+                target[LocalizationKeys.DiscordTradeCodeUpdated] = "✅ {0}, tu codigo de trade se actualizo correctamente.";
                 target[LocalizationKeys.DiscordTradeCodeMissing] = "{0}, no tienes un codigo de trade configurado. Usa el comando de trade para generar uno primero.";
                 target[LocalizationKeys.DiscordTradeCodeChangeError] = "{0}, ocurrio un error al cambiar tu codigo de trade. Intentalo de nuevo mas tarde.";
                 target[LocalizationKeys.DiscordTradeCodeLength] = "{0}, el codigo de trade debe tener exactamente 8 digitos.";
@@ -91,7 +91,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordQueueListDmSentTotal] = "📩 {0}, la lista de espera (total: **{1}**) fue enviada a tus mensajes directos.";
                 target[LocalizationKeys.DiscordTradeCodeRangeMention] = "{0}, lo siento, el codigo de trade debe estar entre **00000000** y **99999999**.";
                 target[LocalizationKeys.DiscordTradeCodeStoredTitle] = "Codigo de trade almacenado";
-                target[LocalizationKeys.DiscordTradeCodeStoredDescription] = "{0}, tu codigo de trade ha sido almacenado correctamente.\n\n__**Codigo:**__\n# {1}";
+                target[LocalizationKeys.DiscordTradeCodeStoredDescription] = "✅ {0}, tu codigo de trade ha sido almacenado correctamente.\n\n__**Codigo:**__\n# {1}";
                 target[LocalizationKeys.DiscordTradeCodeExistingTitle] = "Codigo de trade existente";
                 target[LocalizationKeys.DiscordTradeCodeExistingDescription] = "{0}, ya tienes un codigo de trade establecido.";
                 target[LocalizationKeys.DiscordTradeCodeExistingField] = "__**Codigo existente**__";

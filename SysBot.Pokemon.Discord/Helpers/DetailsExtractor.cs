@@ -46,7 +46,7 @@ public static class DetailsExtractor<T> where T : PKM, new()
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowLevel ? $"**{AppLocalization.Get(LocalizationKeys.DiscordLevelLabel)}:** {embedData.Level}\n" : "") +
             (pk is PK9 && SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowTeraType ? $"**{AppLocalization.Get(LocalizationKeys.DiscordTeraTypeLabel)}:** {embedData.TeraType}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowAbility ? $"**{AppLocalization.Get(LocalizationKeys.DiscordAbilityLabel)}:** {embedData.Ability}\n" : "") +
-            (pk.Version is GameVersion.PLA or GameVersion.SL or GameVersion.VL && SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowScale ? $"**{AppLocalization.Get(LocalizationKeys.DiscordScaleLabel)}:** {embedData.Scale.Item1}\n" : "") +
+            (ShouldShowScale(pk, embedData) ? $"**{AppLocalization.Get(LocalizationKeys.DiscordScaleLabel)}:** {embedData.Scale.Item1}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowBall ? $"**{AppLocalization.Get(LocalizationKeys.DiscordBallLabel)}:** {embedData.Ball}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowNature ? $"**{AppLocalization.Get(LocalizationKeys.DiscordNatureLabel)}:** {embedData.Nature}\n" : "") +
             (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowNature && !string.IsNullOrEmpty(embedData.StatNature) ? $"**{AppLocalization.Get(LocalizationKeys.DiscordStatNatureLabel)}:** {embedData.StatNature}\n" : "") +
@@ -148,16 +148,18 @@ public static class DetailsExtractor<T> where T : PKM, new()
         if (pk is PK9 pk9)
         {
             embedData.TeraType = GetTeraTypeString(pk9, strings);
-            embedData.Scale = GetScaleDetails(pk9);
         }
+
+        if (pk is IScaledSize3 scaled)
+            embedData.Scale = GetScaleDetails(scaled);
 
         embedData.Ability = GetAbilityName(pk, strings);
         embedData.Nature = GetNatureName(pk, strings);
 
         // Extract Stat Nature if it differs from regular Nature (applies to any minted Pokémon)
-        if (pk.StatNature != pk.Nature)
+        if (pk.StatAlignment != pk.Nature)
         {
-            embedData.StatNature = strings.natures[(int)pk.StatNature];
+            embedData.StatNature = strings.natures[(int)pk.StatAlignment];
         }
 
         embedData.SpeciesName = strings.Species[pk.Species];
@@ -431,10 +433,17 @@ public static class DetailsExtractor<T> where T : PKM, new()
         return strings.natures[(int)pk.Nature];
     }
 
-    private static (string, byte) GetScaleDetails(PK9 pk9)
+    private static bool ShouldShowScale(T pk, EmbedData embedData)
     {
-        string scaleText = $"{PokeSizeDetailedUtil.GetSizeRating(pk9.Scale)}";
-        byte scaleNumber = pk9.Scale;
+        return SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.ShowScale &&
+               pk is IScaledSize3 &&
+               !string.IsNullOrWhiteSpace(embedData.Scale.Item1);
+    }
+
+    private static (string, byte) GetScaleDetails(IScaledSize3 scaled)
+    {
+        string scaleText = $"{PokeSizeDetailedUtil.GetSizeRating(scaled.Scale)}";
+        byte scaleNumber = scaled.Scale;
         string scaleTextWithNumber = $"{scaleText} ({scaleNumber})";
 
         if (SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.UseScaleEmojis)

@@ -1,9 +1,12 @@
 using Discord;
 using PKHeX.Core;
 using SysBot.Base;
+using SysBot.Pokemon.Localization;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Linq;
+using System.Text.Json.Serialization;
 using System.Threading;
 
 namespace SysBot.Pokemon;
@@ -19,8 +22,6 @@ public class TradeSettings : IBotStateSettings, ICountSettings
     private const string VGCPastesConfig = nameof(VGCPastesConfig);
 
     private const string Miscellaneous = nameof(Miscellaneous);
-
-    private const string RequestFolders = nameof(RequestFolders);
 
     private const string EmbedSettings = nameof(EmbedSettings);
 
@@ -46,9 +47,6 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
     [Category(EmbedSettings), Description("Ajustes relacionados con el Trade Embed en Discord."), DisplayName("Configuración del Embed Trade"), Browsable(true)]
     public TradeEmbedSettingsCategory TradeEmbedSettings { get; set; } = new();
-
-    [Category(RequestFolders), Description("Ajustes relacionados con las carpetas de solicitud."), DisplayName("Configuración de las carpetas de solicitud."), Browsable(true)]
-    public RequestFolderSettingsCategory RequestFolderSettings { get; set; } = new();
 
     [Category(CountStats), Description("Ajustes relacionados con las estadísticas de recuento de trades."), DisplayName("Configuración de las estadísticas de recuento de trades"), Browsable(true)]
     public CountStatsSettingsCategory CountStatsSettings { get; set; } = new();
@@ -145,7 +143,170 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
         private bool _useEmbeds = true;
 
-        [Category(EmbedSettings), Description("Si es verdadero, mostrará hermosos embeds en sus canales de trade de discord de lo que el usuario este tradeando. False mostrará el texto por defecto."), DisplayName("Usar embeds")]
+        [Category("General"), TypeConverter(typeof(ExpandableObjectConverter)), Description("Ajustes principales del embed de trade."), DisplayName("General")]
+        [JsonIgnore]
+        public EmbedGeneralSettings General => new(this);
+
+        [Category("Emojis"), TypeConverter(typeof(ExpandableObjectConverter)), Description("Ajustes de emojis usados por el embed de trade."), DisplayName("Emojis")]
+        [JsonIgnore]
+        public EmbedEmojiSettings Emojis => new(this);
+
+        [Category("Contenido"), TypeConverter(typeof(ExpandableObjectConverter)), Description("Campos que se muestran dentro del embed de trade."), DisplayName("Contenido mostrado")]
+        [JsonIgnore]
+        public EmbedContentSettings Content => new(this);
+
+        public sealed class EmbedGeneralSettings(TradeEmbedSettingsCategory settings)
+        {
+            public override string ToString() => "Ajustes generales del embed";
+
+            [Description("Si es verdadero, mostrará hermosos embeds en sus canales de trade de discord de lo que el usuario este tradeando. False mostrará el texto por defecto."), DisplayName("Usar embeds")]
+            public bool UseEmbeds
+            {
+                get => settings.UseEmbeds;
+                set => settings.UseEmbeds = value;
+            }
+
+            [Description("Tamaño preferido de la imagen de la especie para embeds."), DisplayName("Tamaño de la imagen del Pokémon")]
+            public ImageSize PreferredImageSize
+            {
+                get => settings.PreferredImageSize;
+                set => settings.PreferredImageSize = value;
+            }
+
+            [TypeConverter(typeof(ExpandableObjectConverter)), Description("Opciones Extras para el embed"), DisplayName("Opciones Extras")]
+            public EmbedTxTOptions ExtraEmbedOptions
+            {
+                get => settings.ExtraEmbedOptions;
+                set => settings.ExtraEmbedOptions = value ?? new();
+            }
+        }
+
+        public sealed class EmbedEmojiSettings(TradeEmbedSettingsCategory settings)
+        {
+            public override string ToString() => "Ajustes de emojis del embed";
+
+            [Description("Mostrará los iconos de tipo de movimiento junto a los movimientos en el Embed Trade (sólo Discord). Requiere que el usuario suba los emojis a su servidor."), DisplayName("¿Mostrar Emojis de Movimientos?")]
+            public bool MoveTypeEmojis
+            {
+                get => settings.MoveTypeEmojis;
+                set => settings.MoveTypeEmojis = value;
+            }
+
+            [Description("Mostrará los iconos de Tera Tipo junto a los movimientos en el Embed Trade (sólo SV y Discord). Requiere que el usuario suba los emojis a su servidor."), DisplayName("¿Mostrar Emojis de Tipo Tera?")]
+            public bool UseTeraEmojis
+            {
+                get => settings.UseTeraEmojis;
+                set => settings.UseTeraEmojis = value;
+            }
+
+            [Description("Si es verdadero, se mostrarán los emojis para las escalas XXXS y XXXL en el Embed Trade."), DisplayName("¿Usar Emojis de Tamaño?")]
+            public bool UseScaleEmojis
+            {
+                get => settings.UseScaleEmojis;
+                set => settings.UseScaleEmojis = value;
+            }
+
+            [Description("Información personalizada de Emoji para los tipos de movimiento."), DisplayName("Emojis de Movimientos")]
+            public List<MoveTypeEmojiInfo> CustomTypeEmojis
+            {
+                get => settings.CustomTypeEmojis;
+                set => settings.CustomTypeEmojis = value ?? [];
+            }
+
+            [Description("Configuración de emojis para todos los tipos Tera, incluyendo 'Stellar'."), DisplayName("Emojis de Tipo Tera")]
+            public List<TeraTypeEmojiInfo> TeraTypeEmojis
+            {
+                get => settings.TeraTypeEmojis;
+                set => settings.TeraTypeEmojis = value ?? [];
+            }
+
+            [Description("Informacion del emoji para mostrar movimientos Plus aplicables en el embed de Discord."), DisplayName("Emoji de movimiento Plus")]
+            public EmojiInfo UsePlusMoveEmoji
+            {
+                get => settings.UsePlusMoveEmoji;
+                set => settings.UsePlusMoveEmoji = value ?? new();
+            }
+
+            [TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para las escalas XXXS y XXXL."), DisplayName("Emojis de tamaño")]
+            public ScaleEmojisSettings ScaleEmojis
+            {
+                get => settings.ScaleEmojis;
+                set => settings.ScaleEmojis = value ?? new();
+            }
+
+            [TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para Pokémon Shiny."), DisplayName("Emojis Shiny")]
+            public ShinyEmojisSettings ShinyEmojis
+            {
+                get => settings.ShinyEmojis;
+                set => settings.ShinyEmojis = value ?? new();
+            }
+
+            [TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para géneros."), DisplayName("Emojis de Género")]
+            public GenderEmojisSettings GenderEmojis
+            {
+                get => settings.GenderEmojis;
+                set => settings.GenderEmojis = value ?? new();
+            }
+
+            [TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para marcas especiales y estados."), DisplayName("Emojis de Marcas y Estados Especiales")]
+            public SpecialMarksEmojisSettings SpecialMarksEmojis
+            {
+                get => settings.SpecialMarksEmojis;
+                set => settings.SpecialMarksEmojis = value ?? new();
+            }
+        }
+
+        public sealed class EmbedContentSettings(TradeEmbedSettingsCategory settings)
+        {
+            public override string ToString() => "Campos visibles del embed";
+
+            [Description("Se mostrará la Escala en el Embed Trade (SV y Discord solamente). Requiere que el usuario suba los emojis a su servidor."), DisplayName("Mostrar Tamaño")]
+            public bool ShowScale { get => settings.ShowScale; set => settings.ShowScale = value; }
+
+            [Description("Mostrará el Tera Tipo en el Embed Trade (sólo SV y Discord)."), DisplayName("Mostrar Tera Tipo")]
+            public bool ShowTeraType { get => settings.ShowTeraType; set => settings.ShowTeraType = value; }
+
+            [Description("Se mostrará el nivel en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Nivel")]
+            public bool ShowLevel { get => settings.ShowLevel; set => settings.ShowLevel = value; }
+
+            [Description("Mostrara la Ball en el embed de trade (solo Discord)."), DisplayName("Mostrar Ball")]
+            public bool ShowBall { get => settings.ShowBall; set => settings.ShowBall = value; }
+
+            [Description("Mostrara el nivel de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar nivel de encuentro")]
+            public bool ShowMetLevel { get => settings.ShowMetLevel; set => settings.ShowMetLevel = value; }
+
+            [Description("Mostrará MetDate en el Embed Trade (sólo Discord)."), DisplayName("Mostrar Fecha de Encuentro")]
+            public bool ShowMetDate { get => settings.ShowMetDate; set => settings.ShowMetDate = value; }
+
+            [Description("Mostrara la ubicacion de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar ubicacion de encuentro")]
+            public bool ShowMetLocation { get => settings.ShowMetLocation; set => settings.ShowMetLocation = value; }
+
+            [Description("Se mostrará Habilidad en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Habilidad")]
+            public bool ShowAbility { get => settings.ShowAbility; set => settings.ShowAbility = value; }
+
+            [Description("Se mostrará la naturaleza en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Naturaleza")]
+            public bool ShowNature { get => settings.ShowNature; set => settings.ShowNature = value; }
+
+            [Description("Mostrará el idioma en el embed de intercambio (solo en Discord)."), DisplayName("Mostrar Idioma")]
+            public bool ShowLanguage { get => settings.ShowLanguage; set => settings.ShowLanguage = value; }
+
+            [Description("Mostrará IVs en el Embed Trade (Discord solamente)."), DisplayName("Mostrar IVs")]
+            public bool ShowIVs { get => settings.ShowIVs; set => settings.ShowIVs = value; }
+
+            [Description("Mostrará los EVs en el Embed Trade (sólo Discord)."), DisplayName("Mostrar EVs")]
+            public bool ShowEVs { get => settings.ShowEVs; set => settings.ShowEVs = value; }
+
+            [Description("Mostrar GVs en el embed de intercambio (solo Discord)."), DisplayName("Mostrar GVs para PLA")]
+            public bool ShowGVs { get => settings.ShowGVs; set => settings.ShowGVs = value; }
+
+            [Description("Mostrar AVs en el embed de intercambio (solo Discord)."), DisplayName("Mostrar AVs para LGPE")]
+            public bool ShowAVs { get => settings.ShowAVs; set => settings.ShowAVs = value; }
+
+            [Description("Mostrará el Rastreador HOME en el embed de intercambio (solo en Discord)."), DisplayName("Mostrar Rastreador")]
+            public bool ShowTracker { get => settings.ShowTracker; set => settings.ShowTracker = value; }
+        }
+
+        [Browsable(false), Category(EmbedSettings), Description("Si es verdadero, mostrará hermosos embeds en sus canales de trade de discord de lo que el usuario este tradeando. False mostrará el texto por defecto."), DisplayName("Usar embeds")]
         public bool UseEmbeds
         {
             get => _useEmbeds;
@@ -175,33 +336,58 @@ public class TradeSettings : IBotStateSettings, ICountSettings
             }
         }
 
-        [Category(EmbedSettings), Description("Tamaño preferido de la imagen de la especie para embeds."), DisplayName("Tamaño de la imagen del Pokémon")]
+        [Browsable(false), Category(EmbedSettings), Description("Tamaño preferido de la imagen de la especie para embeds."), DisplayName("Tamaño de la imagen del Pokémon")]
         public ImageSize PreferredImageSize { get; set; } = ImageSize.Size128x128;
 
-        [Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Opciones Extras para el embed"), DisplayName("Opciones Extras")]
+        [Browsable(false), Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Opciones Extras para el embed"), DisplayName("Opciones Extras")]
         public EmbedTxTOptions ExtraEmbedOptions { get; set; } = new();
 
         public class EmbedTxTOptions
         {
+            private const string LegacySpanishNonNativeText = "*Puede que no pueda ir a HOME y AutoOT no fue aplicado.*";
+            private const string PreviousEnglishNonNativeText = "*Cannot enter HOME & AutoOT not applied.*";
+            private const string PreviousSpanishNonNativeText = "*No puede entrar a HOME y AutoOT no fue aplicado.*";
+            private const string DefaultEnglishNonNativeText = "*It may not be able to enter HOME and AutoOT was not applied.*";
+
+            private string _nonNativeTexT = string.Empty;
+
             public override string ToString() => "(Collection)";
 
             [Category(EmbedSettings), Description("URL que aparece al hacer click en el titulo de embed."), DisplayName("URL del título del Embed")]
             public string TradingBotUrl { get; set; } = string.Empty;
 
             [Category(EmbedSettings), Description("Mensaje que aparece en el embed cuando el Pokémon solicitado no es nativo del juego actual."), DisplayName("Texto para Pokémon no nativo")]
-            public string NonNativeTexT { get; set; } = "*Puede que no pueda ir a HOME y AutoOT no fue aplicado.*";
+            public string NonNativeTexT
+            {
+                get => IsDefaultNonNativeText(_nonNativeTexT)
+                    ? AppLocalization.Get(LocalizationKeys.DiscordCannotEnterHomeAutoOt)
+                    : _nonNativeTexT;
+                set => _nonNativeTexT = IsDefaultNonNativeText(value) ? string.Empty : value;
+            }
+
+            private static bool IsDefaultNonNativeText(string? value)
+            {
+                if (string.IsNullOrWhiteSpace(value))
+                    return true;
+
+                var trimmed = value.Trim();
+                return trimmed.Equals(LegacySpanishNonNativeText, StringComparison.Ordinal) ||
+                       trimmed.Equals(PreviousEnglishNonNativeText, StringComparison.Ordinal) ||
+                       trimmed.Equals(PreviousSpanishNonNativeText, StringComparison.Ordinal) ||
+                       trimmed.Equals(DefaultEnglishNonNativeText, StringComparison.Ordinal);
+            }
         }
 
-        [Category(EmbedSettings), Description("Mostrará los iconos de tipo de movimiento junto a los movimientos en el Embed Trade (sólo Discord). Requiere que el usuario suba los emojis a su servidor."), DisplayName("¿Mostrar Emojis de Movimientos?")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará los iconos de tipo de movimiento junto a los movimientos en el Embed Trade (sólo Discord). Requiere que el usuario suba los emojis a su servidor."), DisplayName("¿Mostrar Emojis de Movimientos?")]
         public bool MoveTypeEmojis { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrará los iconos de Tera Tipo junto a los movimientos en el Embed Trade (sólo Discord). Requiere que el usuario suba los emojis a su servidor."), DisplayName("¿Mostrar Emojis de Tipo Tera?")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará los iconos de Tera Tipo junto a los movimientos en el Embed Trade (sólo Discord). Requiere que el usuario suba los emojis a su servidor."), DisplayName("¿Mostrar Emojis de Tipo Tera?")]
         public bool UseTeraEmojis { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Si es verdadero, se mostrarán los emojis para las escalas XXXS y XXXL en el Embed Trade."), DisplayName("¿Usar Emojis de Tamaño?")]
+        [Browsable(false), Category(EmbedSettings), Description("Si es verdadero, se mostrarán los emojis para las escalas XXXS y XXXL en el Embed Trade."), DisplayName("¿Usar Emojis de Tamaño?")]
         public bool UseScaleEmojis { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Información personalizada de Emoji para los tipos de movimiento."), DisplayName("Emojis de Movimientos")]
+        [Browsable(false), Category(EmbedSettings), Description("Información personalizada de Emoji para los tipos de movimiento."), DisplayName("Emojis de Movimientos")]
         public List<MoveTypeEmojiInfo> CustomTypeEmojis { get; set; } =
         [
             new(MoveType.Bug),
@@ -225,7 +411,7 @@ public class TradeSettings : IBotStateSettings, ICountSettings
             new(MoveType.Stellar)
         ];
 
-        [Category(EmbedSettings), Description("Configuración de emojis para todos los tipos Tera, incluyendo 'Stellar'."), DisplayName("Emojis de Tipo Tera")]
+        [Browsable(false), Category(EmbedSettings), Description("Configuración de emojis para todos los tipos Tera, incluyendo 'Stellar'."), DisplayName("Emojis de Tipo Tera")]
         public List<TeraTypeEmojiInfo> TeraTypeEmojis { get; set; } =
         [
             new(MoveType.Bug),
@@ -249,10 +435,10 @@ public class TradeSettings : IBotStateSettings, ICountSettings
             new(MoveType.Stellar)
         ];
 
-        [Category(EmbedSettings), Description("Informacion del emoji para mostrar movimientos Plus aplicables en el embed de Discord."), DisplayName("Emoji de movimiento Plus")]
+        [Browsable(false), Category(EmbedSettings), Description("Informacion del emoji para mostrar movimientos Plus aplicables en el embed de Discord."), DisplayName("Emoji de movimiento Plus")]
         public EmojiInfo UsePlusMoveEmoji { get; set; } = new EmojiInfo();
 
-        [Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para las escalas XXXS y XXXL."), DisplayName("Emojis de tamaño")]
+        [Browsable(false), Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para las escalas XXXS y XXXL."), DisplayName("Emojis de tamaño")]
         public ScaleEmojisSettings ScaleEmojis { get; set; } = new();
 
         public class ScaleEmojisSettings
@@ -266,7 +452,7 @@ public class TradeSettings : IBotStateSettings, ICountSettings
             public EmojiInfo ScaleXXXLEmoji { get; set; } = new();
         }
 
-        [Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para Pokémon Shiny."), DisplayName("Emojis Shiny")]
+        [Browsable(false), Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para Pokémon Shiny."), DisplayName("Emojis Shiny")]
         public ShinyEmojisSettings ShinyEmojis { get; set; } = new();
 
         public class ShinyEmojisSettings
@@ -280,7 +466,7 @@ public class TradeSettings : IBotStateSettings, ICountSettings
             public EmojiInfo ShinyNormalEmoji { get; set; } = new();
         }
 
-        [Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para géneros."), DisplayName("Emojis de Género")]
+        [Browsable(false), Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para géneros."), DisplayName("Emojis de Género")]
         public GenderEmojisSettings GenderEmojis { get; set; } = new();
 
         public class GenderEmojisSettings
@@ -294,7 +480,7 @@ public class TradeSettings : IBotStateSettings, ICountSettings
             public EmojiInfo FemaleEmoji { get; set; } = new();
         }
 
-        [Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para marcas especiales y estados."), DisplayName("Emojis de Marcas y Estados Especiales")]
+        [Browsable(false), Category(EmbedSettings), TypeConverter(typeof(ExpandableObjectConverter)), Description("Configuración de emojis para marcas especiales y estados."), DisplayName("Emojis de Marcas y Estados Especiales")]
         public SpecialMarksEmojisSettings SpecialMarksEmojis { get; set; } = new();
 
         public class SpecialMarksEmojisSettings
@@ -317,49 +503,49 @@ public class TradeSettings : IBotStateSettings, ICountSettings
             public EmojiInfo GigantamaxEmoji { get; set; } = new();
         }
 
-        [Category(EmbedSettings), Description("Se mostrará la Escala en el Embed Trade (SV y Discord solamente). Requiere que el usuario suba los emojis a su servidor."), DisplayName("Mostrar Tamaño")]
+        [Browsable(false), Category(EmbedSettings), Description("Se mostrará la Escala en el Embed Trade (SV y Discord solamente). Requiere que el usuario suba los emojis a su servidor."), DisplayName("Mostrar Tamaño")]
         public bool ShowScale { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrará el Tera Tipo en el Embed Trade (sólo SV y Discord)."), DisplayName("Mostrar Tera Tipo")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará el Tera Tipo en el Embed Trade (sólo SV y Discord)."), DisplayName("Mostrar Tera Tipo")]
         public bool ShowTeraType { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Se mostrará el nivel en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Nivel")]
+        [Browsable(false), Category(EmbedSettings), Description("Se mostrará el nivel en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Nivel")]
         public bool ShowLevel { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrara la Ball en el embed de trade (solo Discord)."), DisplayName("Mostrar Ball")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrara la Ball en el embed de trade (solo Discord)."), DisplayName("Mostrar Ball")]
         public bool ShowBall { get; set; } = false;
 
-        [Category(EmbedSettings), Description("Mostrara el nivel de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar nivel de encuentro")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrara el nivel de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar nivel de encuentro")]
         public bool ShowMetLevel { get; set; } = false;
 
-        [Category(EmbedSettings), Description("Mostrará MetDate en el Embed Trade (sólo Discord)."), DisplayName("Mostrar Fecha de Encuentro")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará MetDate en el Embed Trade (sólo Discord)."), DisplayName("Mostrar Fecha de Encuentro")]
         public bool ShowMetDate { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrara la ubicacion de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar ubicacion de encuentro")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrara la ubicacion de encuentro en el embed de trade (solo Discord)."), DisplayName("Mostrar ubicacion de encuentro")]
         public bool ShowMetLocation { get; set; } = false;
 
-        [Category(EmbedSettings), Description("Se mostrará Habilidad en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Habilidad")]
+        [Browsable(false), Category(EmbedSettings), Description("Se mostrará Habilidad en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Habilidad")]
         public bool ShowAbility { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Se mostrará la naturaleza en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Naturaleza")]
+        [Browsable(false), Category(EmbedSettings), Description("Se mostrará la naturaleza en el Embed Trade (Discord solamente)."), DisplayName("Mostrar Naturaleza")]
         public bool ShowNature { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrará el idioma en el embed de intercambio (solo en Discord)."), DisplayName("Mostrar Idioma")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará el idioma en el embed de intercambio (solo en Discord)."), DisplayName("Mostrar Idioma")]
         public bool ShowLanguage { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrará IVs en el Embed Trade (Discord solamente)."), DisplayName("Mostrar IVs")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará IVs en el Embed Trade (Discord solamente)."), DisplayName("Mostrar IVs")]
         public bool ShowIVs { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrará los EVs en el Embed Trade (sólo Discord)."), DisplayName("Mostrar EVs")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará los EVs en el Embed Trade (sólo Discord)."), DisplayName("Mostrar EVs")]
         public bool ShowEVs { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrar GVs en el embed de intercambio (solo Discord)."), DisplayName("Mostrar GVs para PLA")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrar GVs en el embed de intercambio (solo Discord)."), DisplayName("Mostrar GVs para PLA")]
         public bool ShowGVs { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrar AVs en el embed de intercambio (solo Discord)."), DisplayName("Mostrar AVs para LGPE")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrar AVs en el embed de intercambio (solo Discord)."), DisplayName("Mostrar AVs para LGPE")]
         public bool ShowAVs { get; set; } = true;
 
-        [Category(EmbedSettings), Description("Mostrará el Rastreador HOME en el embed de intercambio (solo en Discord)."), DisplayName("Mostrar Rastreador")]
+        [Browsable(false), Category(EmbedSettings), Description("Mostrará el Rastreador HOME en el embed de intercambio (solo en Discord)."), DisplayName("Mostrar Rastreador")]
         public bool ShowTracker { get; set; } = true;
     }
 
@@ -373,18 +559,6 @@ public class TradeSettings : IBotStateSettings, ICountSettings
 
         [Category(VGCPastesConfig), Description("GID de la pestaña de la hoja de cálculo de la que desea extraer datos. Sugerencia: https://docs.google.com/spreadsheets/d/ID/gid=1837599752"), DisplayName("GID de la hoja de cálculo")]
         public int GID { get; set; } = 1837599752;
-    }
-
-    [Category(RequestFolders), TypeConverter(typeof(CategoryConverter<RequestFolderSettingsCategory>))]
-    public class RequestFolderSettingsCategory
-    {
-        public override string ToString() => "Configuración de las carpetas de solicitud";
-
-        [Category("RequestFolders"), Description("Ruta a su carpeta de eventos. Crea una nueva carpeta llamada 'eventos' y copia la ruta aquí."), DisplayName("Ruta de la carpeta de eventos")]
-        public string EventsFolder { get; set; } = string.Empty;
-
-        [Category("RequestFolders"), Description("Ruta a tu carpeta BattleReady. Crea una nueva carpeta llamada 'battleready' y copia la ruta aquí."), DisplayName("Ruta de la carpeta Battle-Ready")]
-        public string BattleReadyPKMFolder { get; set; } = string.Empty;
     }
 
     [Category(Miscellaneous), Description("Apaga la pantalla de la Switch durante las operaciones"), DisplayName("Apagar Pantalla")]
@@ -542,7 +716,12 @@ public class TradeSettings : IBotStateSettings, ICountSettings
     {
         public override bool GetPropertiesSupported(ITypeDescriptorContext? context) => true;
 
-        public override PropertyDescriptorCollection GetProperties(ITypeDescriptorContext? context, object value, Attribute[]? attributes) => TypeDescriptor.GetProperties(typeof(T));
+        public override PropertyDescriptorCollection GetProperties(ITypeDescriptorContext? context, object value, Attribute[]? attributes)
+        {
+            var properties = TypeDescriptor.GetProperties(typeof(T), attributes ?? []);
+            var browsable = properties.Cast<PropertyDescriptor>().Where(p => p.IsBrowsable).ToArray();
+            return new PropertyDescriptorCollection(browsable, true);
+        }
 
         public override bool CanConvertTo(ITypeDescriptorContext? context, Type? destinationType) => destinationType != typeof(string) && base.CanConvertTo(context, destinationType);
     }

@@ -54,6 +54,9 @@ public class PokemonPool<T>(BaseConfig Settings) : List<T>
 
     public LedyRequest<T> GetRandomRequest()
     {
+        if (Requests.Count == 0)
+            return new LedyRequest<T>(GetRandomPoke(), string.Empty);
+
         var choice = Requests[Counter];
         Counter = (Counter + 1) % Count;
         if (Counter == 0 && Randomized)

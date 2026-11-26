@@ -333,13 +333,14 @@ public abstract class PokeRoutineExecutor9SV : PokeRoutineExecutor<PK9>
         }
 
         int timer = 60_000;
+        bool warnedNotRunning = false;
         while (!await IsOnOverworldTitle(token).ConfigureAwait(false))
         {
             await Task.Delay(1_000, token).ConfigureAwait(false);
             timer -= 1_000;
-            // We haven't made it back to overworld after a minute, so press A every 6 seconds hoping to restart the game.
-            // Don't risk it if hub is set to avoid updates.
-            if (timer <= 0 && !timing.AvoidSystemUpdate)
+            if (timer > 0)
+                continue;
+            if (!timing.AvoidSystemUpdate || await IsSVTitleRunning(token).ConfigureAwait(false))
             {
                 Log("¡Aún no estamos en el juego, iniciando protocolo de rescate!");
                 while (!await IsOnOverworldTitle(token).ConfigureAwait(false))
@@ -348,6 +349,11 @@ public abstract class PokeRoutineExecutor9SV : PokeRoutineExecutor<PK9>
                 }
 
                 break;
+            }
+            if (!warnedNotRunning)
+            {
+                Log("Scarlet/Violet aún no está activo; no se pulsa A porque está habilitado Evitar actualización del sistema.");
+                warnedNotRunning = true;
             }
         }
 
@@ -378,6 +384,19 @@ public abstract class PokeRoutineExecutor9SV : PokeRoutineExecutor<PK9>
                 int delay = config.Timings.KeypressTime;
                 await Click(key, delay, token).ConfigureAwait(false);
             }
+        }
+    }
+
+    private async Task<bool> IsSVTitleRunning(CancellationToken token)
+    {
+        try
+        {
+            var title = await SwitchConnection.GetTitleID(token).ConfigureAwait(false);
+            return title is ScarletID or VioletID;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return false;
         }
     }
 

@@ -19,6 +19,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.BotStatusUnknown] = "UNKNOWN";
                 target[LocalizationKeys.BotStatusError] = "ERROR";
                 target[LocalizationKeys.BotUnknownConnection] = "Unknown Connection";
+                target[LocalizationKeys.BotActions] = "Actions";
                 target[LocalizationKeys.BotMenuStart] = "Start Bot";
                 target[LocalizationKeys.BotMenuStop] = "Stop Bot";
                 target[LocalizationKeys.BotMenuIdle] = "Idle Bot";
@@ -48,6 +49,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.BotStatusUnknown] = "DESCONOCIDO";
                 target[LocalizationKeys.BotStatusError] = "ERROR";
                 target[LocalizationKeys.BotUnknownConnection] = "Conexion desconocida";
+                target[LocalizationKeys.BotActions] = "Acciones";
                 target[LocalizationKeys.BotMenuStart] = "Iniciar bot";
                 target[LocalizationKeys.BotMenuStop] = "Detener bot";
                 target[LocalizationKeys.BotMenuIdle] = "Pausar bot";

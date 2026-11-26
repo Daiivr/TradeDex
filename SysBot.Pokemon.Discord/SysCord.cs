@@ -7,6 +7,7 @@ using Discord.WebSocket;
 using Microsoft.Extensions.DependencyInjection;
 using PKHeX.Core;
 using SysBot.Base;
+using SysBot.Pokemon.Discord.Commands.Bots.SlashCommands;
 using SysBot.Pokemon.Discord.Helpers;
 using SysBot.Pokemon.Discord.Models;
 using SysBot.Pokemon.Localization;
@@ -51,6 +52,22 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
     private readonly List<Action> _tradeBotUnsubscribers = [];
     private DMRelayService? _dmRelayService;
     private bool _disposed;
+    private const int DisallowedIntentsCloseCode = 4014;
+    private const GatewayIntents PrivilegedIntents = GuildMembers | MessageContent;
+    private const GatewayIntents BaseIntents = Guilds | GuildMessages | DirectMessages;
+    private static GatewayIntents _allowedPrivilegedIntents = PrivilegedIntents;
+    private readonly GatewayIntents _requestedPrivilegedIntents;
+    private volatile bool _fatalGatewayClose;
+
+    private static readonly Dictionary<Type, Type> GameSpecificInteractionModules = new()
+    {
+        [typeof(CreatePokemonLGPEModule<>)] = typeof(PB7),
+        [typeof(CreatePokemonSWSHModule<>)] = typeof(PK8),
+        [typeof(CreatePokemonBDSPModule<>)] = typeof(PB8),
+        [typeof(CreatePokemonPLAModule<>)] = typeof(PA8),
+        [typeof(CreatePokemonSVModule<>)] = typeof(PK9),
+        [typeof(CreatePokemonPLZAModule<>)] = typeof(PA9),
+    };
 
     private readonly HashSet<string> _validCommands =
     [
@@ -68,8 +85,6 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
     ];
 
     private readonly DiscordManager Manager;
-    private readonly SemaphoreSlim _reconnectSemaphore = new(1, 1);
-    private CancellationTokenSource? _reconnectCts;
 
     public SysCord(PokeBotRunner<T> runner, ProgramConfig config)
     {
@@ -137,10 +152,13 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         SysCordSettings.HubConfig = Hub.Config;
         AppLocalization.SetDiscordSettings(Hub.Config.Discord);
 
+        _requestedPrivilegedIntents = _allowedPrivilegedIntents;
+
         _client = new DiscordSocketClient(new DiscordSocketConfig
         {
             LogLevel = LogSeverity.Info,
-            GatewayIntents = Guilds | GuildMessages | DirectMessages | GuildMembers | GuildPresences | MessageContent,
+            GatewayIntents = BaseIntents | _requestedPrivilegedIntents,
+            UseInteractionSnowflakeDate = false,
             //MessageCacheSize = 50,
         });
 
@@ -195,8 +213,22 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
 
     private Task Client_Disconnected(Exception exception)
     {
-        LogUtil.LogText($"Discord connection lost. Reason: {exception?.Message ?? "Unknown"}");
-        Task.Run(() => ReconnectAsync());
+        for (var ex = exception; ex != null; ex = ex.InnerException)
+        {
+            if (ex is WebSocketClosedException { CloseCode: DisallowedIntentsCloseCode })
+            {
+                _fatalGatewayClose = true;
+                _allowedPrivilegedIntents &= ~_requestedPrivilegedIntents;
+                LogUtil.LogError("SysCord", "Discord rechazó los intents privilegiados; se reiniciará el cliente sin ellos.");
+                return Task.CompletedTask;
+            }
+        }
+        // Log only. DiscordSocketClient reconnects automatically for transient drops;
+        // manually calling StartAsync/StopAsync here fights that built-in logic and can
+        // wedge the client into a "connected-but-deaf" or disposed state. Persistent
+        // failures are detected by MonitorStatusAsync (which returns from MainAsync) and
+        // handled by the supervisor loop in PokeBotRunnerImpl, which builds a fresh client.
+        LogUtil.LogText($"Discord connection lost. Reason: {exception?.Message ?? "Unknown"}. Awaiting automatic reconnect.");
         return Task.CompletedTask;
     }
 
@@ -204,101 +236,6 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
 
     // Track loading of Echo/Logging channels, so they aren't loaded multiple times.
     private bool MessageChannelsLoaded { get; set; }
-
-    private async Task ReconnectAsync()
-    {
-        // Prevent multiple concurrent reconnection attempts
-        if (!await _reconnectSemaphore.WaitAsync(0).ConfigureAwait(false))
-        {
-            LogUtil.LogText("Client is already attempting to reconnect.");
-            return;
-        }
-
-        try
-        {
-            // Cancel any previous reconnection attempt
-            _reconnectCts?.Cancel();
-            _reconnectCts?.Dispose();
-            _reconnectCts = new CancellationTokenSource();
-            var cancellationToken = _reconnectCts.Token;
-
-            const int maxRetries = 5;
-            const int delayBetweenRetries = 5000; // 5 seconds
-            const int initialDelay = 10000; // 10 seconds
-
-            // Initial delay to allow Discord's automatic reconnection
-            await Task.Delay(initialDelay, cancellationToken).ConfigureAwait(false);
-
-            for (int i = 0; i < maxRetries; i++)
-            {
-                if (cancellationToken.IsCancellationRequested)
-                {
-                    LogUtil.LogText("Reconnection attempt cancelled.");
-                    return;
-                }
-
-                try
-                {
-                    if (_client.ConnectionState == ConnectionState.Connected)
-                    {
-                        LogUtil.LogText("Client reconnected automatically.");
-                        return; // Already reconnected
-                    }
-
-                    // Check if the client is in the process of reconnecting
-                    if (_client.ConnectionState == ConnectionState.Connecting)
-                    {
-                        LogUtil.LogText("Waiting for automatic reconnection...");
-                        await Task.Delay(delayBetweenRetries, cancellationToken).ConfigureAwait(false);
-                        continue;
-                    }
-
-                    await _client.StartAsync().ConfigureAwait(false);
-                    LogUtil.LogText("Reconnected successfully.");
-                    return;
-                }
-                catch (Exception ex)
-                {
-                    LogUtil.LogText($"Reconnection attempt {i + 1} failed: {ex.Message}");
-                    if (i < maxRetries - 1)
-                        await Task.Delay(delayBetweenRetries, cancellationToken).ConfigureAwait(false);
-                }
-            }
-
-            // If all attempts to reconnect fail, stop and restart the bot
-            LogUtil.LogText("Failed to reconnect after maximum attempts. Restarting the bot...");
-
-            try
-            {
-                // Stop the bot cleanly
-                if (_client.ConnectionState != ConnectionState.Disconnected)
-                {
-                    await _client.StopAsync().ConfigureAwait(false);
-                    await Task.Delay(2000, cancellationToken).ConfigureAwait(false);
-                }
-
-                // Restart the bot
-                await _client.StartAsync().ConfigureAwait(false);
-                LogUtil.LogText("Bot restarted successfully.");
-            }
-            catch (Exception ex)
-            {
-                LogUtil.LogText($"Failed to restart bot: {ex.Message}");
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            LogUtil.LogText("Reconnection cancelled.");
-        }
-        catch (Exception ex)
-        {
-            LogUtil.LogText($"Unexpected error in ReconnectAsync: {ex.Message}");
-        }
-        finally
-        {
-            _reconnectSemaphore.Release();
-        }
-    }
 
     public async Task AnnounceBotStatus(string status, EmbedColorOption color)
     {
@@ -491,6 +428,8 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         await _interactions.AddModulesAsync(assembly, _services).ConfigureAwait(false);
         foreach (var t in assembly.DefinedTypes.Where(z => z.IsSubclassOf(typeof(InteractionModuleBase<SocketInteractionContext>)) && z.IsGenericType))
         {
+            if (GameSpecificInteractionModules.TryGetValue(t.AsType(), out var requiredPKM) && requiredPKM != typeof(T))
+                continue;
             var genModule = t.MakeGenericType(typeof(T));
             await _interactions.AddModuleAsync(genModule, _services).ConfigureAwait(false);
         }
@@ -500,12 +439,20 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         _client.Ready += RegisterSlashCommandsAsync;
         _client.MessageReceived += HandleMessageAsync;
         _client.InteractionCreated += HandleInteractionAsync;
+        _interactions.InteractionExecuted += OnInteractionExecutedAsync;
     }
 
     private async Task RegisterSlashCommandsAsync()
     {
         try
         {
+            var guildIdRaw = SysCordSettings.Settings.SlashCommandGuildId;
+            if (ulong.TryParse(guildIdRaw, out var guildId) && guildId != 0)
+            {
+                await _interactions.RegisterCommandsToGuildAsync(guildId, deleteMissing: true).ConfigureAwait(false);
+                await Log(new LogMessage(LogSeverity.Info, "Interactions", $"Slash commands registered to server {guildId}.")).ConfigureAwait(false);
+                return;
+            }
             // Register slash commands globally (available in all servers)
             await _interactions.RegisterCommandsGloballyAsync().ConfigureAwait(false);
             await Log(new LogMessage(LogSeverity.Info, "Interactions", AppLocalization.Get(LocalizationKeys.LogSlashCommandsRegistered))).ConfigureAwait(false);
@@ -521,7 +468,9 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         try
         {
             var context = new SocketInteractionContext(_client, interaction);
-            await _interactions.ExecuteCommandAsync(context, _services).ConfigureAwait(false);
+            var result = await _interactions.ExecuteCommandAsync(context, _services).ConfigureAwait(false);
+            if (!result.IsSuccess && result.Error == InteractionCommandError.UnknownCommand && !interaction.HasResponded)
+                await interaction.RespondAsync(AppLocalization.Get(LocalizationKeys.DiscordInteractionCommandError), ephemeral: true).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -537,17 +486,53 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         }
     }
 
+    private async Task OnInteractionExecutedAsync(ICommandInfo command, IInteractionContext context, global::Discord.Interactions.IResult result)
+    {
+        if (result.IsSuccess || result.Error == InteractionCommandError.UnknownCommand || context.Interaction is IAutocompleteInteraction)
+            return;
+        var message = result.Error == InteractionCommandError.UnmetPrecondition
+            ? result.ErrorReason
+            : AppLocalization.Get(LocalizationKeys.DiscordInteractionCommandError);
+        try
+        {
+            if (context.Interaction.HasResponded)
+                await context.Interaction.FollowupAsync(message, ephemeral: true).ConfigureAwait(false);
+            else
+                await context.Interaction.RespondAsync(message, ephemeral: true).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            await Log(new LogMessage(LogSeverity.Warning, "Interactions", ex.Message, ex)).ConfigureAwait(false);
+        }
+    }
+
     public async Task MainAsync(string apiToken, CancellationToken token)
     {
         // Centralize the logic for commands into a separate method.
         await InitCommands().ConfigureAwait(false);
 
-        // Login and connect.
+        // Query granted intents before opening the gateway.
         await _client.LoginAsync(TokenType.Bot, apiToken).ConfigureAwait(false);
-        await _client.StartAsync().ConfigureAwait(false);
 
         var app = await _client.GetApplicationInfoAsync().ConfigureAwait(false);
         Manager.Owner = app.Owner.Id;
+
+        if (app.Flags is { } flags)
+        {
+            var granted = GatewayIntents.None;
+            if ((flags & (ApplicationFlags.GatewayMessageContent | ApplicationFlags.GatewayMessageContentLimited)) != 0)
+                granted |= MessageContent;
+            if ((flags & (ApplicationFlags.GatewayGuildMembers | ApplicationFlags.GatewayGuildMembersLimited)) != 0)
+                granted |= GuildMembers;
+            if ((_requestedPrivilegedIntents & ~granted) != 0)
+            {
+                _allowedPrivilegedIntents &= granted;
+                await _client.LogoutAsync().ConfigureAwait(false);
+                Dispose();
+                return;
+            }
+        }
+        await _client.StartAsync().ConfigureAwait(false);
 
         // Initialize recovery notifications if recovery is enabled
         InitializeRecoveryNotifications();
@@ -565,9 +550,6 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         }
         finally
         {
-            // Cancel any ongoing reconnection attempts
-            try { _reconnectCts?.Cancel(); } catch (ObjectDisposedException) { }
-
             // Disconnect the bot
             try { await _client.StopAsync(); } catch { }
 
@@ -594,6 +576,7 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         }
         _commands.Log -= Log;
         _interactions.Log -= Log;
+        _interactions.InteractionExecuted -= OnInteractionExecutedAsync;
 
         // Unsubscribe per-bot connection events
         foreach (var unsubscribe in _tradeBotUnsubscribers)
@@ -605,10 +588,6 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         // Dispose owned resources
         _dmRelayService?.Dispose();
         _dmRelayService = null;
-
-        try { _reconnectCts?.Cancel(); } catch (ObjectDisposedException) { }
-        _reconnectCts?.Dispose();
-        _reconnectSemaphore?.Dispose();
 
         _services?.Dispose();
         _client?.Dispose();
@@ -737,7 +716,8 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         SaveStats(stats);
     }
 
-    private static int GetRequiredXPForNextLevel(int currentLevel) => (int)(100 * Math.Pow(1.2, Math.Max(0, currentLevel - 1)));
+    private static int GetRequiredXPForNextLevel(int currentLevel) =>
+        XpProgression.GetRequiredXPForNextLevel(currentLevel);
 
     private static Dictionary<string, UserStats> LoadOrCreateStats()
     {
@@ -798,6 +778,17 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
             {
                 await SysCord<T>.RespondToThanksMessage(msg).ConfigureAwait(false);
                 return;
+            }
+
+            if (SysCordSettings.Settings.AllowMentionPrefix)
+            {
+                int mentionPos = 0;
+                if (msg.HasMentionPrefix(_client.CurrentUser, ref mentionPos))
+                {
+                    var mentionContext = new SocketCommandContext(_client, msg);
+                    if (await TryHandleCommandAsync(msg, mentionContext, mentionPos).ConfigureAwait(false))
+                        return;
+                }
             }
 
             char[] allowedPrefixes = new[]
@@ -942,14 +933,36 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         await ApplyDiscordCustomStatusAsync().ConfigureAwait(false);
     }
 
+    // If the gateway stays unhealthy longer than this, MonitorStatusAsync returns so the
+    // supervisor loop in PokeBotRunnerImpl can build a fresh client. Generous enough to let
+    // Discord.NET's own auto-reconnect recover from transient drops first.
+    private static readonly TimeSpan DisconnectRestartThreshold = TimeSpan.FromSeconds(120);
+
     private async Task MonitorStatusAsync(CancellationToken token)
     {
         const int Interval = 20; // seconds
 
         // Check datetime for update
         UserStatus state = UserStatus.Idle;
+        var lastConnected = DateTime.Now;
         while (!token.IsCancellationRequested)
         {
+            if (_fatalGatewayClose)
+                return;
+            // --- Connection health watchdog ---
+            // While connected, keep resetting the timer. If the gateway stays unhealthy for
+            // too long, exit so the bot can be rebuilt from scratch rather than silently
+            // sitting on a dead/disposed client (which previously required a full app restart).
+            if (_client.ConnectionState == ConnectionState.Connected)
+            {
+                lastConnected = DateTime.Now;
+            }
+            else if (DateTime.Now - lastConnected > DisconnectRestartThreshold)
+            {
+                LogUtil.LogText($"Discord gateway has been unhealthy for over {DisconnectRestartThreshold.TotalSeconds:0}s. Ending session so a fresh client can be created.");
+                return;
+            }
+
             var time = DateTime.Now;
             var lastLogged = LogUtil.LastLogged;
             if (Hub.Config.Discord.BotColorStatusTradeOnly)
@@ -966,22 +979,41 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
             if (gap <= TimeSpan.Zero)
             {
                 var idle = noQueue ? UserStatus.DoNotDisturb : UserStatus.Idle;
-                if (idle != state)
-                {
+                if (idle != state && await TrySetStatusAsync(idle).ConfigureAwait(false))
                     state = idle;
-                    await ApplyDiscordStatusAsync(state).ConfigureAwait(false);
-                }
                 await Task.Delay(2_000, token).ConfigureAwait(false);
                 continue;
             }
 
             var active = noQueue ? UserStatus.DoNotDisturb : UserStatus.Online;
-            if (active != state)
-            {
+            if (active != state && await TrySetStatusAsync(active).ConfigureAwait(false))
                 state = active;
-                await ApplyDiscordStatusAsync(state).ConfigureAwait(false);
-            }
             await Task.Delay(gap, token).ConfigureAwait(false);
+        }
+    }
+
+    /// <summary>
+    /// Updates the bot's presence without letting a transient gateway error tear down the
+    /// status loop. Previously an exception here propagated out of MainAsync and permanently
+    /// disposed the client. Returns true only if the status was actually applied.
+    /// </summary>
+    private async Task<bool> TrySetStatusAsync(UserStatus status)
+    {
+        if (_client.ConnectionState != ConnectionState.Connected)
+            return false;
+        try
+        {
+            await _client.SetStatusAsync(status).ConfigureAwait(false);
+            return true;
+        }
+        catch (ObjectDisposedException)
+        {
+            return false;
+        }
+        catch (Exception ex)
+        {
+            LogUtil.LogText($"MonitorStatusAsync: failed to set status: {ex.Message}");
+            return false;
         }
     }
 
@@ -1035,7 +1067,7 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
                 return false;
 
             if (!result.IsSuccess)
-                await SafeSendMessageAsync(msg.Channel, result.ErrorReason).ConfigureAwait(false);
+                await SafeSendMessageAsync(msg.Channel, FormatCommandErrorMessage(msg, result)).ConfigureAwait(false);
 
             return true;
         }
@@ -1059,6 +1091,29 @@ public sealed partial class SysCord<T> : IDisposable where T : PKM, new()
         return command is not null &&
                (command.Equals("profile", StringComparison.OrdinalIgnoreCase) ||
                 command.Equals("tp", StringComparison.OrdinalIgnoreCase));
+    }
+
+    private static string FormatCommandErrorMessage(SocketUserMessage msg, global::Discord.Commands.IResult result)
+    {
+        if (IsTooFewParametersError(result))
+            return AppLocalization.Format(LocalizationKeys.DiscordCommandTooFewParameters, msg.Author.Mention);
+
+        if (IsTooManyParametersError(result))
+            return AppLocalization.Format(LocalizationKeys.DiscordCommandTooManyParameters, msg.Author.Mention);
+
+        return result.ErrorReason;
+    }
+
+    private static bool IsTooFewParametersError(global::Discord.Commands.IResult result)
+    {
+        return result.Error == CommandError.BadArgCount &&
+               result.ErrorReason.Contains("too few parameters", StringComparison.OrdinalIgnoreCase);
+    }
+
+    private static bool IsTooManyParametersError(global::Discord.Commands.IResult result)
+    {
+        return result.Error == CommandError.BadArgCount &&
+               result.ErrorReason.Contains("too many parameters", StringComparison.OrdinalIgnoreCase);
     }
 
     private static async Task SafeSendMessageAsync(IMessageChannel channel, string message)

@@ -31,6 +31,8 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
 {
     private static TradeQueueInfo<T> Info => SysCord<T>.Runner.Hub.Queues.Info;
     private static string Prefix => SysCordSettings.Settings.CommandPrefix;
+    private static string EventsFolder => SysCord<T>.Runner.Config.Folder.EventsFolder;
+    private static string BattleReadyPKMFolder => SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder;
 
     #region Medal Achievement Command
 
@@ -48,9 +50,10 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             return;
         }
 
-        int currentMilestone = MedalHelpers.GetCurrentMilestone(totalTrades);
-        var embed = MedalHelpers.CreateMedalsEmbed(Context.User, currentMilestone, totalTrades);
-        await Context.Channel.SendMessageAsync(embed: embed).ConfigureAwait(false);
+        await using var medalsImage = MedalHelpers.BuildMedalsCollectionImage(totalTrades);
+        var attachment = new FileAttachment(medalsImage, MedalHelpers.GetMedalsCollectionFileName(Context.User.Id));
+        var component = MedalHelpers.CreateMedalsShowcaseComponent(Context.User, totalTrades);
+        await Context.Channel.SendFileAsync(attachment, components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
     }
 
     #endregion
@@ -79,10 +82,13 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Alias("t")]
     [Summary("Makes the bot trade you the provided Pokémon file.")]
     [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
-    public Task TradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
+    public async Task TradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
     {
         var sig = Context.User.GetFavor();
-        return ProcessTradeAttachmentAsync(code, sig, Context.User, ignoreAutoOT: ignoreAutoOT);
+        await ProcessTradeAttachmentAsync(code, sig, Context.User, ignoreAutoOT: ignoreAutoOT).ConfigureAwait(false);
+
+        if (Context.Message is IUserMessage userMessage)
+            _ = Helpers<T>.DeleteMessagesAfterDelayAsync(userMessage, null, 2);
     }
 
     [Command("trade")]
@@ -126,10 +132,13 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Alias("ht")]
     [Summary("Makes the bot trade you the provided file without showing trade embed details.")]
     [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
-    public Task HideTradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
+    public async Task HideTradeAsyncAttach([Summary("Trade Code")] int code, [Summary("Ignore AutoOT")] bool ignoreAutoOT = false)
     {
         var sig = Context.User.GetFavor();
-        return ProcessTradeAttachmentAsync(code, sig, Context.User, isHiddenTrade: true, ignoreAutoOT: ignoreAutoOT);
+        await ProcessTradeAttachmentAsync(code, sig, Context.User, isHiddenTrade: true, ignoreAutoOT: ignoreAutoOT).ConfigureAwait(false);
+
+        if (Context.Message is IUserMessage userMessage)
+            _ = Helpers<T>.DeleteMessagesAfterDelayAsync(userMessage, null, 2);
     }
 
     [Command("hidetrade")]
@@ -212,8 +221,9 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         content = ReusableActions.StripCodeBlock(content);
         var set = new ShowdownSet(content);
 
-        // You can still get template if you want other ALM things, but not for GenerateEgg
-         var template = AutoLegalityWrapper.GetTemplate(set);
+        // GetTemplate parses Ball:/.Scale= into the RegenTemplate's Regen (and consumes those
+        // lines from set.InvalidLines), so this same instance must be the one passed to GenerateEgg.
+        var template = AutoLegalityWrapper.GetTemplate(set);
 
         _ = Task.Run(async () =>
         {
@@ -221,11 +231,11 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             {
                 var sav = AutoLegalityWrapper.GetTrainerInfo<T>();
 
-                // Wrap the ShowdownSet in a RegenTemplate for GenerateEgg
-                var regenTemplate = new RegenTemplate(set);
-
-                // Generate the egg using ALM's GenerateEgg
-                var pkm = sav.GenerateEgg(regenTemplate, out var result);
+                // Reuse the template built above. GetTemplate(set) already parsed the Ball:/.Scale=
+                // lines into its Regen AND removed them from set.InvalidLines, so building a second
+                // RegenTemplate(set) here would silently drop the user's ball and batch commands.
+                // Generate the egg (also applies the user's batch commands, e.g. .Scale=)
+                var pkm = AutoLegalityWrapper.GenerateEgg(sav, template, out var result);
 
                 if (result != LegalizationResult.Regenerated)
                 {
@@ -306,9 +316,9 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
 
     [Command("dittoTrade")]
     [Alias("dt", "ditto")]
-    [Summary("Makes the bot trade you a Ditto with a requested stat spread and language.")]
-    public async Task DittoTrade([Summary("A combination of \"ATK/SPA/SPE\" or \"6IV\"")] string keyword,
-        [Summary("Language")] string language, [Summary("Nature")] string nature)
+    [Summary("Makes the bot trade you a customizable Ditto. Optional arguments in any order: IVs, Language, Nature, Shiny, OT/TID/SID[/Gender], and Origin Game. No arguments creates a Shiny Ditto.")]
+    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
+    public async Task DittoTrade([Remainder][Summary("Optional: IVs, Language, Nature, Shiny, OT/TID/SID[/Gender], and Origin Game")] string args = "")
     {
         var userID = Context.User.Id;
         if (!await Helpers<T>.EnsureUserNotInQueueAsync(userID))
@@ -318,38 +328,183 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         }
 
         var code = Info.GetRandomTradeCode(userID);
-        await ProcessDittoTradeAsync(code, keyword, language, nature);
+        await ProcessDittoTradeAsync(code, args);
     }
 
-    [Command("dittoTrade")]
-    [Alias("dt", "ditto")]
-    [Summary("Makes the bot trade you a Ditto with a requested stat spread and language.")]
-    public async Task DittoTrade([Summary("Trade Code")] int code,
-        [Summary("A combination of \"ATK/SPA/SPE\" or \"6IV\"")] string keyword,
-        [Summary("Language")] string language, [Summary("Nature")] string nature)
+    private static readonly HashSet<string> DittoNatures = new(StringComparer.OrdinalIgnoreCase)
     {
-        var userID = Context.User.Id;
-        if (!await Helpers<T>.EnsureUserNotInQueueAsync(userID))
+        "Hardy", "Lonely", "Brave", "Adamant", "Naughty",
+        "Bold", "Docile", "Relaxed", "Impish", "Lax",
+        "Timid", "Hasty", "Serious", "Jolly", "Naive",
+        "Modest", "Mild", "Quiet", "Bashful", "Rash",
+        "Calm", "Gentle", "Sassy", "Careful", "Quirky",
+    };
+
+    private static readonly HashSet<string> DittoLanguages = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "Japanese", "English", "French", "Italian", "German",
+        "Spanish", "Korean", "ChineseS", "ChineseT",
+    };
+
+    private static readonly Dictionary<string, string> DittoGameKeywords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        ["SV"] = "50", ["Violet"] = "50", ["Scarlet"] = "50",
+        ["SLVL"] = "50", ["SL"] = "50", ["VL"] = "50",
+        ["BDSP"] = "48", ["BD"] = "48", ["BrilliantDiamond"] = "48",
+        ["ShiningPearl"] = "48", ["SP"] = "48", ["BS"] = "48",
+        ["SWSH"] = "45", ["SW"] = "45", ["Sword"] = "45",
+        ["SS"] = "45", ["Shield"] = "45", ["SH"] = "45",
+    };
+
+    private static string GetDefaultDittoVersion()
+    {
+        if (typeof(T) == typeof(PK9))
+            return "50";
+        if (typeof(T) == typeof(PB8))
+            return "48";
+        return "45";
+    }
+
+    private async Task ProcessDittoTradeAsync(int code, string args)
+    {
+        string nature = "Timid";
+        string language = "Japanese";
+        bool shiny = string.IsNullOrWhiteSpace(args);
+        string ot = "Ditto";
+        string tid = "143319";
+        string sid = "2551";
+        string otGender = "Male";
+        string version = GetDefaultDittoVersion();
+        int[] ivs = [31, 31, 31, 31, 31, 31];
+        bool userSetIVs = false;
+
+        var working = args ?? string.Empty;
+        working = Regex.Replace(working, @"\bBrilliant\s+Diamond\b", "BrilliantDiamond", RegexOptions.IgnoreCase);
+        working = Regex.Replace(working, @"\bShining\s+Pearl\b", "ShiningPearl", RegexOptions.IgnoreCase);
+
+        var tokens = working.Split([' ', '\t', '\n', '\r'], StringSplitOptions.RemoveEmptyEntries);
+        var unknown = new List<string>();
+
+        foreach (var raw in tokens)
         {
-            await Helpers<T>.SendAlreadyInQueueEmbedAsync(Context);
+            var token = raw.Trim();
+            if (token.Length == 0)
+                continue;
+
+            if (Regex.IsMatch(token, @"^\d+/\d+/\d+/\d+/\d+/\d+$"))
+            {
+                var parts = token.Split('/');
+                var parsed = new int[6];
+                bool ok = true;
+                for (int i = 0; i < 6; i++)
+                {
+                    if (!int.TryParse(parts[i], out parsed[i]) || parsed[i] < 0 || parsed[i] > 31)
+                    {
+                        ok = false;
+                        break;
+                    }
+                }
+
+                if (!ok)
+                {
+                    await Helpers<T>.ReplyAndDeleteAsync(Context, AppLocalization.Format(LocalizationKeys.DiscordDittoInvalidIVSpread, token), 5);
+                    return;
+                }
+
+                ivs = parsed;
+                userSetIVs = true;
+                continue;
+            }
+
+            var slashCount = token.Count(c => c == '/');
+            if (slashCount == 2 || slashCount == 3)
+            {
+                var parts = token.Split('/');
+                if (parts[0].Length > 0 && uint.TryParse(parts[1], out _) && uint.TryParse(parts[2], out _))
+                {
+                    string? gender = null;
+                    bool valid = true;
+                    if (parts.Length == 4)
+                    {
+                        var g = parts[3];
+                        if (g.Equals("Male", StringComparison.OrdinalIgnoreCase) || g.Equals("M", StringComparison.OrdinalIgnoreCase))
+                            gender = "Male";
+                        else if (g.Equals("Female", StringComparison.OrdinalIgnoreCase) || g.Equals("F", StringComparison.OrdinalIgnoreCase))
+                            gender = "Female";
+                        else
+                            valid = false;
+                    }
+
+                    if (valid)
+                    {
+                        ot = parts[0];
+                        tid = parts[1];
+                        sid = parts[2];
+                        if (gender != null)
+                            otGender = gender;
+                        continue;
+                    }
+                }
+            }
+
+            if (token.Equals("Shiny", StringComparison.OrdinalIgnoreCase))
+            {
+                shiny = true;
+                continue;
+            }
+
+            if (DittoGameKeywords.TryGetValue(token, out var ver))
+            {
+                version = ver;
+                continue;
+            }
+
+            if (DittoLanguages.Contains(token))
+            {
+                language = char.ToUpper(token[0]) + token[1..].ToLower();
+                if (token.Equals("ChineseS", StringComparison.OrdinalIgnoreCase))
+                    language = "ChineseS";
+                else if (token.Equals("ChineseT", StringComparison.OrdinalIgnoreCase))
+                    language = "ChineseT";
+                continue;
+            }
+
+            if (DittoNatures.Contains(token))
+            {
+                nature = char.ToUpper(token[0]) + token[1..].ToLower();
+                continue;
+            }
+
+            unknown.Add(token);
+        }
+
+        if (unknown.Count > 0)
+        {
+            await Helpers<T>.ReplyAndDeleteAsync(Context,
+                AppLocalization.Format(LocalizationKeys.DiscordDittoUnknownArguments, string.Join("`, `", unknown), Context.User.Mention), 8);
             return;
         }
 
-        await ProcessDittoTradeAsync(code, keyword, language, nature);
-    }
+        var sb = new StringBuilder();
+        sb.AppendLine("Ditto @ Destiny Knot");
+        sb.AppendLine("Level: 100");
+        if (shiny)
+            sb.AppendLine("Shiny: Yes");
+        sb.AppendLine($"{nature} Nature");
+        sb.AppendLine($"Language: {language}");
+        sb.AppendLine($"OT: {ot}");
+        sb.AppendLine($"TID: {tid}");
+        sb.AppendLine($"SID: {sid}");
+        sb.AppendLine($"OTGender: {otGender}");
+        sb.AppendLine($".IV_HP={ivs[0]}");
+        sb.AppendLine($".IV_ATK={ivs[1]}");
+        sb.AppendLine($".IV_DEF={ivs[2]}");
+        sb.AppendLine($".IV_SPA={ivs[3]}");
+        sb.AppendLine($".IV_SPD={ivs[4]}");
+        sb.AppendLine($".IV_SPE={ivs[5]}");
+        sb.AppendLine($"~=Version={version}");
 
-    private async Task ProcessDittoTradeAsync(int code, string keyword, string language, string nature)
-    {
-        keyword = keyword.ToLower().Trim();
-
-        if (!Enum.TryParse(language, true, out LanguageID lang))
-        {
-            await Helpers<T>.ReplyAndDeleteAsync(Context, AppLocalization.Format(LocalizationKeys.DiscordLanguageNotRecognized, language), 5);
-            return;
-        }
-
-        nature = nature.Trim()[..1].ToUpper() + nature.Trim()[1..].ToLower();
-        var set = new ShowdownSet($"{keyword}(Ditto)\nLanguage: {lang}\nNature: {nature}");
+        var set = new ShowdownSet(sb.ToString());
         var template = AutoLegalityWrapper.GetTemplate(set);
         var sav = AutoLegalityWrapper.GetTrainerInfo<T>();
         var pkm = sav.GetLegal(template, out var result);
@@ -360,20 +515,14 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
             return;
         }
 
-        pkm = TradeExtensions<T>.DittoTrade((T)pkm);
-
-        // Apply early AutoOT for cached trainer info
-        if (pkm is T dittoPk)
-        {
-            TryApplyEarlyAutoOT(dittoPk, Context.User.Id);
-        }
+        pkm = TradeExtensions<T>.DittoTrade((T)pkm, userSetIVs ? ivs : null);
 
         var la = new LegalityAnalysis(pkm);
 
         if (pkm is not T pk || !la.Valid)
         {
             var reason = result == "Timeout" ? AppLocalization.Get(LocalizationKeys.DiscordGenerateTimeout) : AppLocalization.Get(LocalizationKeys.DiscordCreateSomethingFailed);
-            var imsg = AppLocalization.Format(LocalizationKeys.DiscordBestAttemptDitto, reason);
+            var imsg = AppLocalization.Format(LocalizationKeys.DiscordBestAttemptDitto, reason, Context.User.Mention);
             await Context.Channel.SendPKMAsync(pkm, imsg).ConfigureAwait(false);
             return;
         }
@@ -385,15 +534,17 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         {
             if (TradeExtensions<T>.HasAdName(pk, out string ad))
             {
-                var botName = string.IsNullOrEmpty(SysCordSettings.HubConfig.BotName);
-                await Helpers<T>.ReplyAndDeleteAsync(Context, $"{Context.User.Username} just tried genning an Admon on {botName}\nEveryone laugh at them and start calling them stupid.", 15);
+                var botName = string.IsNullOrEmpty(SysCordSettings.HubConfig.BotName)
+                    ? "el bot"
+                    : SysCordSettings.HubConfig.BotName;
+                await Helpers<T>.ReplyAndDeleteAsync(Context, AppLocalization.Format(LocalizationKeys.DiscordDittoAdAttempt, Context.User.Username, botName), 15);
                 return;
             }
         }
 
         var sig = Context.User.GetFavor();
         await QueueHelper<T>.AddToQueueAsync(Context, code, Context.User.Username, sig, pk,
-            PokeRoutineType.LinkTrade, PokeTradeType.Specific).ConfigureAwait(false);
+            PokeRoutineType.LinkTrade, PokeTradeType.Specific, Context.User, ignoreAutoOT: true).ConfigureAwait(false);
 
         if (Context.Message is IUserMessage userMessage)
             _ = Helpers<T>.DeleteMessagesAfterDelayAsync(userMessage, null, 2);
@@ -402,6 +553,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("itemTrade")]
     [Alias("it", "item")]
     [Summary("Makes the bot trade you a Pokémon holding the requested item.")]
+    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
     public async Task ItemTrade([Remainder] string item)
     {
         var userID = Context.User.Id;
@@ -418,6 +570,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("itemTrade")]
     [Alias("it", "item")]
     [Summary("Makes the bot trade you a Pokémon holding the requested item.")]
+    [RequireQueueRole(nameof(DiscordManager.RolesFixOT))]
     public async Task ItemTrade([Summary("Trade Code")] int code, [Remainder] string item)
     {
         var userID = Context.User.Id;
@@ -480,7 +633,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("itemBatchTrade")]
     [Alias("ibt")]
     [Summary("Makes the bot trade you the default item-trade species holding the requested item, multiple times in a batch.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public async Task ItemBatchTrade([Summary("Item Name and Count, e.g. 'Life Orb 6'")][Remainder] string content)
     {
         var tradeConfig = SysCord<T>.Runner.Config.Trade.TradeConfiguration;
@@ -606,7 +759,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     }
 
     // Dictionaries for the TextTrade command's pending trades and queue status
-    private static readonly ConcurrentDictionary<ulong, List<string>> _pendingTextTrades = new();
+    internal static readonly ConcurrentDictionary<ulong, List<string>> _pendingTextTrades = new();
     private static readonly ConcurrentDictionary<ulong, bool> _usersInQueue = new();
     private static readonly ConcurrentDictionary<ulong, bool> _batchQueueMessageSent = new();
 
@@ -771,7 +924,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         // ===== JOB 2: Selection =====
         if (!_pendingTextTrades.TryGetValue(userId, out var sets))
         {
-            await ReplyAsync(AppLocalization.Get(LocalizationKeys.DiscordTextTradeNoFile));
+            await ReplyAsync(AppLocalization.Format(LocalizationKeys.DiscordTextTradeNoFile, user.Mention));
             return;
         }
 
@@ -956,7 +1109,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task ListEventsAsync([Remainder] string args = "")
         => ListHelpers<T>.HandleListCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.EventsFolder,
+            SysCord<T>.Runner.Config.Folder.EventsFolder,
             "events",
             "er",
             args
@@ -968,7 +1121,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     public Task BattleReadyListAsync([Remainder] string args = "")
         => ListHelpers<T>.HandleListCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.BattleReadyPKMFolder,
+            SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder,
             "battle-ready files",
             "brr",
             args
@@ -981,11 +1134,11 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("eventrequest")]
     [Alias("er")]
     [Summary("Downloads event attachments from the specified EventsFolder and adds to trade queue.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public Task EventRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.EventsFolder,
+            SysCord<T>.Runner.Config.Folder.EventsFolder,
             index,
             "event",
             "le"
@@ -994,11 +1147,11 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("battlereadyrequest")]
     [Alias("brr", "br")]
     [Summary("Downloads battle-ready attachments from the specified folder and adds to trade queue.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public Task BattleReadyRequestAsync(int index)
         => ListHelpers<T>.HandleRequestCommandAsync(
             Context,
-            SysCord<T>.Runner.Config.Trade.RequestFolderSettings.BattleReadyPKMFolder,
+            SysCord<T>.Runner.Config.Folder.BattleReadyPKMFolder,
             index,
             "battle-ready file",
             "brl"
@@ -1011,7 +1164,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("batchTrade")]
     [Alias("bt")]
     [Summary("Makes the bot trade multiple Pokémon from the provided list, up to a maximum of 4 trades.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public async Task BatchTradeAsync([Summary("List of Showdown Sets separated by '---'")][Remainder] string content)
     {
         var tradeConfig = SysCord<T>.Runner.Config.Trade.TradeConfiguration;
@@ -1112,7 +1265,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     [Command("batchtradezip")]
     [Alias("btz", "batchzip", "ziptrade", "7z", "rar", "zip", "bt7", "btr", "batch7z", "batchrar")]
     [Summary("Upload a .zip/.rar/.7z containing PKM files to trade multiple Pokémon at once.")]
-    [RequireQueueRole(nameof(DiscordManager.RolesTrade))]
+    [RequireQueueRole(nameof(DiscordManager.RolesTradePlus))]
     public async Task BatchTradeZipAsync()
     {
         var tradeConfig = SysCord<T>.Runner.Config.Trade.TradeConfiguration;
@@ -1183,7 +1336,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
                 AppLocalization.Format(LocalizationKeys.DiscordBatchZipProcessing, Context.User.Mention)
             );
 
-            tempDir = Path.Combine(Path.GetTempPath(), $"FusionBot_BTZ_{Guid.NewGuid()}");
+            tempDir = Path.Combine(Path.GetTempPath(), $"TradeDex_BTZ_{Guid.NewGuid()}");
             Directory.CreateDirectory(tempDir);
 
             var safeName = Path.GetFileName(attachment.Filename);
@@ -1359,7 +1512,7 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
     /// This allows Pokemon to be injected with the user's correct trainer data immediately.
     /// Respects the UseTradePartnerInfo setting - if disabled, Pokemon keep bot's configured defaults.
     /// </summary>
-    private static void TryApplyEarlyAutoOT(T pk, ulong userID, bool ignoreAutoOT = false, bool hasExplicitLanguage = false)
+    internal static void TryApplyEarlyAutoOT(T pk, ulong userID, bool ignoreAutoOT = false, bool hasExplicitLanguage = false)
     {
         // Check if AutoOT is enabled and StoreTradeCodes is enabled
         if (ignoreAutoOT ||
@@ -1385,6 +1538,12 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
 
         var originalPk = pk.Clone();
 
+        // Capture shiny state from the unmodified pkm. Once TID/SID are overwritten below,
+        // pk.IsShiny re-evaluates against the new trainer IDs with the old PID and will
+        // almost always read false — silently dropping the shiny we just generated.
+        bool wasShiny = originalPk.IsShiny;
+        uint originalShinyXor = originalPk.ShinyXor;
+
         // Apply cached trainer info
         pk.OriginalTrainerName = cachedTrainerDetails.OT;
         pk.TrainerTID7 = (uint)cachedTrainerDetails.TID;
@@ -1401,12 +1560,9 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
         if (!pk.IsNicknamed)
             pk.ClearNickname();
 
-        // Recalculate PID for shiny Pokemon
-        if (pk.IsShiny)
-        {
-            var shinyXor = pk.ShinyXor;
-            pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ shinyXor) << 16) | (pk.PID & 0xFFFF);
-        }
+        // Rebuild PID against the new TID/SID so the original shiny type (Square/Star) is preserved.
+        if (wasShiny)
+            pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ originalShinyXor) << 16) | (pk.PID & 0xFFFF);
 
         pk.RefreshChecksum();
 
@@ -1445,6 +1601,14 @@ public partial class TradeModule<T> : ModuleBase<SocketCommandContext> where T :
                 // Normalize content and parse Showdown set
                 // IMPORTANT: ShowdownSet is IMMUTABLE — never try to modify Nature/IVs/etc on it
                 content = BatchCommandNormalizer.NormalizeBatchCommands(content);
+
+                // Reject future-dated MetDate requests (must run AFTER normalization
+                // since the validator only matches the .MetDate=YYYYMMDD batch form).
+                if (!MetDateValidator.IsValid(content, out var metDateError))
+                {
+                    await Helpers<T>.ReplyAndDeleteAsync(Context, metDateError!, 10);
+                    return;
+                }
 
                 // Parse hypertraining preferences before stripping code blocks
                 var userHTPreferences = AutoLegalityExtensionsDiscord.ParseHyperTrainingCommandsPublic(content);

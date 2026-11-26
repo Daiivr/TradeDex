@@ -109,6 +109,9 @@ public static partial class AppLocalization
         if (string.IsNullOrWhiteSpace(message))
             return message;
 
+        if (IsKnownLocalizedValue(message, language))
+            return ApplyDiscordMessageIcons(message);
+
         var exactTranslations = language is AppLanguage.Spanish
             ? LogMessageTranslations
             : ReverseLogMessageTranslations;
@@ -144,6 +147,20 @@ public static partial class AppLocalization
         }
 
         return ApplyRuntimeFragments(ApplyRuntimeFallback(message, language), language);
+    }
+
+    private static bool IsKnownLocalizedValue(string message, AppLanguage language)
+    {
+        if (!Translations.TryGetValue(language, out var localized))
+            return false;
+
+        foreach (var value in localized.Values)
+        {
+            if (string.Equals(value, message, StringComparison.Ordinal))
+                return true;
+        }
+
+        return false;
     }
 
     private static string ApplyRuntimeFallback(string message, AppLanguage language)

@@ -376,7 +376,15 @@ public class DiscordTradeNotifier<T> : IPokeTradeNotifier<T>, IDisposable
                         : AppLocalization.Format(LocalizationKeys.DiscordTradeFinishedEnjoyPokemon, GetDisplaySpeciesName(Data));
         }
 
-        new TradeCodeStorage().RecordLastTrade(Trader.Id, GetLastTradeDisplayName(info.Type));
+        var storage = new TradeCodeStorage();
+        storage.RecordLastTrade(Trader.Id, GetLastTradeDisplayName(info.Type));
+
+        if (result is not null && result.Species > 0)
+        {
+            var partyBytes = new byte[result.SIZE_PARTY];
+            result.WriteDecryptedDataParty(partyBytes);
+            storage.RecordReceivedTradeFile(Trader.Id, result.FileName, GetDisplaySpeciesName(result), partyBytes);
+        }
 
         EmbedHelper.SendTradeFinishedEmbedAsync(Trader, message, Data, IsMysteryEgg, IsMysteryTrade, info.Type).ConfigureAwait(false);
 

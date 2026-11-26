@@ -1,4 +1,4 @@
-﻿using System.Collections.Generic;
+using System.Collections.Generic;
 namespace SysBot.Pokemon.Localization;
 public static partial class AppLocalization
 {
@@ -20,7 +20,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordTextTradeHowToTradeValue] = "â€¢ Single trade: `{0}tt 1`\nâ€¢ Multiple trades (batch): `{0}tt 1 2 3`\nâ€¢ Max: **{1} Pokemon** per batch";
                 target[LocalizationKeys.DiscordTextTradeFooter] = "Shiny | Fishy | No Held Item | Has OT/TID/SID | Egg\nMake a selection within 60s or the TextTrade is canceled automatically.";
                 target[LocalizationKeys.DiscordTextTradeExpired] = "⌛ {0}, your TextTrade request expired after 80 seconds.";
-                target[LocalizationKeys.DiscordTextTradeNoFile] = "You haven't uploaded a file yet or it expired. Attach a text-based file first.";
+                target[LocalizationKeys.DiscordTextTradeNoFile] = "⚠️ {0}, you haven't uploaded a file yet or it expired. Attach a text-based file first.";
                 target[LocalizationKeys.DiscordTextTradeInvalidSelection] = "Invalid selection. Use `{0}tt 1` for single trade or `{0}tt 1 2 3` for batch.";
                 target[LocalizationKeys.DiscordTextTradeSelectionLimit] = "You can only trade up to {0} Pokemon at a time. You selected {1}.";
                 target[LocalizationKeys.DiscordTextTradeProcessing] = "{0} Processing your text trade with {1} Pokemon...";
@@ -47,7 +47,10 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordLegalizeTimeout] = "Set took too long to legalize.";
                 target[LocalizationKeys.DiscordGenerateTimeout] = "That set took too long to generate.";
                 target[LocalizationKeys.DiscordCreateSomethingFailed] = "I wasn't able to create something from that.";
-                target[LocalizationKeys.DiscordBestAttemptDitto] = "Oops! {0} Here's my best attempt for that Ditto!";
+                target[LocalizationKeys.DiscordBestAttemptDitto] = "⚠️ {1}, oops! {0} Here's my best attempt for that Ditto!";
+                target[LocalizationKeys.DiscordDittoInvalidIVSpread] = "Invalid IV spread: `{0}`. Each value must be between 0 and 31.";
+                target[LocalizationKeys.DiscordDittoUnknownArguments] = "{1}, unrecognized Ditto argument(s): `{0}`. Use IVs (for example, 31/31/31/31/31/31), language, nature, Shiny, OT/TID/SID or origin game.";
+                target[LocalizationKeys.DiscordDittoAdAttempt] = "{0} tried to generate a Pokemon containing advertising on {1}.\nEveryone laugh at them and call them stupid.";
                 target[LocalizationKeys.DiscordItemNotRecognized] = "{0}, the item you entered wasn't recognized.";
                 target[LocalizationKeys.DiscordBestAttemptSpecies] = "{0}\nHere's my best attempt for that {1}!";
                 break;
@@ -65,7 +68,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordTextTradeHowToTradeValue] = "â€¢ Trade individual: `{0}tt 1`\nâ€¢ Varios trades (lote): `{0}tt 1 2 3`\nâ€¢ Maximo: **{1} Pokemon** por lote";
                 target[LocalizationKeys.DiscordTextTradeFooter] = "Shiny | Sospechoso | Sin item | Tiene OT/TID/SID | Huevo\nHaz una seleccion en 60s o TextTrade se cancelara automaticamente.";
                 target[LocalizationKeys.DiscordTextTradeExpired] = "⌛ {0}, tu solicitud TextTrade expiro despues de 80 segundos.";
-                target[LocalizationKeys.DiscordTextTradeNoFile] = "Todavia no has subido un archivo o ya expiro. Adjunta primero un archivo de texto.";
+                target[LocalizationKeys.DiscordTextTradeNoFile] = "⚠️ {0}, todavia no has subido un archivo o ya expiro. Adjunta primero un archivo de texto.";
                 target[LocalizationKeys.DiscordTextTradeInvalidSelection] = "Seleccion invalida. Usa `{0}tt 1` para trade individual o `{0}tt 1 2 3` para lote.";
                 target[LocalizationKeys.DiscordTextTradeSelectionLimit] = "Solo puedes tradear hasta {0} Pokemon a la vez. Seleccionaste {1}.";
                 target[LocalizationKeys.DiscordTextTradeProcessing] = "{0} Procesando tu text trade con {1} Pokemon...";
@@ -92,7 +95,10 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordLegalizeTimeout] = "El set tomo demasiado tiempo en legalizarse.";
                 target[LocalizationKeys.DiscordGenerateTimeout] = "Ese set tomo demasiado tiempo en generarse.";
                 target[LocalizationKeys.DiscordCreateSomethingFailed] = "No pude crear algo con eso.";
-                target[LocalizationKeys.DiscordBestAttemptDitto] = "Ups! {0} Aqui esta mi mejor intento para ese Ditto!";
+                target[LocalizationKeys.DiscordBestAttemptDitto] = "⚠️ {1}, ups! {0} Aqui esta mi mejor intento para ese Ditto!";
+                target[LocalizationKeys.DiscordDittoInvalidIVSpread] = "Spread de IV invalido: `{0}`. Cada valor debe estar entre 0 y 31.";
+                target[LocalizationKeys.DiscordDittoUnknownArguments] = "{1}, argumento(s) de Ditto no reconocido(s): `{0}`. Usa IVs (por ejemplo, 31/31/31/31/31/31), idioma, naturaleza, Shiny, OT/TID/SID o juego de origen.";
+                target[LocalizationKeys.DiscordDittoAdAttempt] = "{0} intento generar un Pokemon con publicidad en {1}.\nTodos rianse de el y llamenlo estupido.";
                 target[LocalizationKeys.DiscordItemNotRecognized] = "{0}, no se reconocio el item que escribiste.";
                 target[LocalizationKeys.DiscordBestAttemptSpecies] = "{0}\nAqui esta mi mejor intento para ese {1}!";
                 break;

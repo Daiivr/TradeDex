@@ -9,6 +9,7 @@ using SysBot.Pokemon.Helpers;
 using SysBot.Pokemon.Localization;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
@@ -22,12 +23,13 @@ public static class AutoLegalityExtensionsDiscord
     private const string WarningIconUrl = "https://img.freepik.com/free-icon/warning_318-478601.jpg";
     private const string SuccessIconUrl = "https://i.imgur.com/U03TTRB.png";
     private const string DefaultPokemonImageUrl = "https://i.imgur.com/MlkpDow.gif";
+    private const int MaxComponentTextLength = 3900;
 
-    public static async Task ReplyWithLegalizedSetAsync(this ISocketMessageChannel channel, ITrainerInfo sav, ShowdownSet set, Dictionary<string, bool>? userHTPreferences = null, byte requestedLanguage = 0)
+    public static async Task ReplyWithLegalizedSetAsync(this ISocketMessageChannel channel, ITrainerInfo sav, ShowdownSet set, Dictionary<string, bool>? userHTPreferences = null, byte requestedLanguage = 0, IUser? authorUser = null, TrainerOverride? trainerOverride = null)
     {
         if (set.Species <= 0)
         {
-            await SendAutoLegalityEmbedAsync(channel, AppLocalization.Get(LocalizationKeys.DiscordUnableInterpretShowdown), Color.Orange, AppLocalization.Get(LocalizationKeys.DiscordLegalizationWarningTitle), includeErrorImage: true).ConfigureAwait(false);
+            await SendUnableInterpretShowdownComponentAsync(channel, AppLocalization.Get(LocalizationKeys.DiscordUnableInterpretShowdown), authorUser).ConfigureAwait(false);
             return;
         }
 
@@ -46,8 +48,8 @@ public static class AutoLegalityExtensionsDiscord
                 // Wrap the ShowdownSet directly in a RegenTemplate
                 var regenTemplate = new RegenTemplate(set);
 
-                // Generate egg using ALM
-                pkm = sav.GenerateEgg(regenTemplate, out var eggResult);
+                // Generate egg (also applies the user's batch commands, e.g. .Scale=)
+                pkm = AutoLegalityWrapper.GenerateEgg(sav, regenTemplate, out var eggResult);
                 result = eggResult.ToString();
             }
             else
@@ -69,6 +71,69 @@ public static class AutoLegalityExtensionsDiscord
             if (requestedLanguage != 0)
                 ApplyLanguageToSet(pkm, set, requestedLanguage);
 
+            // Apply user-supplied OT/TID/SID from the convert command before legality
+            // checks. ALM generates with the bot's configured sav, so the result keeps
+            // the bot's default trainer info unless we explicitly override it here.
+            if (trainerOverride is not null && trainerOverride.HasAny)
+            {
+                // Respect the AllowTrainerDataOverride config flag. When disabled we do
+                // not apply the user's OT/TID/SID/OTGender and let ALM's generated
+                // trainer info stand.
+                if (SysCordSettings.HubConfig.Legality.AllowTrainerDataOverride)
+                {
+                    LogUtil.LogInfo(
+                        AppLocalization.Format(
+                            LocalizationKeys.LogConvertTrainerOverrideRequested,
+                            trainerOverride.OT ?? string.Empty,
+                            trainerOverride.TID?.ToString() ?? string.Empty,
+                            trainerOverride.SID?.ToString() ?? string.Empty,
+                            GetTrainerGenderLabel(trainerOverride.OTGender),
+                            pkm.Species,
+                            pkm.OriginalTrainerName,
+                            pkm.TrainerTID7,
+                            pkm.TrainerSID7,
+                            GetTrainerGenderLabel(pkm.OriginalTrainerGender)),
+                        "TrainerOverride");
+                    ApplyTrainerOverride(pkm, trainerOverride);
+                    var isLegal = new LegalityAnalysis(pkm).Valid;
+                    LogUtil.LogInfo(
+                        AppLocalization.Format(
+                            LocalizationKeys.LogConvertTrainerOverrideFinal,
+                            pkm.OriginalTrainerName,
+                            pkm.TrainerTID7,
+                            pkm.TrainerSID7,
+                            GetTrainerGenderLabel(pkm.OriginalTrainerGender),
+                            GetBooleanLabel(isLegal)),
+                        "TrainerOverride");
+                }
+                else
+                {
+                    LogUtil.LogInfo(
+                        AppLocalization.Format(
+                            LocalizationKeys.LogConvertTrainerOverrideSkipped,
+                            trainerOverride.OT ?? string.Empty,
+                            trainerOverride.TID?.ToString() ?? string.Empty,
+                            trainerOverride.SID?.ToString() ?? string.Empty,
+                            pkm.Species),
+                        "TrainerOverride");
+                }
+            }
+            else
+            {
+                var overrideStateKey = trainerOverride is null
+                    ? LocalizationKeys.LogTrainerOverrideStateNull
+                    : LocalizationKeys.LogTrainerOverrideStateEmpty;
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogConvertTrainerOverrideNotRequested,
+                        AppLocalization.Get(overrideStateKey)),
+                    "TrainerOverride");
+            }
+
+            bool allowHT = userHTPreferences is null || !userHTPreferences.TryGetValue("ALL", out var htAll) || htAll;
+            if (!isEggRequest && pkm is PA9 pa9IVs && ZAIVSeedSearch.TryApplyRequestedIVs(ref pa9IVs, set.IVs, set.Nature, allowHT))
+                pkm = pa9IVs;
+
             var la = new LegalityAnalysis(pkm);
             var spec = GameInfo.Strings.Species[set.Species];
 
@@ -82,6 +147,8 @@ public static class AutoLegalityExtensionsDiscord
                     pkm = fallback;
                     if (requestedLanguage != 0)
                         ApplyLanguageToSet(pkm, set, requestedLanguage);
+                    if (trainerOverride is not null && trainerOverride.HasAny && SysCordSettings.HubConfig.Legality.AllowTrainerDataOverride)
+                        ApplyTrainerOverride(pkm, trainerOverride);
                     la = new LegalityAnalysis(pkm);
                 }
             }
@@ -106,8 +173,7 @@ public static class AutoLegalityExtensionsDiscord
             var msg = isEggRequest
                 ? AppLocalization.Format(LocalizationKeys.DiscordLegalizedEgg, result, spec)
                 : AppLocalization.Format(LocalizationKeys.DiscordLegalizedPkmShowdown, result, spec, la.EncounterOriginal.Name);
-            await SendLegalizationSuccessEmbedAsync(channel, pkm, msg, GetRegenTemplateText(pkm), result, la.EncounterOriginal.Name).ConfigureAwait(false);
-            await channel.SendPKMAsync(pkm).ConfigureAwait(false);
+            await SendLegalizationSuccessEmbedAsync(channel, pkm, msg, GetRegenTemplateText(pkm), result, la.EncounterOriginal.Name, authorUser).ConfigureAwait(false);
         }
         catch (Exception ex)
         {
@@ -117,26 +183,38 @@ public static class AutoLegalityExtensionsDiscord
         }
     }
 
-    public static Task ReplyWithLegalizedSetAsync(this ISocketMessageChannel channel, string content, byte gen)
+    public static async Task ReplyWithLegalizedSetAsync(this ISocketMessageChannel channel, string content, byte gen, IUser? authorUser = null)
     {
         content = BatchCommandNormalizer.NormalizeBatchCommands(content);
+        if (!MetDateValidator.IsValid(content, out var metDateError))
+        {
+            await channel.SendMessageAsync(metDateError!).ConfigureAwait(false);
+            return;
+        }
         var userHTPreferences = ParseHyperTrainingCommandsPublic(content);
         content = ReusableActions.StripCodeBlock(content);
         byte requestedLanguage = ExtractAndStripLanguage(ref content);
+        var trainerOverride = ExtractAndStripTrainerInfo(ref content);
         var set = new ShowdownSet(content);
         var sav = AutoLegalityWrapper.GetTrainerInfo(gen);
-        return channel.ReplyWithLegalizedSetAsync(sav, set, userHTPreferences, requestedLanguage);
+        await channel.ReplyWithLegalizedSetAsync(sav, set, userHTPreferences, requestedLanguage, authorUser, trainerOverride).ConfigureAwait(false);
     }
 
-    public static Task ReplyWithLegalizedSetAsync<T>(this ISocketMessageChannel channel, string content) where T : PKM, new()
+    public static async Task ReplyWithLegalizedSetAsync<T>(this ISocketMessageChannel channel, string content, IUser? authorUser = null) where T : PKM, new()
     {
         content = BatchCommandNormalizer.NormalizeBatchCommands(content);
+        if (!MetDateValidator.IsValid(content, out var metDateError))
+        {
+            await channel.SendMessageAsync(metDateError!).ConfigureAwait(false);
+            return;
+        }
         var userHTPreferences = ParseHyperTrainingCommandsPublic(content);
         content = ReusableActions.StripCodeBlock(content);
         byte requestedLanguage = ExtractAndStripLanguage(ref content);
+        var trainerOverride = ExtractAndStripTrainerInfo(ref content);
         var set = new ShowdownSet(content);
         var sav = AutoLegalityWrapper.GetTrainerInfo<T>();
-        return channel.ReplyWithLegalizedSetAsync(sav, set, userHTPreferences, requestedLanguage);
+        await channel.ReplyWithLegalizedSetAsync(sav, set, userHTPreferences, requestedLanguage, authorUser, trainerOverride).ConfigureAwait(false);
     }
 
     private static byte ExtractAndStripLanguage(ref string content)
@@ -149,7 +227,131 @@ public static class AutoLegalityExtensionsDiscord
         return lang;
     }
 
-    public static async Task ReplyWithLegalizedSetAsync(this ISocketMessageChannel channel, IAttachment att)
+    private static TrainerOverride? ExtractAndStripTrainerInfo(ref string content)
+    {
+        string? ot = null;
+        uint? tid = null;
+        uint? sid = null;
+        byte? otGender = null;
+        var kept = new List<string>();
+
+        foreach (var raw in content.Split('\n'))
+        {
+            var trimmed = raw.TrimStart();
+            // Check OTGender before OT so the shorter "OT:" prefix does not swallow it.
+            if (TryConsumePrefix(trimmed, "OTGender:", out var genderVal) && TryParseTrainerGender(genderVal, out var genderParsed))
+            {
+                otGender = genderParsed;
+                continue;
+            }
+            if (TryConsumePrefix(trimmed, "OT:", out var otVal))
+            {
+                ot = otVal;
+                continue;
+            }
+            if (TryConsumePrefix(trimmed, "TID:", out var tidVal) && uint.TryParse(tidVal, out var tidParsed))
+            {
+                tid = tidParsed;
+                continue;
+            }
+            if (TryConsumePrefix(trimmed, "SID:", out var sidVal) && uint.TryParse(sidVal, out var sidParsed))
+            {
+                sid = sidParsed;
+                continue;
+            }
+            kept.Add(raw);
+        }
+
+        if (ot is null && tid is null && sid is null && otGender is null)
+            return null;
+
+        content = string.Join('\n', kept);
+        return new TrainerOverride(ot, tid, sid, otGender);
+    }
+
+    private static bool TryParseTrainerGender(string value, out byte gender)
+    {
+        switch (value.Trim().ToLowerInvariant())
+        {
+            case "male" or "m" or "0":
+                gender = 0;
+                return true;
+            case "female" or "f" or "1":
+                gender = 1;
+                return true;
+            default:
+                gender = 0;
+                return false;
+        }
+    }
+
+    private static bool TryConsumePrefix(string line, string prefix, out string value)
+    {
+        if (line.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+        {
+            value = line[prefix.Length..].Trim();
+            return true;
+        }
+        value = string.Empty;
+        return false;
+    }
+
+    private static void ApplyTrainerOverride(PKM pkm, TrainerOverride o)
+    {
+        var backup = pkm.Clone();
+        bool wasShiny = backup.IsShiny;
+        uint originalShinyXor = backup.ShinyXor;
+
+        if (o.OT is not null)
+        {
+            pkm.OriginalTrainerTrash.Clear();
+            pkm.OriginalTrainerName = o.OT;
+        }
+        if (o.TID is not null)
+            pkm.TrainerTID7 = o.TID.Value;
+        if (o.SID is not null)
+            pkm.TrainerSID7 = o.SID.Value;
+        if (o.OTGender is not null)
+            pkm.OriginalTrainerGender = o.OTGender.Value;
+
+        if (wasShiny && (o.TID is not null || o.SID is not null))
+            pkm.PID = (uint)((pkm.TID16 ^ pkm.SID16 ^ (pkm.PID & 0xFFFF) ^ originalShinyXor) << 16) | (pkm.PID & 0xFFFF);
+
+        pkm.RefreshChecksum();
+
+        var la = new LegalityAnalysis(pkm);
+        if (!la.Valid)
+        {
+            var fails = string.Join("; ", la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}"));
+            LogUtil.LogInfo(
+                AppLocalization.Format(LocalizationKeys.LogConvertTrainerOverrideReverted, fails),
+                "TrainerOverride");
+            pkm.OriginalTrainerTrash.Clear();
+            backup.OriginalTrainerTrash.CopyTo(pkm.OriginalTrainerTrash);
+            pkm.TrainerTID7 = backup.TrainerTID7;
+            pkm.TrainerSID7 = backup.TrainerSID7;
+            pkm.OriginalTrainerGender = backup.OriginalTrainerGender;
+            pkm.PID = backup.PID;
+            pkm.RefreshChecksum();
+        }
+    }
+
+    public sealed record TrainerOverride(string? OT, uint? TID, uint? SID, byte? OTGender)
+    {
+        public bool HasAny => OT is not null || TID is not null || SID is not null || OTGender is not null;
+    }
+
+    private static string GetTrainerGenderLabel(byte? gender) => gender switch
+    {
+        0 => AppLocalization.Get(LocalizationKeys.LogTrainerGenderMale),
+        1 => AppLocalization.Get(LocalizationKeys.LogTrainerGenderFemale),
+        _ => AppLocalization.Get(LocalizationKeys.LogTrainerGenderNone),
+    };
+
+    private static string GetBooleanLabel(bool value) => AppLocalization.Get(
+        value ? LocalizationKeys.LogBooleanTrue : LocalizationKeys.LogBooleanFalse);
+
+    public static async Task ReplyWithLegalizedSetAsync(this ISocketMessageChannel channel, IAttachment att, IUser? authorUser = null)
     {
         var download = await NetUtil.DownloadPKMAsync(att).ConfigureAwait(false);
         if (!download.Success)
@@ -192,8 +394,7 @@ public static class AutoLegalityExtensionsDiscord
 
         legal.RefreshChecksum();
 
-        await SendLegalizationSuccessEmbedAsync(channel, legal, AppLocalization.Format(LocalizationKeys.DiscordLegalizedPkmFile, sanitizedFileName, string.Empty).Trim(), GetRegenTemplateText(legal)).ConfigureAwait(false);
-        await channel.SendPKMAsync(legal).ConfigureAwait(false);
+        await SendLegalizationSuccessEmbedAsync(channel, legal, AppLocalization.Format(LocalizationKeys.DiscordLegalizedPkmFile, sanitizedFileName, string.Empty).Trim(), GetRegenTemplateText(legal), authorUser: authorUser).ConfigureAwait(false);
     }
 
     private static async Task SendAutoLegalityEmbedAsync(ISocketMessageChannel channel, string description, Color color, string title, bool includeErrorImage = false, string? imageUrl = null, string? status = null, string? reason = null)
@@ -221,29 +422,94 @@ public static class AutoLegalityExtensionsDiscord
         await channel.SendMessageAsync(embed: embed.Build()).ConfigureAwait(false);
     }
 
-    private static async Task SendLegalizationSuccessEmbedAsync(ISocketMessageChannel channel, PKM pkm, string description, string showdownText, string? result = null, string? encounterName = null)
+    private static async Task SendUnableInterpretShowdownComponentAsync(ISocketMessageChannel channel, string description, IUser? authorUser)
+    {
+        var title = AppLocalization.Get(LocalizationKeys.DiscordLegalizationWarningTitle);
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
+
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n{description}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(ErrorThumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"```{GetUnableInterpretShowdownSolutions()}```"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(ErrorImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(FormatComponentFooter(authorUser)));
+
+        builder.WithContainer(container);
+        await channel.SendMessageAsync(components: builder.Build(), flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+    }
+
+    private static async Task SendLegalizationSuccessEmbedAsync(ISocketMessageChannel channel, PKM pkm, string description, string showdownText, string? result = null, string? encounterName = null, IUser? authorUser = null)
     {
         var species = GameInfo.Strings.Species[pkm.Species];
-        var embed = new EmbedBuilder()
-            .WithColor(Color.Green)
-            .WithAuthor(new EmbedAuthorBuilder
-            {
-                Name = AppLocalization.Get(LocalizationKeys.DiscordLegalizationSuccessTitle),
-                IconUrl = SuccessIconUrl,
-            })
-            .WithDescription(description)
-            .WithThumbnailUrl(GetPokemonImageUrl(pkm))
-            .AddField(FormatFieldName(LocalizationKeys.DiscordLegalizationSpeciesLabel), species, true);
+        var pokemonImageUrl = GetPokemonImageUrl(pkm);
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Green);
+
+        container.WithTextDisplay(TrimComponentText(
+            $"## ✅ {AppLocalization.Get(LocalizationKeys.DiscordLegalizationSuccessTitle)}\n> {description}"));
+
+        var summaryLines = new List<string>
+        {
+            $"{FormatFieldName(LocalizationKeys.DiscordLegalizationSpeciesLabel)}\n{species}",
+        };
 
         if (!string.IsNullOrWhiteSpace(encounterName))
-            embed.AddField(FormatFieldName(LocalizationKeys.DiscordLegalizationEncounterTypeLabel), GetEncounterTranslation(encounterName), true);
+            summaryLines.Add($"{FormatFieldName(LocalizationKeys.DiscordLegalizationEncounterTypeLabel)}\n{GetEncounterTranslation(encounterName)}");
         if (!string.IsNullOrWhiteSpace(result))
-            embed.AddField(FormatFieldName(LocalizationKeys.DiscordLegalizationResultLabel), GetLegalizationTranslation(result), true);
+            summaryLines.Add($"{FormatFieldName(LocalizationKeys.DiscordLegalizationResultLabel)}\n{GetLegalizationTranslation(result)}");
 
-        embed.AddField(FormatFieldName(LocalizationKeys.DiscordLegalizationDetailsLabel), WrapCodeBlock(showdownText), inline: false)
-            .WithFooter(AppLocalization.Get(LocalizationKeys.DiscordLegalizationCopyFooter));
+        var summary = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(string.Join("\n\n", summaryLines))))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(pokemonImageUrl),
+                species,
+                false));
 
-        await channel.SendMessageAsync(embed: embed.Build()).ConfigureAwait(false);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithSection(summary);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{FormatFieldName(LocalizationKeys.DiscordLegalizationDetailsLabel)}\n{WrapCodeBlock(showdownText)}"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(AppLocalization.Get(LocalizationKeys.DiscordLegalizationCopyFooter)));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+
+        var fileName = CreatePkmFileName(pkm);
+        container.WithFile(new UnfurledMediaItemProperties($"attachment://{fileName}"), false);
+
+        builder.WithContainer(container);
+        using var fileStream = CreatePkmFileStream(pkm);
+        var attachments = new[]
+        {
+            new FileAttachment(fileStream, fileName, species),
+        };
+        await channel.SendFilesAsync(attachments, components: builder.Build(), flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+    }
+
+    private static string CreatePkmFileName(PKM pkm)
+    {
+        var uniqueId = Guid.NewGuid().ToString("N")[..8];
+        return $"{uniqueId}_{PathUtil.CleanFileName(pkm.FileName)}";
+    }
+
+    private static MemoryStream CreatePkmFileStream(PKM pkm)
+    {
+        var partyBytes = new byte[pkm.SIZE_PARTY];
+        pkm.WriteDecryptedDataParty(partyBytes);
+        return new MemoryStream(partyBytes);
     }
 
     private static string FormatFieldName(string key) => $"__**{AppLocalization.Get(key)}**__";
@@ -318,6 +584,27 @@ public static class AutoLegalityExtensionsDiscord
     {
         var trimmed = TrimEmbedField(value, 1016);
         return $"```{trimmed}```";
+    }
+
+    private static string GetUnableInterpretShowdownSolutions()
+    {
+        return AppLocalization.Language == AppLanguage.Spanish
+            ? "📝Soluciones:\n• Pega un set Showdown válido.\n\n• Revisa que el nombre del Pokémon esté escrito correctamente y en inglés.\n\n• Usa el nombre oficial del Pokémon en el juego."
+            : "📝Solutions:\n• Paste a valid Showdown set.\n\n• Check that the Pokémon name is spelled correctly and in English.\n\n• Use the official Pokémon name from the game.";
+    }
+
+    private static string FormatComponentFooter(IUser? authorUser)
+    {
+        var timestamp = $"<t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>";
+        return authorUser is null ? timestamp : $"{authorUser.Username} • {timestamp}";
+    }
+
+    private static string TrimComponentText(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "\u200B";
+
+        return value.Length <= MaxComponentTextLength ? value : value[..(MaxComponentTextLength - 3)] + "...";
     }
 
     /// <summary>
@@ -401,7 +688,7 @@ public static class AutoLegalityExtensionsDiscord
     }
 
     /// <summary>
-    /// Mirrors the HOME fallback in Helpers&lt;T&gt;.TryGetAsHomePa9.
+    /// Mirrors the HOME fallback in Helpers.TryGetAsHomePa9.
     /// Tries every PKM format HOME supports (newest first) and returns the first
     /// result that converts to a legally valid PA9.
     /// </summary>

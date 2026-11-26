@@ -486,6 +486,7 @@ public class PokeTradeBotSWSH(PokeTradeHub<PK8> hub, PokeBotState config) : Poke
 
             // Confirm and execute the trade
             Log($"Confirming trade {currentTradeIndex + 1}/{totalBatchTrades}.");
+            Log(PokeTradeBotUtil.FormatFinalTrainerInfo(toSend));
             TradeProgressChanged?.Invoke(89);
 
             var tradeResult = await ConfirmAndStartTrading(poke, token).ConfigureAwait(false);
@@ -889,6 +890,7 @@ public class PokeTradeBotSWSH(PokeTradeHub<PK8> hub, PokeBotState config) : Poke
             return PokeTradeResult.TradeEvolveNotAllowed;
         }
 
+        Log(PokeTradeBotUtil.FormatFinalTrainerInfo(toSend));
         var tradeResult = await ConfirmAndStartTrading(poke, token).ConfigureAwait(false);
         if (tradeResult != PokeTradeResult.Success)
         {
@@ -1779,18 +1781,44 @@ public class PokeTradeBotSWSH(PokeTradeHub<PK8> hub, PokeBotState config) : Poke
         if (!toSend.IsNicknamed)
             cln.ClearNickname();
 
-        if (toSend.IsShiny)
-            cln.PID = (uint)((cln.TID16 ^ cln.SID16 ^ (cln.PID & 0xFFFF) ^ toSend.ShinyXor) << 16) | (cln.PID & 0xFFFF);
+        var languages = cln.Language == data[5]
+            ? new[] { cln.Language }
+            : new[] { cln.Language, (int)data[5] };
+        var shinyTypes = toSend.IsShiny && toSend.ShinyXor != 0
+            ? new uint[] { toSend.ShinyXor, 0 }
+            : new uint[] { toSend.ShinyXor };
+        uint pidLow = toSend.PID & 0xFFFF;
+        PK8? chosen = null;
+        foreach (var language in languages)
+        {
+            foreach (var shinyXor in shinyTypes)
+            {
+                var candidate = cln.Clone();
+                candidate.Language = language;
+                if (!toSend.IsNicknamed)
+                    candidate.ClearNickname();
+                if (toSend.IsShiny)
+                    candidate.PID = (uint)((candidate.TID16 ^ candidate.SID16 ^ pidLow ^ shinyXor) << 16) | pidLow;
+                if (!toSend.ChecksumValid)
+                    candidate.RefreshChecksum();
+                if (!new LegalityAnalysis(candidate).Valid)
+                    continue;
+                if (language != cln.Language)
+                    Log($"El idioma solicitado no permite el OT del compañero. Se usa su idioma ({(LanguageID)language}).");
+                if (toSend.IsShiny && shinyXor != toSend.ShinyXor)
+                    Log("El shiny estrella rompió la correlación del PID. Se usa shiny cuadrado.");
+                chosen = candidate;
+                break;
+            }
+            if (chosen is not null)
+                break;
+        }
 
-        if (!toSend.ChecksumValid)
-            cln.RefreshChecksum();
-
-        var tradeswsh = new LegalityAnalysis(cln);
-        if (tradeswsh.Valid)
+        if (chosen is not null)
         {
             Log("El Pokémon es válido con la información del compañero de intercambio aplicada. Intercambiando detalles.");
-            await SetBoxPokemon(cln, 0, 0, token, sav).ConfigureAwait(false);
-            return cln;
+            await SetBoxPokemon(chosen, 0, 0, token, sav).ConfigureAwait(false);
+            return chosen;
         }
         else
         {

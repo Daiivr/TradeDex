@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using SysBot.Pokemon.Localization;
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 
@@ -20,14 +21,6 @@ public sealed class PokeTradeHubConfig : BaseConfig
     [Description("URL de imagen o directorio de archivo para un logo de 208x101 que se mostrará en la esquina superior izquierda. Requiere reiniciar el programa.")]
     public string BotLogoImage { get; set; } = string.Empty;
 
-    [Category(BotTrade)]
-    [Description("Primer color de brillo detrás del logo. Ingresar como RGB (ej. \"255, 20, 200\"). Dejar en blanco para usar la paleta neón predeterminada. Requiere reiniciar el programa.")]
-    public string BotLogoSparkleColor1 { get; set; } = string.Empty;
-
-    [Category(BotTrade)]
-    [Description("Segundo color de brillo detrás del logo. Ingresar como RGB (ej. \"0, 200, 255\"). Dejar en blanco para usar la paleta neón predeterminada. Requiere reiniciar el programa.")]
-    public string BotLogoSparkleColor2 { get; set; } = string.Empty;
-
     [Category(Integration)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public DiscordSettings Discord { get; set; } = new();
@@ -45,7 +38,6 @@ public sealed class PokeTradeHubConfig : BaseConfig
     [Category(Integration), Description("Permite que usuarios favorecidos entren a la cola con una posición más ventajosa que los no favorecidos.")]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public FavoredPrioritySettings Favoritism { get; set; } = new();
-
     [Category(Operation)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public QueueSettings Queues { get; set; } = new();
@@ -81,11 +73,9 @@ public sealed class PokeTradeHubConfig : BaseConfig
     public TimingSettings Timings { get; set; } = new();
 
     // Trade Bots
-
     [Category(BotTrade)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public TradeSettings Trade { get; set; } = new();
-
     [Category(BotTrade)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public TradeAbuseSettings TradeAbuse { get; set; } = new();
@@ -94,7 +84,6 @@ public sealed class PokeTradeHubConfig : BaseConfig
     [Category(Integration)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public TwitchSettings Twitch { get; set; } = new();
-
     [Category(Integration)]
     [TypeConverter(typeof(ExpandableObjectConverter))]
     public YouTubeSettings YouTube { get; set; } = new();

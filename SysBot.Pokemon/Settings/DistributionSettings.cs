@@ -1,6 +1,7 @@
 using PKHeX.Core;
 using SysBot.Base;
 using System.ComponentModel;
+using SysBot.Pokemon.Localization;
 
 namespace SysBot.Pokemon;
 

@@ -11,7 +11,6 @@
     <DebugType>none</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="PKHeX.Core" Version="26.5.5" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\SysBot.Pokemon.Discord\SysBot.Pokemon.Discord.csproj" />

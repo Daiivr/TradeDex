@@ -34,6 +34,7 @@ public static class Helpers<T> where T : PKM, new()
     private const string PokemonErrorOverlayUrl = "https://i.imgur.com/4kH5NYX.png";
     private const string WarningIconUrl = "https://img.freepik.com/free-icon/warning_318-478601.jpg";
     private const string InvalidSetImageUrl = "https://usagif.com/wp-content/uploads/gify/37-pikachu-usagif.gif";
+    private const int MaxComponentTextLength = 3900;
     private static readonly HttpClient ErrorThumbnailHttp = new();
 
     public static Task<bool> EnsureUserNotInQueueAsync(ulong userID, int deleteDelay = 2)
@@ -43,25 +44,53 @@ public static class Helpers<T> where T : PKM, new()
 
     public static async Task SendAlreadyInQueueEmbedAsync(SocketCommandContext context)
     {
-        var formattedTime = DateTime.UtcNow.ToString("hh:mm tt");
-        var embed = new EmbedBuilder()
-            .WithColor(Color.Red)
-            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedAuthor), "https://i.imgur.com/0R7Yvok.gif")
-            .WithThumbnailUrl(ErrorThumbnailUrl)
-            .WithImageUrl("https://c.tenor.com/rDzirQgBPwcAAAAd/tenor.gif")
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedErrorField),
-                AppLocalization.Format(LocalizationKeys.DiscordAlreadyInQueueEmbedErrorValue, context.User.Mention), true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedReasonField),
-                AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedReasonValue), true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedSolutionField),
-                AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedSolutionValue))
-            .WithFooter(new EmbedFooterBuilder
-            {
-                Text = $"{context.User.Username} • {formattedTime}",
-                IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl()
-            });
+        var component = BuildAlreadyInQueueComponent(context);
+        var errorMessage = AppLocalization.Format(LocalizationKeys.DiscordAlreadyInQueueEmbedErrorValue, context.User.Mention);
+        await context.Channel.SendMessageAsync(errorMessage).ConfigureAwait(false);
+        await context.Channel.SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
+    }
 
-        await context.Channel.SendMessageAsync(embed: embed.Build()).ConfigureAwait(false);
+    private static MessageComponent BuildAlreadyInQueueComponent(SocketCommandContext context)
+    {
+        const string QueueErrorImageUrl = "https://c.tenor.com/rDzirQgBPwcAAAAd/tenor.gif";
+
+        var title = AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedAuthor);
+        var solutionTitle = FormatComponentFieldTitle(AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedSolutionField));
+
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
+
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n> **{AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedReasonValue)}**")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(ErrorThumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"## {solutionTitle}\n{AppLocalization.Get(LocalizationKeys.DiscordAlreadyInQueueEmbedSolutionValue)}"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(QueueErrorImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{context.User.Username} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>"));
+
+        builder.WithContainer(container);
+        return builder.Build();
+    }
+
+    private static string FormatComponentFieldTitle(string value)
+    {
+        var cleaned = value
+            .Replace("_", string.Empty, StringComparison.Ordinal)
+            .Replace("*", string.Empty, StringComparison.Ordinal)
+            .Trim();
+
+        return cleaned.EndsWith(':') ? cleaned[..^1] : cleaned;
     }
 
     public static async Task ReplyAndDeleteAsync(SocketCommandContext context, string message, int delaySeconds, IMessage? messageToDelete = null)
@@ -167,6 +196,35 @@ public static class Helpers<T> where T : PKM, new()
         var filteredLines = contentLines.Where(line =>
             !line.TrimStart().StartsWith("Language:", StringComparison.OrdinalIgnoreCase)
         ).ToArray();
+
+        // Strip user-supplied OT:/TID:/SID: lines and capture them for explicit
+        // application after generation. ALM does not reliably propagate these
+        // from a RegenSet onto a PKM generated against the bot's configured sav,
+        // so without this the bot's GenerateOT/TID/SID survive into the trade.
+        string? userOT = null;
+        uint? userTID = null;
+        uint? userSID = null;
+        filteredLines = filteredLines.Where(line =>
+        {
+            var t = line.TrimStart();
+            if (t.StartsWith("OT:", StringComparison.OrdinalIgnoreCase))
+            {
+                userOT = t[3..].Trim();
+                return false;
+            }
+            if (t.StartsWith("TID:", StringComparison.OrdinalIgnoreCase) && uint.TryParse(t[4..].Trim(), out var tv))
+            {
+                userTID = tv;
+                return false;
+            }
+            if (t.StartsWith("SID:", StringComparison.OrdinalIgnoreCase) && uint.TryParse(t[4..].Trim(), out var sv))
+            {
+                userSID = sv;
+                return false;
+            }
+            return true;
+        }).ToArray();
+
         var contentWithoutLanguage = string.Join('\n', filteredLines);
 
         // Detect user-specified Tera Type (for SV non-native override fix)
@@ -200,6 +258,9 @@ public static class Helpers<T> where T : PKM, new()
         }
 
         var template = AutoLegalityWrapper.GetTemplate(set);
+
+        if (typeof(T) == typeof(PA9) && set.Species == (ushort)Species.Vivillon && template.Form != set.Form)
+            template.Form = set.Form;
 
         // Filter out batch commands (.) and filters (~) from invalid lines - these are handled by ALM
         // Also filter out custom fields like Language: and Alpha: which are ALM-specific
@@ -240,11 +301,11 @@ public static class Helpers<T> where T : PKM, new()
         // Generate egg or normal pokemon based on isEgg flag
         if (isEgg)
         {
-            // Create a proper RegenTemplate from the ShowdownSet
-            var regenTemplate = new RegenTemplate(set);
-
-            // Generate egg using ALM
-            pkm = sav.GenerateEgg(regenTemplate, out var eggResult);
+            // Reuse the template built above. GetTemplate(set) already parsed the Ball:/.Scale=
+            // lines into its Regen AND removed them from set.InvalidLines, so a fresh
+            // RegenTemplate(set) here would silently drop the user's ball and batch commands.
+            // Generate egg (also applies the user's batch commands, e.g. .Scale=)
+            pkm = AutoLegalityWrapper.GenerateEgg(sav, template, out var eggResult);
             result = eggResult.ToString();
         }
         else
@@ -277,7 +338,7 @@ public static class Helpers<T> where T : PKM, new()
             if (fixedOtCheck.Valid && AutoLegalityWrapper.IsFixedOT(fixedOtCheck.EncounterOriginal, pkm))
             {
                 var wildAlt = AutoLegalityWrapper.TryGetAsWildOrEgg(sav, template);
-                if (wildAlt != null)
+                if (wildAlt != null && wildAlt.Form == pkm.Form)
                 {
                     pkm = wildAlt;
                     result = "Regenerated";
@@ -759,13 +820,24 @@ public static class Helpers<T> where T : PKM, new()
                     "Legality");
             }
             var reason = GetFailureReason(result, spec);
-            var hint = result == "Failed" ? GetLegalizationHint(template, sav, pkm, spec) : null;
+            var hint = GetDetailedFailureReason(template, sav, pkm, la, result);
             return Task.FromResult(new ProcessedPokemonResult<T>
             {
                 Error = reason,
                 LegalizationHint = hint,
                 ShowdownSet = set
             });
+        }
+
+        bool zaIVsApplied = false;
+        if (userSpecifiedIVs && pk is PA9 pa9IVs)
+        {
+            bool allowHT = !contentLines.Any(l => l.Trim().Equals(".HyperTrainFlags=0", StringComparison.OrdinalIgnoreCase));
+            if (ZAIVSeedSearch.TryApplyRequestedIVs(ref pa9IVs, set.IVs, set.Nature, allowHT))
+            {
+                pk = (T)(PKM)pa9IVs;
+                zaIVsApplied = true;
+            }
         }
 
         // ============================================================================
@@ -780,7 +852,7 @@ public static class Helpers<T> where T : PKM, new()
         //            → Nature=Brave, StatNature=Adamant
         // Example 2: Charmander (SWSH via HOME fallback) + user requests Timid
         //            → Nature=Timid, StatNature=Timid
-        // Example 3: No nature requested, only StatNature via batch (.StatNature=X)
+        // Example 3: No nature requested, only StatNature via batch (.StatAlignment=X)
         //            → Nature=PKHeX default, StatNature=X (already set by ALM)
         // Example 4: Nothing requested → ALM picks, no change.
         // ============================================================================
@@ -790,17 +862,22 @@ public static class Helpers<T> where T : PKM, new()
             Nature requestedNature = set.Nature;
             bool userRequestedNature = requestedNature != Nature.Random;
 
-            // Detect if the user explicitly set a StatNature via .StatNature= batch command.
-            // IMPORTANT: We parse the content string directly rather than comparing pk.StatNature != pk.Nature.
-            // After ALM generation and/or HOME conversion the StatNature byte can differ from Nature as
+            // Detect if the user explicitly set a StatNature via .StatAlignment= batch command.
+            // IMPORTANT: We parse the content string directly rather than comparing pk.StatAlignment != pk.Nature.
+            // After ALM generation and/or HOME conversion the StatAlignment byte can differ from Nature as
             // a format-conversion artifact — checking PKM fields would misidentify that as a user request.
             Nature? userExplicitStatNature = null;
             foreach (var line in contentLines)
             {
                 var trimmed = line.Trim();
-                if (trimmed.StartsWith(".StatNature=", StringComparison.OrdinalIgnoreCase))
+                var statNaturePrefix = trimmed.StartsWith(".StatAlignment=", StringComparison.OrdinalIgnoreCase)
+                    ? ".StatAlignment="
+                    : trimmed.StartsWith(".StatNature=", StringComparison.OrdinalIgnoreCase)
+                        ? ".StatNature="
+                        : null;
+                if (statNaturePrefix is not null)
                 {
-                    var value = trimmed[".StatNature=".Length..].Trim();
+                    var value = trimmed[statNaturePrefix.Length..].Trim();
                     if (Enum.TryParse<Nature>(value, ignoreCase: true, out var parsedSN))
                     {
                         userExplicitStatNature = parsedSN;
@@ -818,14 +895,14 @@ public static class Helpers<T> where T : PKM, new()
                 // Test whether the user's requested nature is legal for this encounter.
                 var clone = (PA9)pk.Clone();
                 clone.Nature = requestedNature;
-                clone.StatNature = hasExplicitStatNature ? userStatNature : requestedNature;
+                clone.StatAlignment = hasExplicitStatNature ? userStatNature : requestedNature;
                 clone.RefreshChecksum();
 
                 if (new LegalityAnalysis(clone).Valid)
                 {
                     // Legal — apply the requested nature to both Nature and StatNature.
                     pk.Nature = clone.Nature;
-                    pk.StatNature = clone.StatNature;
+                    pk.StatAlignment = clone.StatAlignment;
                     pk.RefreshChecksum();
                     LogUtil.LogInfo(
                         AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedLegalApplied, (Species)pk.Species, requestedNature),
@@ -840,16 +917,16 @@ public static class Helpers<T> where T : PKM, new()
                     // and will also reject a mismatched StatNature.
                     var wantedStatNature = hasExplicitStatNature ? userStatNature : requestedNature;
                     var cloneMint = (PA9)pk.Clone();
-                    cloneMint.StatNature = wantedStatNature;
+                    cloneMint.StatAlignment = wantedStatNature;
                     cloneMint.RefreshChecksum();
 
                     if (new LegalityAnalysis(cloneMint).Valid)
                     {
                         // Mint is legal — apply it.
-                        pk.StatNature = wantedStatNature;
+                        pk.StatAlignment = wantedStatNature;
                         pk.RefreshChecksum();
                         LogUtil.LogInfo(
-                            AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedIllegalMintApplied, (Species)pk.Species, requestedNature, pk.Nature, pk.StatNature),
+                            AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedIllegalMintApplied, (Species)pk.Species, requestedNature, pk.Nature, pk.StatAlignment),
                             "ZANature");
                     }
                     else
@@ -857,7 +934,7 @@ public static class Helpers<T> where T : PKM, new()
                         // Minting is also restricted (e.g. shiny-correlation check ties StatNature to Nature).
                         // Leave Nature and StatNature exactly as PKHeX produced them — both forced.
                         LogUtil.LogInfo(
-                            AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedIllegalMintRestricted, (Species)pk.Species, requestedNature, pk.Nature, pk.StatNature),
+                            AppLocalization.Format(LocalizationKeys.LogZaNatureRequestedIllegalMintRestricted, (Species)pk.Species, requestedNature, pk.Nature, pk.StatAlignment),
                             "ZANature");
                     }
                 }
@@ -868,7 +945,7 @@ public static class Helpers<T> where T : PKM, new()
                 // unless the user already set a different StatNature via batch command.
                 if (!hasExplicitStatNature)
                 {
-                    pk.StatNature = pk.Nature;
+                    pk.StatAlignment = pk.Nature;
                     pk.RefreshChecksum();
                 }
             }
@@ -888,7 +965,7 @@ public static class Helpers<T> where T : PKM, new()
         // same reliability as the direct batch command approach.
         // Only reverts if the user's IV spread is genuinely illegal for this encounter
         // ============================================================================
-        if (userSpecifiedIVs)
+        if (userSpecifiedIVs && !zaIVsApplied)
         {
             int[] requestedIVs = ParseShowdownIVLine(contentLines);
             if (requestedIVs.Any(v => v >= 0))
@@ -913,6 +990,51 @@ public static class Helpers<T> where T : PKM, new()
         // Final preparation — use effectiveLanguage so the FIXED-OT FALLBACK's language
         // choice is not overwritten by finalLanguage here.
         PrepareForTrade(pk, set, effectiveLanguage);
+
+        // Apply user-supplied OT/TID/SID from the Showdown set (after PrepareForTrade
+        // has finalized language/nickname/Asian-OT handling). Reverts to the
+        // pre-override state if the result fails legality so we never ship an
+        // illegal trade — for fixed-OT encounters the bot defaults survive.
+        if (userOT is not null || userTID is not null || userSID is not null)
+        {
+            // The OT/TID/SID lines were already stripped from the set above. Only
+            // re-apply them when custom trainer data is enabled in configuration.
+            if (Info.Hub.Config.Legality.AllowTrainerDataOverride)
+            {
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogTradeTrainerOverrideRequested,
+                        userOT ?? string.Empty,
+                        userTID?.ToString() ?? string.Empty,
+                        userSID?.ToString() ?? string.Empty,
+                        pk.Species,
+                        pk.OriginalTrainerName,
+                        pk.TrainerTID7,
+                        pk.TrainerSID7),
+                    "TrainerOverride");
+                ApplyUserTrainerOverride(pk, userOT, userTID, userSID);
+                var isLegal = new LegalityAnalysis(pk).Valid;
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogTradeTrainerOverrideFinal,
+                        pk.OriginalTrainerName,
+                        pk.TrainerTID7,
+                        pk.TrainerSID7,
+                        AppLocalization.Get(isLegal ? LocalizationKeys.LogBooleanTrue : LocalizationKeys.LogBooleanFalse)),
+                    "TrainerOverride");
+            }
+            else
+            {
+                LogUtil.LogInfo(
+                    AppLocalization.Format(
+                        LocalizationKeys.LogTradeTrainerOverrideSkipped,
+                        userOT ?? string.Empty,
+                        userTID?.ToString() ?? string.Empty,
+                        userSID?.ToString() ?? string.Empty,
+                        pk.Species),
+                    "TrainerOverride");
+            }
+        }
 
         // Check for spam names
         if (Info.Hub.Config.Trade.TradeConfiguration.EnableSpamCheck)
@@ -1000,6 +1122,54 @@ public static class Helpers<T> where T : PKM, new()
         pk.ResetPartyStats();
     }
 
+    /// Applies user-supplied OT/TID/SID from the Showdown set onto the final PKM.
+    /// Captures shiny state before mutating IDs so the PID can be rebuilt against
+    /// the new TID/SID — without this, pk.IsShiny re-evaluates against the new IDs
+    /// with the old PID and silently reads false, dropping the shiny we generated.
+    /// Reverts every field on legality failure so the bot never ships an illegal
+    /// trade for fixed-OT encounters (events, in-game trades, Mystery Gifts).
+    private static void ApplyUserTrainerOverride(T pk, string? ot, uint? tid, uint? sid)
+    {
+        var backup = pk.Clone();
+        bool wasShiny = backup.IsShiny;
+        uint originalShinyXor = backup.ShinyXor;
+
+        if (ot is not null)
+        {
+            // Clear the trash buffer first — PKHeX's OriginalTrainerName setter
+            // writes the new chars + null terminator but does NOT zero out bytes
+            // past the new null. Replacing "FreeMons.Org" (12) with "Chris" (5)
+            // leaves "ns.Org\0" in the buffer, which the Trainer legality check
+            // flags as invalid trash.
+            pk.OriginalTrainerTrash.Clear();
+            pk.OriginalTrainerName = ot;
+        }
+        if (tid is not null)
+            pk.TrainerTID7 = tid.Value;
+        if (sid is not null)
+            pk.TrainerSID7 = sid.Value;
+
+        if (wasShiny && (tid is not null || sid is not null))
+            pk.PID = (uint)((pk.TID16 ^ pk.SID16 ^ (pk.PID & 0xFFFF) ^ originalShinyXor) << 16) | (pk.PID & 0xFFFF);
+
+        pk.RefreshChecksum();
+
+        var la = new LegalityAnalysis(pk);
+        if (!la.Valid)
+        {
+            var fails = string.Join("; ", la.Results.Where(r => !r.Valid).Select(r => $"{r.Identifier}"));
+            LogUtil.LogInfo(
+                AppLocalization.Format(LocalizationKeys.LogTradeTrainerOverrideReverted, fails),
+                "TrainerOverride");
+            pk.OriginalTrainerTrash.Clear();
+            backup.OriginalTrainerTrash.CopyTo(pk.OriginalTrainerTrash);
+            pk.TrainerTID7 = backup.TrainerTID7;
+            pk.TrainerSID7 = backup.TrainerSID7;
+            pk.PID = backup.PID;
+            pk.RefreshChecksum();
+        }
+    }
+
     private static int ValidateLanguageForGame(PKM pk, byte requestedLanguage)
     {
         // SpanishL (11) support varies by game
@@ -1074,6 +1244,30 @@ public static class Helpers<T> where T : PKM, new()
         return AutoLegalityWrapper.GetLegalizationHint(template, sav, pkm);
     }
 
+    private static string? GetDetailedFailureReason(IBattleTemplate template, ITrainerInfo sav, PKM? pkm, LegalityAnalysis la, string result)
+    {
+        var details = new List<string>();
+
+        if (result == "Failed" && pkm != null)
+        {
+            var legalizationHint = GetLegalizationHint(template, sav, pkm, string.Empty);
+            if (!string.IsNullOrWhiteSpace(legalizationHint))
+                details.Add(legalizationHint.Trim());
+        }
+
+        if (pkm != null && !la.Valid)
+        {
+            var legalityReport = SimpleLegalityFeedback.GetLocalizedLegalityReport(la);
+            if (!string.IsNullOrWhiteSpace(legalityReport) &&
+                !details.Any(d => d.Contains(legalityReport, StringComparison.OrdinalIgnoreCase)))
+            {
+                details.Add(legalityReport.Trim());
+            }
+        }
+
+        return details.Count == 0 ? null : string.Join("\n", details);
+    }
+
     public static async Task SendTradeErrorEmbedAsync(SocketCommandContext context, ProcessedPokemonResult<T> result)
     {
         var spec = result.ShowdownSet != null && result.ShowdownSet.Species > 0
@@ -1081,53 +1275,115 @@ public static class Helpers<T> where T : PKM, new()
             : AppLocalization.Get(LocalizationKeys.DiscordUnknownSpecies);
 
         var rawError = result.Error ?? AppLocalization.Get(LocalizationKeys.BotStatusUnknown);
-        var errorText = GetTradeErrorText(rawError, result.LegalizationHint);
+        var errorText = GetTradeErrorText(rawError);
+        var reasonText = GetTradeReasonText(rawError, result.LegalizationHint);
         var displaySpec = !string.IsNullOrWhiteSpace(result.RequestedSpeciesName)
             ? result.RequestedSpeciesName
             : GetDisplaySpeciesName(spec);
 
-        var embedBuilder = new EmbedBuilder()
-            .WithColor(Color.Red)
-            .WithImageUrl(ErrorImageUrl)
-            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle), WarningIconUrl)
-            .WithDescription(TrimEmbedDescription($"{AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, displaySpec)}\n\n{errorText}"))
-            .WithFooter(f =>
-            {
-                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
-                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
-            });
-
         var errorThumbnail = await CreatePokemonErrorThumbnailAsync(result).ConfigureAwait(false);
-        if (errorThumbnail is null)
-            embedBuilder.WithThumbnailUrl(ErrorThumbnailUrl);
-        else
-            embedBuilder.WithThumbnailUrl($"attachment://{errorThumbnail.Value.FileName}");
+        var thumbnailUrl = errorThumbnail is null
+            ? ErrorThumbnailUrl
+            : $"attachment://{errorThumbnail.Value.FileName}";
 
-        if (IsUnableParseSpeciesError(rawError))
-        {
-            _ = embedBuilder.AddField("\u200B", TrimEmbedField($"```{GetUnableParseSpeciesSolutions()}```"), inline: false);
-        }
+        var includeParseSolutions = IsUnableParseSpeciesError(rawError);
+        var invalidLines = result.ShowdownSet is { InvalidLines.Count: > 0 }
+            ? result.ShowdownSet.InvalidLines
+                .Select(x => x.Value?.Trim())
+                .Where(x => !string.IsNullOrWhiteSpace(x))
+                .Select(x => x!)
+                .ToList()
+            : [];
 
-        if (result.ShowdownSet is { InvalidLines.Count: > 0 })
-        {
-            var invalidLines = string.Join("\n", result.ShowdownSet.InvalidLines.Select(x => x.ToString().Trim()));
-            _ = embedBuilder.AddField(AppLocalization.Get(LocalizationKeys.DiscordBatchInvalidLines), TrimEmbedField($"```\n{invalidLines}\n```"), inline: false);
-        }
+        var component = BuildTradeErrorComponent(context, displaySpec, errorText, reasonText, thumbnailUrl, includeParseSolutions, invalidLines);
+        var messageContent = AppLocalization.Format(LocalizationKeys.DiscordReportForRequest, context.User.Mention);
+        var reportMessage = await context.Channel.SendMessageAsync(messageContent).ConfigureAwait(false);
 
-        string userMention = context.User.Mention;
-        string messageContent = AppLocalization.Format(LocalizationKeys.DiscordReportForRequest, userMention);
         IUserMessage message;
         if (errorThumbnail is null)
         {
-            message = await context.Channel.SendMessageAsync(text: messageContent, embed: embedBuilder.Build()).ConfigureAwait(false);
+            message = await context.Channel.SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
         }
         else
         {
             await using var stream = errorThumbnail.Value.Stream;
-            message = await context.Channel.SendFileAsync(stream, errorThumbnail.Value.FileName, text: messageContent, embed: embedBuilder.Build()).ConfigureAwait(false);
+            var attachments = new[]
+            {
+                new FileAttachment(stream, errorThumbnail.Value.FileName, AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle)),
+            };
+            message = await context.Channel.SendFilesAsync(attachments, components: component, flags: MessageFlags.ComponentsV2).ConfigureAwait(false);
         }
 
-        _ = DeleteMessagesAfterDelayAsync(message, context.Message, 30);
+        _ = DeleteMessagesAfterDelayAsync(reportMessage, context.Message, 30);
+        _ = DeleteMessagesAfterDelayAsync(message, null, 30);
+    }
+
+    private static MessageComponent BuildTradeErrorComponent(
+        SocketCommandContext context,
+        string displaySpec,
+        string errorText,
+        string? reasonText,
+        string thumbnailUrl,
+        bool includeParseSolutions,
+        IReadOnlyList<string> invalidLines)
+    {
+        var title = AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle);
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
+
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n> {AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, displaySpec)}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(thumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(FormatTradeErrorBody(errorText)));
+
+        var detailBlocks = new List<string>();
+        if (!string.IsNullOrWhiteSpace(reasonText))
+        {
+            detailBlocks.Add(
+                $"### {AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentReasonIntro)}\n" +
+                $"```\n{TrimEmbedField(reasonText, 2200)}\n```");
+        }
+
+        if (includeParseSolutions)
+            detailBlocks.Add($"```{GetUnableParseSpeciesSolutions()}```");
+
+        if (invalidLines.Count > 0)
+        {
+            var invalidLinesText = string.Join("\n", invalidLines);
+            detailBlocks.Add($"### {GetInvalidLinesLabel()}\n```\n{TrimEmbedField(invalidLinesText, 1016)}\n```");
+        }
+
+        if (detailBlocks.Count > 0)
+        {
+            container.WithSeparator(SeparatorSpacingSize.Small, true);
+            container.WithTextDisplay(TrimComponentText(string.Join("\n\n", detailBlocks)));
+        }
+
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(ErrorImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{context.User.Username} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>"));
+
+        builder.WithContainer(container);
+        return builder.Build();
+    }
+
+    private static string FormatTradeErrorBody(string errorText)
+    {
+        var trimmed = errorText.Trim();
+        if (trimmed.StartsWith("###", StringComparison.Ordinal))
+            return trimmed;
+
+        return $"## {AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}\n• {trimmed}";
     }
 
     private static async Task<(MemoryStream Stream, string FileName)?> CreatePokemonErrorThumbnailAsync(ProcessedPokemonResult<T> result)
@@ -1309,12 +1565,26 @@ public static class Helpers<T> where T : PKM, new()
         return previous[target.Length];
     }
 
-    private static string GetTradeErrorText(string rawError, string? legalizationHint)
-    {
-        if (!string.IsNullOrWhiteSpace(legalizationHint))
-            return legalizationHint.Trim();
+    private static string GetTradeErrorText(string rawError) => rawError;
 
-        return rawError;
+    private static string? GetTradeReasonText(string rawError, string? legalizationHint)
+    {
+        if (string.IsNullOrWhiteSpace(legalizationHint))
+            return null;
+
+        var trimmedHint = legalizationHint.Trim();
+        return trimmedHint.Equals(rawError.Trim(), StringComparison.OrdinalIgnoreCase)
+            ? null
+            : trimmedHint;
+    }
+
+    private static string GetInvalidLinesLabel()
+    {
+        var label = AppLocalization.Get(LocalizationKeys.DiscordBatchInvalidLines)
+            .Replace("{0}", string.Empty, StringComparison.Ordinal)
+            .Trim();
+
+        return label.EndsWith(':') ? label : $"{label}:";
     }
 
     private static bool IsUnableParseSpeciesError(string rawError)
@@ -1366,84 +1636,204 @@ public static class Helpers<T> where T : PKM, new()
             .ConfigureAwait(false);
     }
 
-    private static async Task<IUserMessage> SendPokemonTradeErrorNoticeAsync(SocketCommandContext context, T pk, string speciesName, string errorText)
+    private static async Task<(IUserMessage ReportMessage, IUserMessage ComponentMessage)> SendNoTradeInputComponentAsync(SocketCommandContext context)
     {
         var title = AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle);
-        var description = TrimEmbedDescription(
-            $"{AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, speciesName)}\n\n" +
-            $"### {AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}\n" +
-            $"• {errorText}");
+        var reportMessage = await context.Channel
+            .SendMessageAsync($"{context.User.Mention} {title}")
+            .ConfigureAwait(false);
 
-        var embedBuilder = new EmbedBuilder()
-            .WithColor(Color.Red)
-            .WithImageUrl(ErrorImageUrl)
-            .WithAuthor(title, WarningIconUrl)
-            .WithDescription(description)
-            .WithFooter(f =>
-            {
-                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
-                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
-            });
+        var component = BuildNoTradeInputComponent(context, title);
+        var componentMessage = await context.Channel
+            .SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2)
+            .ConfigureAwait(false);
 
+        return (reportMessage, componentMessage);
+    }
+
+    private static MessageComponent BuildNoTradeInputComponent(SocketCommandContext context, string title)
+    {
+        var commandPrefix = SysCordSettings.Settings.CommandPrefix;
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
+
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n> {AppLocalization.Get(LocalizationKeys.DiscordNoTradeInputSummary)}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(ErrorThumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"```{GetNoTradeInputSolutions(commandPrefix)}```"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(ErrorImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{context.User.Username} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>"));
+
+        builder.WithContainer(container);
+        return builder.Build();
+    }
+
+    private static string GetNoTradeInputSolutions(string commandPrefix)
+    {
+        var solution = AppLocalization.Format(LocalizationKeys.DiscordNoTradeInputSolution, commandPrefix);
+        return AppLocalization.Language == AppLanguage.Spanish
+            ? $"📝Soluciones:\n• {solution}"
+            : $"📝Solutions:\n• {solution}";
+    }
+
+    private static async Task<(IUserMessage ReportMessage, IUserMessage ComponentMessage)> SendPokemonTradeErrorNoticeAsync(SocketCommandContext context, T pk, string speciesName, string errorText)
+    {
+        var title = AppLocalization.Get(LocalizationKeys.DiscordTradeCreationFailedTitle);
         var errorThumbnail = await CreatePokemonErrorThumbnailAsync(pk).ConfigureAwait(false);
-        if (errorThumbnail is null)
-            embedBuilder.WithThumbnailUrl(ErrorThumbnailUrl);
-        else
-            embedBuilder.WithThumbnailUrl($"attachment://{errorThumbnail.Value.FileName}");
+        var thumbnailUrl = errorThumbnail is null
+            ? ErrorThumbnailUrl
+            : $"attachment://{errorThumbnail.Value.FileName}";
+        var component = BuildPokemonTradeErrorComponent(context, title, speciesName, errorText, thumbnailUrl);
+        var reportMessage = await context.Channel.SendMessageAsync(context.User.Mention).ConfigureAwait(false);
 
         if (errorThumbnail is null)
-            return await context.Channel.SendMessageAsync(text: context.User.Mention, embed: embedBuilder.Build()).ConfigureAwait(false);
+        {
+            var componentMessage = await context.Channel
+                .SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2)
+                .ConfigureAwait(false);
+            return (reportMessage, componentMessage);
+        }
 
         await using var stream = errorThumbnail.Value.Stream;
-        return await context.Channel
-            .SendFileAsync(stream, errorThumbnail.Value.FileName, text: context.User.Mention, embed: embedBuilder.Build())
+        var attachments = new[]
+        {
+            new FileAttachment(stream, errorThumbnail.Value.FileName, title),
+        };
+        var message = await context.Channel
+            .SendFilesAsync(attachments, components: component, flags: MessageFlags.ComponentsV2)
             .ConfigureAwait(false);
+        return (reportMessage, message);
     }
 
-    private static async Task<IUserMessage> SendInvalidEggSetEmbedAsync(SocketCommandContext context, string speciesName, LegalityAnalysis legality)
+    private static MessageComponent BuildPokemonTradeErrorComponent(SocketCommandContext context, string title, string speciesName, string errorText, string thumbnailUrl)
     {
-        var localizedReport = SimpleLegalityFeedback.GetLocalizedLegalityReport(legality);
-        var embed = new EmbedBuilder()
-            .WithColor(Color.Red)
-            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordInvalidShowdownSetTitle), WarningIconUrl)
-            .WithThumbnailUrl(ErrorThumbnailUrl)
-            .WithDescription(AppLocalization.Format(LocalizationKeys.DiscordInvalidEggSetSummary, context.User.Mention, speciesName))
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordErrorLabel),
-                AppLocalization.Format(LocalizationKeys.DiscordInvalidEggSetError, speciesName), inline: true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordSolutionLabel),
-                AppLocalization.Get(LocalizationKeys.DiscordInvalidEggSetSolution), inline: true)
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordReportLabel),
-                $"```\n{TrimEmbedField(localizedReport, 1016)}\n```", inline: false)
-            .WithImageUrl(InvalidSetImageUrl)
-            .WithFooter(f =>
-            {
-                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
-                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
-            });
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
 
-        return await context.Channel.SendMessageAsync(text: context.User.Mention, embed: embed.Build()).ConfigureAwait(false);
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n> {AppLocalization.Format(LocalizationKeys.DiscordFailedToCreateSpecies, speciesName)}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(thumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"### {AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}\n• {errorText}"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(ErrorImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{context.User.Username} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>"));
+
+        builder.WithContainer(container);
+        return builder.Build();
     }
 
-    private static async Task<IUserMessage> SendInvalidAttachmentEmbedAsync(SocketCommandContext context, string speciesName, LegalityAnalysis legality)
+    private static async Task<(IUserMessage ReportMessage, IUserMessage ComponentMessage)> SendInvalidEggSetComponentAsync(SocketCommandContext context, string speciesName, LegalityAnalysis legality)
     {
         var localizedReport = SimpleLegalityFeedback.GetLocalizedLegalityReport(legality);
-        var embed = new EmbedBuilder()
-            .WithColor(Color.Red)
-            .WithAuthor(AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentTitle), WarningIconUrl)
-            .WithThumbnailUrl(ErrorThumbnailUrl)
-            .WithDescription(AppLocalization.Format(LocalizationKeys.DiscordInvalidAttachmentSummary, context.User.Mention, $"**{speciesName}**"))
-            .AddField(AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentReasonIntro),
-                $"```\n{TrimEmbedField(localizedReport, 1016)}\n```", inline: false)
-            .AddField("\u200B",
-                $"```\n{TrimEmbedField(AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentAdvice), 1016)}\n```", inline: false)
-            .WithImageUrl(InvalidSetImageUrl)
-            .WithFooter(f =>
-            {
-                f.Text = $"{context.User.Username} • {DateTime.UtcNow:hh:mm tt}";
-                f.IconUrl = context.User.GetAvatarUrl() ?? context.User.GetDefaultAvatarUrl();
-            });
+        var title = AppLocalization.Get(LocalizationKeys.DiscordInvalidShowdownSetTitle);
+        var component = BuildInvalidEggSetComponent(context, speciesName, localizedReport, title);
+        var reportMessage = await context.Channel.SendMessageAsync(context.User.Mention).ConfigureAwait(false);
+        var componentMessage = await context.Channel
+            .SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2)
+            .ConfigureAwait(false);
 
-        return await context.Channel.SendMessageAsync(text: context.User.Mention, embed: embed.Build()).ConfigureAwait(false);
+        return (reportMessage, componentMessage);
+    }
+
+    private static MessageComponent BuildInvalidEggSetComponent(SocketCommandContext context, string speciesName, string localizedReport, string title)
+    {
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
+
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n> {AppLocalization.Format(LocalizationKeys.DiscordInvalidEggSetSummaryPlain, speciesName)}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(ErrorThumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"### {AppLocalization.Get(LocalizationKeys.DiscordErrorLabel)}\n• {AppLocalization.Format(LocalizationKeys.DiscordInvalidEggSetError, speciesName)}\n\n" +
+            $"### {AppLocalization.Get(LocalizationKeys.DiscordSolutionLabel)}\n{AppLocalization.Get(LocalizationKeys.DiscordInvalidEggSetSolution)}"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"### {AppLocalization.Get(LocalizationKeys.DiscordReportLabel)}\n```\n{TrimEmbedField(localizedReport, 1016)}\n```"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(InvalidSetImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{context.User.Username} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>"));
+
+        builder.WithContainer(container);
+        return builder.Build();
+    }
+
+    private static async Task<(IUserMessage ReportMessage, IUserMessage ComponentMessage)> SendInvalidAttachmentComponentAsync(SocketCommandContext context, string speciesName, LegalityAnalysis legality)
+    {
+        var localizedReport = SimpleLegalityFeedback.GetLocalizedLegalityReport(legality);
+        var title = AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentTitle);
+        var component = BuildInvalidAttachmentComponent(context, speciesName, localizedReport, title);
+        var reportMessage = await context.Channel
+            .SendMessageAsync($"{context.User.Mention} {title}")
+            .ConfigureAwait(false);
+        var componentMessage = await context.Channel
+            .SendMessageAsync(components: component, flags: MessageFlags.ComponentsV2)
+            .ConfigureAwait(false);
+
+        return (reportMessage, componentMessage);
+    }
+
+    private static MessageComponent BuildInvalidAttachmentComponent(SocketCommandContext context, string speciesName, string localizedReport, string title)
+    {
+        var builder = new ComponentBuilderV2();
+        var container = new ContainerBuilder()
+            .WithAccentColor(Color.Red);
+
+        var header = new SectionBuilder()
+            .AddComponent(new TextDisplayBuilder(TrimComponentText(
+                $"## ⚠️ {title}\n> ❌ {AppLocalization.Format(LocalizationKeys.DiscordInvalidAttachmentSummaryPlain, speciesName)}")))
+            .WithAccessory(new ThumbnailBuilder(
+                new UnfurledMediaItemProperties(ErrorThumbnailUrl),
+                title,
+                false));
+
+        container.WithSection(header);
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"### {AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentReasonIntro)}\n```\n{TrimEmbedField(localizedReport, 1600)}\n```"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText(
+            $"```{TrimEmbedField(AppLocalization.Get(LocalizationKeys.DiscordInvalidAttachmentAdvice), 1000)}```"));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithMediaGallery(new MediaGalleryBuilder()
+            .AddItem(InvalidSetImageUrl, title, false));
+        container.WithSeparator(SeparatorSpacingSize.Small, true);
+        container.WithTextDisplay(TrimComponentText($"{context.User.Username} • <t:{DateTimeOffset.UtcNow.ToUnixTimeSeconds()}:F>"));
+
+        builder.WithContainer(container);
+        return builder.Build();
     }
 
     private static string TrimEmbedField(string value, int maxLength = 1024)
@@ -1460,6 +1850,14 @@ public static class Helpers<T> where T : PKM, new()
             return value;
 
         return value[..(maxLength - 3)] + "...";
+    }
+
+    private static string TrimComponentText(string value, int maxLength = MaxComponentTextLength)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return "\u200B";
+
+        return value.Length <= maxLength ? value : value[..(maxLength - 3)] + "...";
     }
 
     /// <summary>
@@ -1736,8 +2134,9 @@ public static class Helpers<T> where T : PKM, new()
         var attachment = context.Message.Attachments.FirstOrDefault();
         if (attachment == default)
         {
-            var reply = await SendTradeErrorNoticeAsync(context, AppLocalization.Get(LocalizationKeys.DiscordNoAttachmentProvided)).ConfigureAwait(false);
-            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            var (reportMessage, componentMessage) = await SendNoTradeInputComponentAsync(context).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reportMessage, context.Message, 30);
+            _ = DeleteMessagesAfterDelayAsync(componentMessage, null, 30);
             return null;
         }
 
@@ -1832,15 +2231,17 @@ public static class Helpers<T> where T : PKM, new()
             if (pk?.IsEgg == true)
             {
                 string speciesName = SpeciesName.GetSpeciesName(pk.Species, (int)LanguageID.English);
-                var invalidEggReply = await SendInvalidEggSetEmbedAsync(context, speciesName, la).ConfigureAwait(false);
-                _ = DeleteMessagesAfterDelayAsync(invalidEggReply, context.Message, 30);
+                var (reportMessage, componentMessage) = await SendInvalidEggSetComponentAsync(context, speciesName, la).ConfigureAwait(false);
+                _ = DeleteMessagesAfterDelayAsync(reportMessage, context.Message, 30);
+                _ = DeleteMessagesAfterDelayAsync(componentMessage, null, 30);
                 return;
             }
             else
             {
                 string speciesName = SpeciesName.GetSpeciesName(pk!.Species, (int)LanguageID.English);
-                var invalidAttachmentReply = await SendInvalidAttachmentEmbedAsync(context, speciesName, la).ConfigureAwait(false);
-                _ = DeleteMessagesAfterDelayAsync(invalidAttachmentReply, context.Message, 30);
+                var (reportMessage, componentMessage) = await SendInvalidAttachmentComponentAsync(context, speciesName, la).ConfigureAwait(false);
+                _ = DeleteMessagesAfterDelayAsync(reportMessage, context.Message, 30);
+                _ = DeleteMessagesAfterDelayAsync(componentMessage, null, 30);
                 return;
             }
         }
@@ -1848,16 +2249,18 @@ public static class Helpers<T> where T : PKM, new()
         if (Info.Hub.Config.Legality.DisallowNonNatives && isNonNative)
         {
             string speciesName = SpeciesName.GetSpeciesName(pk!.Species, (int)LanguageID.English);
-            var reply = await SendPokemonTradeErrorNoticeAsync(context, pk, speciesName, AppLocalization.Format(LocalizationKeys.DiscordNonNativeBlocked, speciesName)).ConfigureAwait(false);
-            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            var (reportMessage, componentMessage) = await SendPokemonTradeErrorNoticeAsync(context, pk, speciesName, AppLocalization.Format(LocalizationKeys.DiscordNonNativeBlocked, speciesName)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reportMessage, context.Message, 30);
+            _ = DeleteMessagesAfterDelayAsync(componentMessage, null, 30);
             return;
         }
 
         if (Info.Hub.Config.Legality.DisallowTracked && pk is IHomeTrack { HasTracker: true })
         {
             string speciesName = SpeciesName.GetSpeciesName(pk.Species, (int)LanguageID.English);
-            var reply = await SendPokemonTradeErrorNoticeAsync(context, pk, speciesName, AppLocalization.Format(LocalizationKeys.DiscordHomeTrackedBlocked, speciesName)).ConfigureAwait(false);
-            _ = DeleteMessagesAfterDelayAsync(reply, context.Message, 30);
+            var (reportMessage, componentMessage) = await SendPokemonTradeErrorNoticeAsync(context, pk, speciesName, AppLocalization.Format(LocalizationKeys.DiscordHomeTrackedBlocked, speciesName)).ConfigureAwait(false);
+            _ = DeleteMessagesAfterDelayAsync(reportMessage, context.Message, 30);
+            _ = DeleteMessagesAfterDelayAsync(componentMessage, null, 30);
             return;
         }
 

@@ -161,7 +161,7 @@ public static class CreatePokemonHelper
         if (pk is not PA9 && !string.IsNullOrWhiteSpace(finalNature) && Enum.TryParse<Nature>(finalNature, true, out var parsedNature))
         {
             pk.Nature = parsedNature;
-            pk.StatNature = parsedNature;
+            pk.StatAlignment = parsedNature;
         }
 
         // Refresh stats after IV/Nature changes
@@ -251,7 +251,7 @@ public static class CreatePokemonHelper
         var etaMessage = AppLocalization.Format(LocalizationKeys.DiscordWaitEstimateTrade, baseEta);
         string footerText = AppLocalization.Format(LocalizationKeys.DiscordCurrentQueuePosition, position.Position == -1 ? 1 : position.Position);
         footerText += $"\n{etaMessage}";
-        footerText += $"\nFusionBot {TradeBot.Version}";
+        footerText += $"\nTradeDex {TradeBot.Version}";
 
         var embedBuilder = new EmbedBuilder()
             .WithColor(embedColor)

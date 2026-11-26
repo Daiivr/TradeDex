@@ -19,6 +19,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Runtime.InteropServices;
+using System.Drawing.Drawing2D;
 using System.Drawing.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
@@ -53,13 +54,23 @@ namespace SysBot.Pokemon.WinForms
         // Update available flag
         internal bool hasUpdate = false;
 
+        // Periodic background check for new GitHub releases so the
+        // "NEW RELEASE" banner appears without requiring a restart.
+        private System.Threading.Timer? _updateCheckTimer;
+        private string _lastSeenUpdateVersion = string.Empty;
+        private static readonly TimeSpan UpdateCheckInterval = TimeSpan.FromHours(1);
+
         // Currently active button in the left panel, for setting Bots as default
         private IconButton currentBtn = null!;
-        private IconButton btnLanguage = null!;
+        private Panel btnLanguage = null!;
+        private Label lblLangEn = null!;
+        private Label lblLangEs = null!;
+        private PictureBox childFormTitleImage = null!;
         private ToolTip languageToolTip = null!;
 
         private Panel leftBorderBtn = null!;
         private Dictionary<IconButton, Timer> hoverTimers = new();
+        private readonly Dictionary<string, Image> embeddedResourceImages = new();
 
 #pragma warning disable CS0414 // Field is assigned but never used
         private bool _isFormLoading = true;               // Flag to indicate if the form is still loading (reserved for future use)
@@ -81,15 +92,6 @@ namespace SysBot.Pokemon.WinForms
         private readonly List<Sparkle> logoSparkles = new();
         private readonly Random glitterRng = new Random();
         private Timer glitterTimer = null!;
-
-        // Neon pink + neon blue palette for the logo panel sparkles
-        private static readonly Color[] NeonLogoPalette = new[]
-        {
-            Color.FromArgb(255, 255, 20, 200),   // neon pink
-            Color.FromArgb(255, 255, 80, 220),   // lighter neon pink
-            Color.FromArgb(255, 0, 200, 255),    // neon blue / cyan
-            Color.FromArgb(255, 90, 140, 255),   // lighter neon blue
-        };
 
         // Per-mode palettes for the title-bar sparkles
         private static readonly Color[] TitleBarPalette_PLZA = new[]
@@ -130,81 +132,27 @@ namespace SysBot.Pokemon.WinForms
         {
             ProgramMode.PLZA => TitleBarPalette_PLZA,
             ProgramMode.LGPE => TitleBarPalette_LGPE,
-            ProgramMode.SV   => TitleBarPalette_SV,
-            ProgramMode.LA   => TitleBarPalette_LA,
+            ProgramMode.SV => TitleBarPalette_SV,
+            ProgramMode.LA => TitleBarPalette_LA,
             ProgramMode.BDSP => TitleBarPalette_BDSP,
             ProgramMode.SWSH => TitleBarPalette_SWSH,
             _ => null, // null falls back to Sparkle's default white/yellow
         };
-
-        // Parse "R, G, B" / "R G B" / "R;G;B" into a Color. Returns null on bad/empty input.
-        private static Color? ParseRgbColor(string? input)
-        {
-            if (string.IsNullOrWhiteSpace(input))
-                return null;
-            var parts = input.Split(new[] { ',', ' ', ';' },
-                StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            if (parts.Length != 3)
-                return null;
-            if (!byte.TryParse(parts[0], out var r)) return null;
-            if (!byte.TryParse(parts[1], out var g)) return null;
-            if (!byte.TryParse(parts[2], out var b)) return null;
-            return Color.FromArgb(255, r, g, b);
-        }
-
-        // Returns the user's overridden logo sparkle palette, or the default neon palette.
-        // One blank + one valid = single-color palette; both blank/invalid = default.
-        private Color[] GetLogoPalette()
-        {
-            var hub = Config?.Hub;
-            var c1 = ParseRgbColor(hub?.BotLogoSparkleColor1);
-            var c2 = ParseRgbColor(hub?.BotLogoSparkleColor2);
-
-            if (c1.HasValue && c2.HasValue) return new[] { c1.Value, c2.Value };
-            if (c1.HasValue) return new[] { c1.Value };
-            if (c2.HasValue) return new[] { c2.Value };
-            return NeonLogoPalette;
-        }
 
         ////////////////////////////////////////////////////////////
         // Initialize custom fonts for UI controls with fallbacks //
         ////////////////////////////////////////////////////////////
         private void InitializeFonts()
         {
+            // Modern UI uses Segoe UI (built into Windows) instead of decorative fonts.
+            // Kept as a no-op so external callers still work; designer values are authoritative.
             try
             {
-                // Apply fonts to navigation buttons
                 foreach (var btn in new[] { btnBots, btnHub, btnLogs })
-                {
-                    try
-                    {
-                        btn.Font = FontManager.Get("Enter The Grid", 13.8F);
-                    }
-                    catch
-                    {
-                        btn.Font = new Font(FontFamily.GenericSansSerif, 13.8F);
-                    }
-                }
+                    btn.Font = new Font("Segoe UI", 10F, FontStyle.Regular);
 
-                // Apply font to title
-                try
-                {
-                    lblTitle.Font = FontManager.Get("Bahnschrift", 7.2F);
-                }
-                catch
-                {
-                    lblTitle.Font = new Font(FontFamily.GenericSansSerif, 7.2F);
-                }
-
-                // Apply font to child form title
-                try
-                {
-                    lblTitleChildForm.Font = FontManager.Get("Gnuolane Rg", 25.8F);
-                }
-                catch
-                {
-                    lblTitleChildForm.Font = new Font(FontFamily.GenericSansSerif, 25.8F);
-                }
+                lblTitle.Font = new Font("Segoe UI", 7.75F, FontStyle.Regular);
+                lblTitleChildForm.Font = new Font("Segoe UI Semibold", 17F, FontStyle.Regular);
             }
             catch (Exception ex)
             {
@@ -276,12 +224,13 @@ namespace SysBot.Pokemon.WinForms
             InitializeFonts();         // Apply custom fonts after component initialization
             pictureLogo.Image = Resources.picture_logo; // load logo from PNG resource (kept out of Main.resx to avoid IUIService build notice)
             SetupTitleBarButtonHoverEffects();
-            panelTitleBar.Paint += panelTitleBar_Paint;
-            InitGlitter();
+            // panelTitleBar_Paint (sparkle draw) and InitGlitter (sparkle spawn) are intentionally
+            // disabled for the minimalist redesign. Dragging via panelTitleBar_MouseDown still works.
 
             Instance = this;
             InitializeLeftSideImage(); // Initialize the left side BG image in panelLeftSide
             InitializeUpperImage();    // Initialize the upper image in panelTitleBar
+            InitializeChildFormTitleImage();
 
             // Force load FontAwesome font
             btnBots.IconChar = IconChar.Robot;
@@ -310,7 +259,7 @@ namespace SysBot.Pokemon.WinForms
             // Set up left‑panel buttons & effects
             var baseColor = ThemeManager.CurrentColors.PanelBase; // Base color for buttons according to themes
             var hoverColor = ThemeManager.CurrentColors.Hover;    // Hover color for buttons according to themes
-            leftBorderBtn = new Panel { Size = new Size(7, 60) }; // Left border for active button
+            leftBorderBtn = new Panel { Size = new Size(3, 44), BackColor = ThemeManager.CurrentColors.Accent }; // Slim accent strip for active nav button
             panelLeftSide.Controls.Add(leftBorderBtn);            // Add left border to the panel
             panelTitleBar.MouseDown += panelTitleBar_MouseDown;   // Allow dragging the window from the title bar
             HookDrag(panelTitleBar);
@@ -404,8 +353,9 @@ namespace SysBot.Pokemon.WinForms
 
             CB_Themes.SelectedIndexChanged += CB_Themes_SelectedIndexChanged;
 
-            // Initialize the Download Fonts link after config is loaded
-            InitializeFontsLink();
+            // Download Fonts link removed in the minimalist redesign — fonts are no longer
+            // a user-facing concern now that Segoe UI replaced the decorative families.
+            // (InitializeFontsLink remains in the file for potential future re-enable.)
             LoadLogoImage(Config.Hub.BotLogoImage); // Load a URL image to replace logo
             InitUtil.InitializeStubs(Config.Mode);     // Stubby McStubbinson will set environment based on config mode
             OpenChildForm(_botsForm);
@@ -424,6 +374,7 @@ namespace SysBot.Pokemon.WinForms
             lblTitle.Text = Text; // Set the title label text to the form's text
 
             _ = CheckForUpdatesInBackgroundAsync();
+            StartPeriodicUpdateChecks();
 
             this.ActiveControl = null;
             LogUtil.LogInfo("System", AppLocalization.Get(LocalizationKeys.LogBotInitializationComplete));
@@ -446,8 +397,14 @@ namespace SysBot.Pokemon.WinForms
         {
             try
             {
-                var (updateAvailable, _, newVersion) = await UpdateChecker.CheckForUpdatesAsync();
+                var (updateAvailable, _, newVersion) = await UpdateChecker.CheckForUpdatesAsync(forceShow: false, showDialog: false);
                 hasUpdate = updateAvailable;
+
+                // Avoid pushing the same notification twice on subsequent polls.
+                var versionKey = newVersion ?? string.Empty;
+                if (versionKey == _lastSeenUpdateVersion)
+                    return;
+                _lastSeenUpdateVersion = versionKey;
 
                 if (!IsDisposed && _botsForm != null)
                 {
@@ -458,6 +415,27 @@ namespace SysBot.Pokemon.WinForms
             {
                 LogUtil.LogError($"Update check failed: {ex.Message}", "System");
             }
+        }
+
+        private void StartPeriodicUpdateChecks()
+        {
+            // Run a background poll every UpdateCheckInterval. We dedupe by
+            // version inside CheckForUpdatesInBackgroundAsync so the banner
+            // only animates in once per new release detected at runtime.
+            _updateCheckTimer?.Dispose();
+            _updateCheckTimer = new System.Threading.Timer(_ =>
+            {
+                if (IsDisposed) return;
+                _ = CheckForUpdatesInBackgroundAsync();
+            }, null, UpdateCheckInterval, UpdateCheckInterval);
+
+            // Stop polling when the main form goes away to avoid leaking the
+            // timer or firing late callbacks against a disposed UI.
+            FormClosed += (_, _) =>
+            {
+                _updateCheckTimer?.Dispose();
+                _updateCheckTimer = null;
+            };
         }
 
 
@@ -499,13 +477,13 @@ namespace SysBot.Pokemon.WinForms
 
                 if (runningBots.Any())
                 {
-                    var result = MessageBox.Show(
+                    var result = SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(
                         $"There are {runningBots.Count} bot(s) currently running.\n\n" +
                         "Switching game modes will stop all running bots.\n\n" +
                         "Do you want to continue?",
                         "Stop Running Bots?",
                         MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Warning);
+                        SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Warning);
 
                     if (result != DialogResult.Yes)
                     {
@@ -566,21 +544,21 @@ namespace SysBot.Pokemon.WinForms
                 LogUtil.LogInfo($"Config saved with new mode: {newMode}", "GameMode");
 
                 LogUtil.LogInfo($"Successfully switched from {oldMode} to {newMode}", "GameMode");
-                MessageBox.Show(
-                    $"Game mode successfully changed to {newMode}!\n\n" +
-                    "You can now start your bots and they will operate in the new mode.",
-                    "Mode Switch Successful",
+                SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(
+                    $"{AppLocalization.Format(LocalizationKeys.BotsModeSwitchSuccessChanged, newMode)}\n\n" +
+                    AppLocalization.Get(LocalizationKeys.BotsModeSwitchSuccessReady),
+                    AppLocalization.Get(LocalizationKeys.BotsModeSwitchSuccessTitle),
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Information);
+                    SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Success);
             }
             catch (Exception ex)
             {
                 LogUtil.LogError($"Failed to switch game mode: {ex.Message}", "GameMode");
-                MessageBox.Show(
-                    $"Failed to switch game mode:\n\n{ex.Message}\n\nPlease try reloading the program.",
-                    "Mode Switch Failed",
+                SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(
+                    $"{AppLocalization.Format(LocalizationKeys.BotsFailedSwitchMode, ex.Message)}\n\n{AppLocalization.Get(LocalizationKeys.BotsModeSwitchReloadProgram)}",
+                    AppLocalization.Get(LocalizationKeys.BotsModeSwitchErrorTitle),
                     MessageBoxButtons.OK,
-                    MessageBoxIcon.Error);
+                    SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Error);
             }
         }
 
@@ -722,7 +700,7 @@ namespace SysBot.Pokemon.WinForms
             if (!_botsForm.BotPanel.Controls.OfType<BotController>().Any(c => c.IsRunning()) && (ModifierKeys & Keys.Alt) == 0)
             // If not running and no Alt key pressed
             {
-                WinFormsUtil.Alert("Nothing's running, genius."); // Derp
+                WinFormsUtil.Alert("Nothing's running, genius.");
                 return;
             }
 
@@ -732,12 +710,16 @@ namespace SysBot.Pokemon.WinForms
             {
                 if (env.IsRunning)
                 {
-                    WinFormsUtil.Alert("Commanding all bots to Idle.", "Press Stop (without a modifier key) to hard-stop and unlock control, or press Stop with the modifier key again to resume.");
+                    WinFormsUtil.Alert(
+                        "Commanding all bots to Idle.",
+                        "Press Stop (without a modifier key) to hard-stop and unlock control, or press Stop with the modifier key again to resume.");
                     cmd = WebApi.BotControlCommand.Idle;
                 }
                 else
                 {
-                    WinFormsUtil.Alert("Commanding all bots to resume their original task.", "Press Stop (without a modifier key) to hard-stop and unlock control.");
+                    WinFormsUtil.Alert(
+                        "Commanding all bots to resume their original task.",
+                        "Press Stop (without a modifier key) to hard-stop and unlock control.");
                     cmd = WebApi.BotControlCommand.Resume;
                 }
             }
@@ -862,8 +844,26 @@ namespace SysBot.Pokemon.WinForms
             foreach (var key in ThemeManager.ThemePresets.Keys)
                 CB_Themes.Items.Add(key);
 
+            // The minimalist redesign replaced the old 30+ theme presets. Migrate stale
+            // config values to the new default so the dropdown isn't blank.
+            if (!ThemeManager.ThemePresets.ContainsKey(Config.Theme ?? string.Empty))
+                Config.Theme = "Graphite";
+
             CB_Themes.SelectedItem = Config.Theme;
             ThemeManager.ApplyTheme(this, Config.Theme);
+        }
+
+        /// <summary>
+        /// Re-applies the current theme to the child forms (Bots/Hub/Logs) and their
+        /// nested controls. Called by <see cref="ThemeManager.ApplyTheme(Main, string)"/>
+        /// whenever the theme changes so the whole UI stays in sync.
+        /// </summary>
+        public void RefreshChildThemes()
+        {
+            _botsForm?.ApplyTheme();
+            _logsForm?.ApplyTheme();
+            if (_hubForm is { IsDisposed: false })
+                _hubForm.ApplyTheme();
         }
 
 
@@ -913,6 +913,11 @@ namespace SysBot.Pokemon.WinForms
 
         // Initialize the method for the left side image in the panelLeftSide
         private PictureBox leftSideImage = null!;
+        private PictureBox updateNotificationImage = null!;
+        private Label updateVersionLabel = null!;
+        private ToolTip updateNotificationToolTip = null!;
+        private string availableUpdateVersion = string.Empty;
+        private bool updateNotificationVisible;
 
         // Font download link in title bar
         private LinkLabel downloadFontsLink = null!;
@@ -920,42 +925,140 @@ namespace SysBot.Pokemon.WinForms
         // Initialize the meat and potatoes for the left side image in the panelLeftSide
         private void InitializeLeftSideImage()
         {
+            // Slim, centered mode badge below the theme dropdown — reinstated after the
+            // initial minimalist pass; sized smaller so it whispers instead of shouting.
             leftSideImage = new PictureBox
             {
-                Size = new Size(200, 35),             // Put actual image dimensions here, or add custom to resize
-                Location = new Point(180, 685),        // Fixed position for the image using XY
-                SizeMode = PictureBoxSizeMode.Normal, // Makes sure the image is not stretched or resized
-                BackColor = Color.Transparent,        // Makes sure the image has no background
-                BorderStyle = BorderStyle.None        // Makes sure there's no vague borders and shit
+                Size = new Size(160, 60),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                BorderStyle = BorderStyle.None,
+                Visible = true,
+                Anchor = AnchorStyles.Top,
             };
 
-            panelLeftSide.Controls.Add(leftSideImage);                 // Add the left side image to the panelLeftSide
-            panelLeftSide.Resize += (s, e) => PositionLeftSideImage(); // Reposition the image when the panel is resized
-            PositionLeftSideImage();                                   // Position the image initially
+            updateNotificationToolTip = new ToolTip
+            {
+                AutoPopDelay = 2500,
+                InitialDelay = 500,
+                ReshowDelay = 500,
+                ShowAlways = true
+            };
+
+            updateVersionLabel = new Label
+            {
+                AutoSize = false,
+                Size = new Size(180, 14),
+                Font = new Font("Segoe UI", 7F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(245, 247, 250),
+                BackColor = Color.Transparent,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+
+            updateNotificationImage = new PictureBox
+            {
+                Size = new Size(132, 23),
+                SizeMode = PictureBoxSizeMode.Zoom,
+                BackColor = Color.Transparent,
+                BorderStyle = BorderStyle.None,
+                Visible = false,
+                Cursor = Cursors.Hand
+            };
+            LoadUpdateNotificationImage();
+
+            updateVersionLabel.Click += (_, _) => Updater_Click(updateVersionLabel, EventArgs.Empty);
+            updateNotificationImage.Click += (_, _) => Updater_Click(updateNotificationImage, EventArgs.Empty);
+            updateNotificationToolTip.SetToolTip(updateVersionLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+            updateNotificationToolTip.SetToolTip(updateNotificationImage, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+
+            panelLeftSide.Controls.Add(leftSideImage);
+            panelLeftSide.Controls.Add(updateVersionLabel);
+            panelLeftSide.Controls.Add(updateNotificationImage);
+            panelLeftSide.Resize += (s, e) => PositionLeftSideImage();
+            PositionLeftSideImage();
         }
 
-        // Position the left side image in the panelLeftSide
+        private void LoadUpdateNotificationImage()
+        {
+            try
+            {
+                var assembly = System.Reflection.Assembly.GetExecutingAssembly();
+                const string resourceName = "SysBot.Pokemon.WinForms.Resources.new-release-update.png";
+                using var stream = assembly.GetManifestResourceStream(resourceName);
+                if (stream == null)
+                    return;
+
+                using var source = Image.FromStream(stream);
+                updateNotificationImage.Image = new Bitmap(source);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Failed to load update notification image: {ex.Message}");
+            }
+        }
+
+        // Position the left side image in the panelLeftSide.
         private void PositionLeftSideImage()
         {
-            if (leftSideImage == null || panelLeftSide == null)
+            if (leftSideImage == null || panelLeftSide == null || CB_Themes == null)
                 return;
 
-            // Get the actual usable width inside the panel
             int usableWidth = panelLeftSide.ClientSize.Width
                               - panelLeftSide.Padding.Left
                               - panelLeftSide.Padding.Right;
 
-            // Perfect horizontal centering
             int horizontalCenter = panelLeftSide.Padding.Left
                                    + (usableWidth - leftSideImage.Width) / 2;
 
-            // Vertical: below your theme selector
-            int verticalOffsetBelowTheme = CB_Themes.Bottom + 20;
+            int verticalOffsetBelowTheme = CB_Themes.Bottom + (updateNotificationVisible ? 6 : 24);
+            if (updateNotificationVisible && lblTitle != null)
+            {
+                int updateBlockHeight = updateVersionLabel.Height + updateNotificationImage.Height + 2;
+                int latestModeTop = lblTitle.Top - leftSideImage.Height - updateBlockHeight - 2;
+                verticalOffsetBelowTheme = Math.Min(verticalOffsetBelowTheme, latestModeTop);
+            }
 
             leftSideImage.Location = new Point(horizontalCenter, verticalOffsetBelowTheme);
-            leftSideImage.SizeMode = PictureBoxSizeMode.Zoom;
-            leftSideImage.Anchor = AnchorStyles.Top;
+            PositionUpdateNotification();
+        }
 
+        private void PositionUpdateNotification()
+        {
+            if (updateVersionLabel == null || updateNotificationImage == null || panelLeftSide == null || leftSideImage == null)
+                return;
+
+            int usableWidth = panelLeftSide.ClientSize.Width
+                              - panelLeftSide.Padding.Left
+                              - panelLeftSide.Padding.Right;
+
+            int labelX = panelLeftSide.Padding.Left + (usableWidth - updateVersionLabel.Width) / 2;
+            int imageX = panelLeftSide.Padding.Left + (usableWidth - updateNotificationImage.Width) / 2;
+            updateVersionLabel.Location = new Point(labelX, leftSideImage.Bottom + 1);
+            updateNotificationImage.Location = new Point(imageX, updateVersionLabel.Bottom - 1);
+
+            updateVersionLabel.BringToFront();
+            updateNotificationImage.BringToFront();
+        }
+
+        public void SetUpdateNotification(bool isUpdateAvailable, string newVersion = "")
+        {
+            if (InvokeRequired)
+            {
+                BeginInvoke(new Action(() => SetUpdateNotification(isUpdateAvailable, newVersion)));
+                return;
+            }
+
+            updateNotificationVisible = isUpdateAvailable && !string.IsNullOrWhiteSpace(newVersion);
+            availableUpdateVersion = updateNotificationVisible ? newVersion : string.Empty;
+
+            if (updateNotificationVisible)
+                updateVersionLabel.Text = AppLocalization.Format(LocalizationKeys.BotsUpdateNowTo, newVersion);
+
+            updateVersionLabel.Visible = updateNotificationVisible;
+            updateNotificationImage.Visible = updateNotificationVisible;
+            PositionLeftSideImage();
         }
 
         // Initialize the method for the upper panel image in the upperPanelImage
@@ -963,13 +1066,18 @@ namespace SysBot.Pokemon.WinForms
 
         private void InitializeUpperImage()
         {
+            // Mode artwork in the title bar — sized to fill the bar's full height so there are
+            // no black gaps above or below the artwork. StretchImage so the source PNG covers
+            // the full box; the mode images all share a similar horizontal aspect so light
+            // anisotropic scaling is acceptable here and avoids transparent banding.
             upperPanelImage = new PictureBox
             {
-                Size = new Size(325, 72),
-                Location = new Point(560, 0),
-                SizeMode = PictureBoxSizeMode.Normal,
+                Size = new Size(240, panelTitleBar.Height),
+                SizeMode = PictureBoxSizeMode.StretchImage,
                 BackColor = Color.Transparent,
-                BorderStyle = BorderStyle.None
+                BorderStyle = BorderStyle.None,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Visible = true
             };
 
             panelTitleBar.Controls.Add(upperPanelImage);
@@ -977,21 +1085,24 @@ namespace SysBot.Pokemon.WinForms
             PositionUpperImage();
         }
 
-        // Position the upper image in the upperPanelImage
         private void PositionUpperImage()
         {
             if (upperPanelImage == null || panelTitleBar == null)
                 return;
 
-            int usableWidth = panelTitleBar.ClientSize.Width
-                              - panelTitleBar.Padding.Left
-                              - panelTitleBar.Padding.Right;
+            // Match the title bar height exactly each layout pass so resizing the form keeps
+            // the artwork edge-to-edge vertically.
+            upperPanelImage.Height = panelTitleBar.Height;
 
-            int centerX = panelTitleBar.Padding.Left
-                          + (usableWidth - upperPanelImage.Width) / 1 - 30;
-
-            upperPanelImage.Location = new Point(centerX, 0);
+            // Sit just to the left of the language + window buttons (which start around btnMinimize.Left).
+            int rightAnchor = btnMinimize != null ? btnMinimize.Left : panelTitleBar.Width;
+            int x = rightAnchor - upperPanelImage.Width - 86; // leave room for the language pill
+            upperPanelImage.Location = new Point(Math.Max(x, 200), 0);
+            upperPanelImage.BringToFront();
         }
+
+        // Legacy helper kept for backward-compat with older references; the new PositionUpperImage
+        // (defined alongside InitializeUpperImage) is the active implementation.
 
         private void LoadLogoImage(string logoPath)
         {
@@ -1018,6 +1129,68 @@ namespace SysBot.Pokemon.WinForms
             catch (Exception ex)
             {
                 Console.WriteLine(AppLocalization.LocalizeRuntimeMessage($"[Logo Load] Failed to load logo: {ex.Message}"));
+            }
+        }
+
+        public void ApplyThemeArtwork()
+        {
+            if (pictureLogo != null)
+            {
+                var logo = GetEmbeddedResourceImage(GetThemeLogoResourceFile());
+                if (logo != null)
+                    pictureLogo.Image = logo;
+            }
+
+            RefreshNavThemeState();
+            UpdateChildFormTitle(currentBtn);
+        }
+
+        private static bool IsCuteTheme
+            => string.Equals(ThemeManager.CurrentThemeName, "Cute", StringComparison.OrdinalIgnoreCase);
+
+        private static string GetThemeLogoResourceFile()
+            => IsCuteTheme ? "cute_logo.png" : "picture_logo.png";
+
+        private Image? GetEmbeddedResourceImage(string resourceFile)
+        {
+            if (embeddedResourceImages.TryGetValue(resourceFile, out var cached))
+                return cached;
+
+            var resourceName = $"SysBot.Pokemon.WinForms.Resources.{resourceFile}";
+            using var stream = System.Reflection.Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName);
+            if (stream == null)
+                return null;
+
+            var image = Image.FromStream(stream);
+            embeddedResourceImages[resourceFile] = image;
+            return image;
+        }
+
+        private void RefreshNavThemeState()
+        {
+            var colors = ThemeManager.CurrentColors;
+            foreach (var btn in new[] { btnBots, btnHub, btnLogs })
+            {
+                bool active = btn == currentBtn;
+                btn.BackColor = active ? colors.Hover : colors.PanelBase;
+                btn.IconColor = active ? colors.Accent : colors.Muted;
+                btn.ForeColor = colors.ForeColor;
+            }
+
+            if (CB_Themes != null)
+            {
+                CB_Themes.BackColor = colors.ControlBackground;
+                CB_Themes.ForeColor = colors.ForeColor;
+                CB_Themes.Invalidate();
+            }
+
+            if (leftBorderBtn != null && currentBtn != null)
+            {
+                leftBorderBtn.BackColor = colors.Accent;
+                leftBorderBtn.Size = new Size(3, currentBtn.Height);
+                leftBorderBtn.Location = new Point(0, currentBtn.Top);
+                leftBorderBtn.BringToFront();
+                leftBorderBtn.Visible = true;
             }
         }
 
@@ -1093,7 +1266,7 @@ namespace SysBot.Pokemon.WinForms
         ///////////////////////////////////////////////////
         //////////// PROGRESS BAR UPDATE LOGIC ////////////
         ///////////////////////////////////////////////////
-       
+
         private void HookBotProgress(PokeBotState cfg, PokeRoutineExecutorBase bot)
         {
             BotController? botControl = _botsForm.BotPanel.Controls
@@ -1186,17 +1359,12 @@ namespace SysBot.Pokemon.WinForms
         // Update the method signature to explicitly allow nullability for the 'sender' parameter.
         private void panelTitleBar_MouseDown(object? sender, MouseEventArgs e)
         {
-            // Don't drag window when clicking on title bar buttons or the fonts link
-            if (sender == btnClose || sender == btnMaximize || sender == btnMinimize || sender == btnLanguage || sender == downloadFontsLink)
+            // Don't drag window when clicking on title bar buttons.
+            if (sender == btnClose || sender == btnMaximize || sender == btnMinimize || sender == btnLanguage)
                 return;
 
-            // Check if the click is within the download fonts link bounds
-            if (downloadFontsLink != null && downloadFontsLink.Visible)
-            {
-                var linkBounds = downloadFontsLink.Bounds;
-                if (linkBounds.Contains(e.Location))
-                    return;
-            }
+            if (btnLanguage != null && sender is Control senderControl && senderControl.Parent == btnLanguage)
+                return;
 
             if (btnLanguage != null && btnLanguage.Visible && sender == panelTitleBar)
             {
@@ -1215,6 +1383,13 @@ namespace SysBot.Pokemon.WinForms
         ////////// CLOSE/MAX/MIN BUTTON HANDLING //////////
         ///////////////////////////////////////////////////
 
+        // Pill geometry — restrained title-bar chrome
+        private const int LangPillWidth = 62;
+        private const int LangPillHeight = 24;
+        private const int LangPillSegmentWidth = 31;
+        private bool _langHoverEn;
+        private bool _langHoverEs;
+
         // Method to activate Bots button and load BotsForm
         private void InitializeLanguageButton()
         {
@@ -1226,43 +1401,141 @@ namespace SysBot.Pokemon.WinForms
                 ShowAlways = true
             };
 
-            btnLanguage = new IconButton
+            btnLanguage = new DoubleBufferedPanel
             {
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 BackColor = Color.Transparent,
-                FlatStyle = FlatStyle.Flat,
-                ForeColor = Color.White,
-                IconChar = IconChar.Language,
-                IconColor = Color.White,
-                IconFont = IconFont.Auto,
-                IconSize = 16,
-                Location = new Point(btnMinimize.Left - 72, 5),
+                Location = new Point(btnMinimize.Left - LangPillWidth - 14, 15),
                 Name = "btnLanguage",
-                Size = new Size(64, 24),
-                TextAlign = ContentAlignment.MiddleRight,
-                TextImageRelation = TextImageRelation.ImageBeforeText,
-                UseVisualStyleBackColor = false,
+                Size = new Size(LangPillWidth, LangPillHeight),
                 Cursor = Cursors.Hand
             };
+            btnLanguage.Paint += LanguagePill_Paint;
 
-            btnLanguage.FlatAppearance.BorderSize = 0;
-            btnLanguage.Click += (_, _) => ToggleLanguage();
+            // Same weight on both segments — color carries the active state, not weight
+            var pillFont = new Font("Segoe UI Semibold", 8F, FontStyle.Regular);
+
+            lblLangEn = new Label
+            {
+                AutoSize = false,
+                BackColor = Color.Transparent,
+                Font = pillFont,
+                Location = new Point(0, 0),
+                Margin = Padding.Empty,
+                Padding = new Padding(0, 0, 0, 3),
+                Name = "lblLangEn",
+                Size = new Size(LangPillSegmentWidth, LangPillHeight),
+                Text = "EN",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
+            };
+            lblLangEn.Click += (_, _) => SetLanguage(AppLanguage.English);
+            lblLangEn.MouseEnter += (_, _) => { _langHoverEn = true; ApplyLocalization(); };
+            lblLangEn.MouseLeave += (_, _) => { _langHoverEn = false; ApplyLocalization(); };
+
+            lblLangEs = new Label
+            {
+                AutoSize = false,
+                BackColor = Color.Transparent,
+                Font = pillFont,
+                Location = new Point(LangPillSegmentWidth, 0),
+                Margin = Padding.Empty,
+                Padding = new Padding(0, 0, 0, 3),
+                Name = "lblLangEs",
+                Size = new Size(LangPillSegmentWidth, LangPillHeight),
+                Text = "ES",
+                TextAlign = ContentAlignment.MiddleCenter,
+                Cursor = Cursors.Hand
+            };
+            lblLangEs.Click += (_, _) => SetLanguage(AppLanguage.Spanish);
+            lblLangEs.MouseEnter += (_, _) => { _langHoverEs = true; ApplyLocalization(); };
+            lblLangEs.MouseLeave += (_, _) => { _langHoverEs = false; ApplyLocalization(); };
+
+            btnLanguage.Controls.Add(lblLangEn);
+            btnLanguage.Controls.Add(lblLangEs);
             panelTitleBar.Controls.Add(btnLanguage);
             btnLanguage.BringToFront();
             ApplyLocalization();
         }
 
-        private void ToggleLanguage()
+        private void LanguagePill_Paint(object? sender, PaintEventArgs e)
         {
+            if (btnLanguage == null)
+                return;
+
+            var g = e.Graphics;
+            g.SmoothingMode = SmoothingMode.AntiAlias;
+            g.PixelOffsetMode = PixelOffsetMode.HighQuality;
+
+            var theme = ThemeManager.CurrentColors;
+            var bounds = new Rectangle(0, 0, btnLanguage.Width - 1, btnLanguage.Height - 1);
+            int radius = bounds.Height;
+
+            // Track: inset/recessed surface (Background is darker than the title bar's PanelBase),
+            // so the pill reads like an inset field — clearer container than the previous flat-on-flat.
+            using (var trackPath = CreatePillPath(bounds, radius))
+            using (var trackBrush = new SolidBrush(theme.Background))
+            using (var borderPen = new Pen(theme.Shadow, 1f))
+            {
+                g.FillPath(trackBrush, trackPath);
+                g.DrawPath(borderPen, trackPath);
+            }
+
+            // Thumb: raised tile — uses Hover, which is brighter than PanelBase, so it reads
+            // as lifted above both the track and the title bar. Single semantic moment for color
+            // is reserved for the text + the 2px accent underline.
+            bool isEnglish = AppLocalization.Language == AppLanguage.English;
+            const int inset = 3;
+            int halfWidth = (btnLanguage.Width - inset * 2) / 2;
+            int thumbX = isEnglish ? inset : inset + halfWidth;
+            var thumb = new Rectangle(
+                thumbX,
+                inset,
+                halfWidth,
+                btnLanguage.Height - (inset * 2) - 1);
+
+            using (var thumbPath = CreatePillPath(thumb, thumb.Height))
+            using (var thumbBrush = new SolidBrush(theme.Hover))
+            {
+                g.FillPath(thumbBrush, thumbPath);
+            }
+        }
+
+        private static GraphicsPath CreatePillPath(Rectangle bounds, int radius)
+        {
+            radius = Math.Max(2, Math.Min(radius, Math.Min(bounds.Width, bounds.Height)));
+            var path = new GraphicsPath();
+            int d = radius;
+            path.AddArc(bounds.X, bounds.Y, d, d, 180, 90);
+            path.AddArc(bounds.Right - d, bounds.Y, d, d, 270, 90);
+            path.AddArc(bounds.Right - d, bounds.Bottom - d, d, d, 0, 90);
+            path.AddArc(bounds.X, bounds.Bottom - d, d, d, 90, 90);
+            path.CloseFigure();
+            return path;
+        }
+
+        private sealed class DoubleBufferedPanel : Panel
+        {
+            public DoubleBufferedPanel()
+            {
+                SetStyle(ControlStyles.AllPaintingInWmPaint
+                    | ControlStyles.OptimizedDoubleBuffer
+                    | ControlStyles.UserPaint
+                    | ControlStyles.SupportsTransparentBackColor, true);
+                UpdateStyles();
+            }
+        }
+
+        private void SetLanguage(AppLanguage next)
+        {
+            if (AppLocalization.Language == next)
+                return;
+
             if (HasRunningBots())
             {
                 WinFormsUtil.Alert(AppLocalization.Get(LocalizationKeys.LanguageChangeBlockedBotRunning));
                 return;
             }
-
-            var next = AppLocalization.Language == AppLanguage.English
-                ? AppLanguage.Spanish
-                : AppLanguage.English;
 
             Config.Language = next;
             AppLocalization.SetLanguage(next);
@@ -1278,35 +1551,142 @@ namespace SysBot.Pokemon.WinForms
             return _botsForm?.BotPanel.Controls.OfType<BotController>().Any(c => c.IsRunning()) == true;
         }
 
+        private void InitializeChildFormTitleImage()
+        {
+            childFormTitleImage = new PictureBox
+            {
+                BackColor = Color.Transparent,
+                BorderStyle = BorderStyle.None,
+                SizeMode = PictureBoxSizeMode.Zoom,
+                Location = new Point(22, 8),
+                Size = new Size(170, 38),
+                Visible = false
+            };
+
+            childFormIcon.Visible = false;
+            lblTitleChildForm.Visible = false;
+            panelTitleBar.Controls.Add(childFormTitleImage);
+            childFormTitleImage.BringToFront();
+        }
+
+        private Image? GetChildFormTitleImage(IconButton? btn)
+        {
+            var resourceFile = btn switch
+            {
+                var b when b == btnBots && IsCuteTheme => "cute_title_bots.png",
+                var b when b == btnHub && IsCuteTheme => "cute_title_hub.png",
+                var b when b == btnLogs && IsCuteTheme => "cute_title_registros.png",
+                var b when b == btnBots => "title_bots.png",
+                var b when b == btnHub => "title_hub.png",
+                var b when b == btnLogs && AppLocalization.Language == AppLanguage.Spanish => "title_registros.png",
+                var b when b == btnLogs => "title_logs.png",
+                _ => null
+            };
+
+            if (resourceFile == null)
+                return null;
+
+            return GetEmbeddedResourceImage(resourceFile);
+        }
+
+        private void UpdateChildFormTitle(IconButton? btn)
+        {
+            if (lblTitleChildForm == null || childFormIcon == null)
+                return;
+
+            if (btn != null)
+            {
+                lblTitleChildForm.Text = btn.Text.Trim();
+                childFormIcon.IconChar = btn.IconChar;
+                childFormIcon.IconColor = ThemeManager.CurrentColors.Muted;
+            }
+            else
+            {
+                lblTitleChildForm.Text = AppLocalization.Get(LocalizationKeys.Loading);
+            }
+
+            if (childFormTitleImage == null)
+                return;
+
+            var image = GetChildFormTitleImage(btn);
+            if (image == null)
+            {
+                childFormTitleImage.Visible = false;
+                childFormIcon.Visible = btn != null;
+                lblTitleChildForm.Visible = true;
+                return;
+            }
+
+            int titleHeight = btn switch
+            {
+                _ when IsCuteTheme => 46,
+                var b when b == btnBots => 34,
+                var b when b == btnHub => 34,
+                _ => 38
+            };
+            int maxTitleWidth = IsCuteTheme ? 230 : 210;
+            int width = Math.Min(maxTitleWidth, Math.Max(120, (int)Math.Round(image.Width * (titleHeight / (double)image.Height))));
+            childFormTitleImage.Image = image;
+            childFormTitleImage.Size = new Size(width, titleHeight);
+            childFormTitleImage.Location = new Point(20, Math.Max(0, (panelTitleBar.Height - titleHeight) / 2));
+            childFormTitleImage.Visible = true;
+            childFormTitleImage.BringToFront();
+            childFormIcon.Visible = false;
+            lblTitleChildForm.Visible = false;
+        }
+
         private void ApplyLocalization()
         {
+            // Three-space prefix keeps the label visually separated from the icon
+            // in the minimalist sidebar layout.
             if (btnBots != null)
-                btnBots.Text = " " + AppLocalization.Get(LocalizationKeys.NavBots);
+                btnBots.Text = "   " + AppLocalization.Get(LocalizationKeys.NavBots);
             if (btnHub != null)
-                btnHub.Text = " " + AppLocalization.Get(LocalizationKeys.NavHub);
+                btnHub.Text = "   " + AppLocalization.Get(LocalizationKeys.NavHub);
             if (btnLogs != null)
-                btnLogs.Text = " " + AppLocalization.Get(LocalizationKeys.NavLogs);
+                btnLogs.Text = "   " + AppLocalization.Get(LocalizationKeys.NavLogs);
 
-            if (btnLanguage != null)
+            if (btnLanguage != null && lblLangEn != null && lblLangEs != null)
             {
-                var nextLanguageKey = AppLocalization.Language == AppLanguage.English
-                    ? LocalizationKeys.LanguageButtonSpanish
-                    : LocalizationKeys.LanguageButtonEnglish;
-                btnLanguage.Text = " " + AppLocalization.Get(nextLanguageKey);
-                languageToolTip?.SetToolTip(btnLanguage, AppLocalization.Get(LocalizationKeys.LanguageButtonTooltip));
+                var theme = ThemeManager.CurrentColors;
+                bool isEnglish = AppLocalization.Language == AppLanguage.English;
+
+                // Active glyph rides the raised thumb in ForeColor for maximum legibility;
+                // the 2px Accent strip painted below carries the semantic tie to the nav.
+                // Inactive glyph sits on the recessed track in Muted, brightening on hover.
+                lblLangEn.ForeColor = isEnglish
+                    ? theme.ForeColor
+                    : (_langHoverEn ? theme.ForeColor : theme.Muted);
+                lblLangEs.ForeColor = !isEnglish
+                    ? theme.ForeColor
+                    : (_langHoverEs ? theme.ForeColor : theme.Muted);
+
+                btnLanguage.Invalidate();
+
+                var englishTooltip = AppLocalization.Get(LocalizationKeys.LanguageButtonTooltipEnglish);
+                var spanishTooltip = AppLocalization.Get(LocalizationKeys.LanguageButtonTooltipSpanish);
+                languageToolTip?.SetToolTip(btnLanguage, isEnglish ? spanishTooltip : englishTooltip);
+                languageToolTip?.SetToolTip(lblLangEn, englishTooltip);
+                languageToolTip?.SetToolTip(lblLangEs, spanishTooltip);
             }
 
             if (downloadFontsLink != null)
                 downloadFontsLink.Text = AppLocalization.Get(LocalizationKeys.DownloadFonts);
 
+            if (updateVersionLabel != null && updateNotificationVisible && !string.IsNullOrWhiteSpace(availableUpdateVersion))
+                updateVersionLabel.Text = AppLocalization.Format(LocalizationKeys.BotsUpdateNowTo, availableUpdateVersion);
+
+            if (updateNotificationToolTip != null && updateVersionLabel != null && updateNotificationImage != null)
+            {
+                updateNotificationToolTip.SetToolTip(updateVersionLabel, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+                updateNotificationToolTip.SetToolTip(updateNotificationImage, AppLocalization.Get(LocalizationKeys.BotsUpdateAvailableTooltip));
+            }
+
             _botsForm?.ApplyLocalization();
             _logsForm?.ApplyLocalization();
             _hubForm?.ApplyLocalization();
 
-            if (currentBtn != null && lblTitleChildForm != null)
-                lblTitleChildForm.Text = currentBtn.Text;
-            else if (lblTitleChildForm != null)
-                lblTitleChildForm.Text = AppLocalization.Get(LocalizationKeys.Loading);
+            UpdateChildFormTitle(currentBtn);
         }
 
         private void Bots_Click(object sender, EventArgs e)
@@ -1405,6 +1785,10 @@ namespace SysBot.Pokemon.WinForms
             // Use the current theme colors
             var colors = ThemeManager.CurrentColors;
 
+            // Re-read tokens for the language pill so it follows theme swaps
+            if (btnLanguage != null)
+                ApplyLocalization();
+
             foreach (var btn in new[] { btnBots, btnHub, btnLogs })
             {
                 btn.BackColor = colors.PanelBase;
@@ -1436,25 +1820,26 @@ namespace SysBot.Pokemon.WinForms
 
             currentBtn = btn;
 
-            // Outline colors
-            Color outlineColor = btn switch
+            var accent = ThemeManager.CurrentColors.Accent;
+            var hover = ThemeManager.CurrentColors.Hover;
+
+            // Subtle active state: highlighted background + accent icon. No pulsing outline.
+            btn.BackColor = hover;
+            btn.IconColor = accent;
+            btn.ForeColor = ThemeManager.CurrentColors.ForeColor;
+            btn.FlatAppearance.BorderSize = 0;
+
+            // Position the slim left-edge accent strip next to the active button.
+            if (leftBorderBtn != null)
             {
-                var b when b == btnBots => Color.FromArgb(180, 150, 255),
-                var b when b == btnHub => Color.HotPink,
-                var b when b == btnLogs => Color.Cyan,
-                _ => Color.White
-            };
+                leftBorderBtn.BackColor = accent;
+                leftBorderBtn.Size = new Size(3, btn.Height);
+                leftBorderBtn.Location = new Point(0, btn.Top);
+                leftBorderBtn.BringToFront();
+                leftBorderBtn.Visible = true;
+            }
 
-            btn.FlatAppearance.BorderSize = 1; // thinner outline
-            btn.FlatAppearance.BorderColor = outlineColor;
-
-            // START the glow pulse on the active button
-            StartOutlinePulse(btn, outlineColor);
-
-            // Update top panel
-            lblTitleChildForm.Text = btn.Text;
-            childFormIcon.IconChar = btn.IconChar;
-            childFormIcon.IconColor = outlineColor;
+            UpdateChildFormTitle(btn);
         }
 
 
@@ -1584,90 +1969,29 @@ namespace SysBot.Pokemon.WinForms
 
         private void SetupTitleBarButtonHoverEffects()
         {
-            // Colors
-            Color normalClose = Color.Red;
-            Color hoverClose = Color.OrangeRed;
+            // Quiet, monochrome title-bar controls. Only close goes red on hover.
+            Color normalIcon = Color.FromArgb(180, 184, 192);
+            Color hoverIcon = Color.FromArgb(232, 234, 238);
+            Color hoverClose = Color.FromArgb(232, 70, 80);
 
-            Color normalMaximize = Color.White;
-            Color hoverMaximize = Color.DarkGray;
-
-            Color normalMinimize = Color.White;
-            Color hoverMinimize = Color.DarkGray;
-
-            // Close button
+            btnClose.IconColor = normalIcon;
             btnClose.MouseEnter += (s, e) => btnClose.IconColor = hoverClose;
-            btnClose.MouseLeave += (s, e) => btnClose.IconColor = normalClose;
+            btnClose.MouseLeave += (s, e) => btnClose.IconColor = normalIcon;
 
-            // Maximize button
-            btnMaximize.MouseEnter += (s, e) => btnMaximize.IconColor = hoverMaximize;
-            btnMaximize.MouseLeave += (s, e) => btnMaximize.IconColor = normalMaximize;
+            btnMaximize.IconColor = normalIcon;
+            btnMaximize.MouseEnter += (s, e) => btnMaximize.IconColor = hoverIcon;
+            btnMaximize.MouseLeave += (s, e) => btnMaximize.IconColor = normalIcon;
 
-            // Minimize button
-            btnMinimize.MouseEnter += (s, e) => btnMinimize.IconColor = hoverMinimize;
-            btnMinimize.MouseLeave += (s, e) => btnMinimize.IconColor = normalMinimize;
+            btnMinimize.IconColor = normalIcon;
+            btnMinimize.MouseEnter += (s, e) => btnMinimize.IconColor = hoverIcon;
+            btnMinimize.MouseLeave += (s, e) => btnMinimize.IconColor = normalIcon;
         }
 
         private void InitGlitter()
         {
-            glitterTimer = new Timer { Interval = 33 }; // ~30 FPS
-            glitterTimer.Tick += (s, e) =>
-            {
-                // Randomly spawn new title-bar sparkles (color follows current game mode)
-                if (glitterRng.NextDouble() < 0.2) // 20% chance each tick
-                {
-                    PointF pos = new PointF(
-                        glitterRng.Next(panelTitleBar.Width),
-                        glitterRng.Next(panelTitleBar.Height)
-                    );
-                    sparkles.Add(new Sparkle(pos, GetTitleBarPalette()));
-                }
-
-                // Update existing title-bar sparkles
-                for (int i = sparkles.Count - 1; i >= 0; i--)
-                {
-                    if (sparkles[i].Tick())
-                        sparkles.RemoveAt(i);
-                }
-
-                // Randomly spawn new logo-panel sparkles (neon pink/blue)
-                if (panelImageLogo.Width > 0 && panelImageLogo.Height > 0
-                    && glitterRng.NextDouble() < 0.25) // slightly denser since the area is smaller
-                {
-                    PointF pos = new PointF(
-                        glitterRng.Next(panelImageLogo.Width),
-                        glitterRng.Next(panelImageLogo.Height)
-                    );
-                    logoSparkles.Add(new Sparkle(pos, GetLogoPalette()));
-                }
-
-                // Update existing logo-panel sparkles
-                for (int i = logoSparkles.Count - 1; i >= 0; i--)
-                {
-                    if (logoSparkles[i].Tick())
-                        logoSparkles.RemoveAt(i);
-                }
-
-                // Redraw panels
-                panelTitleBar.Invalidate();
-                panelImageLogo.Invalidate(true); // invalidate children so transparent pictureLogo refreshes
-            };
-
-            glitterTimer.Start();
-
-            FormClosed += (_, __) => { glitterTimer.Stop(); glitterTimer.Dispose(); };
-
-            // Paint handlers
-            panelTitleBar.Paint += (s, e) =>
-            {
-                foreach (var sp in sparkles)
-                    sp.Draw(e.Graphics);
-            };
-
-            panelImageLogo.Paint += (s, e) =>
-            {
-                foreach (var sp in logoSparkles)
-                    sp.Draw(e.Graphics);
-            };
+            // Sparkle effects intentionally disabled for the minimalist redesign.
+            // Method kept (and still called from the constructor) as a safe no-op so callers
+            // and any future restoration of the effect don't require additional plumbing.
         }
 
         // Method to disable the current button and reset its style to default
@@ -1675,8 +1999,9 @@ namespace SysBot.Pokemon.WinForms
         {
             if (currentBtn != null)
             {
-                StopOutlinePulse(currentBtn); // STOP pulse animation
+                StopOutlinePulse(currentBtn); // STOP pulse animation (no-op if not running)
                 currentBtn.BackColor = ThemeManager.CurrentColors.PanelBase; // default bg
+                currentBtn.IconColor = ThemeManager.CurrentColors.Muted;     // muted icon
                 currentBtn.TextAlign = ContentAlignment.MiddleLeft;
                 currentBtn.TextImageRelation = TextImageRelation.ImageBeforeText;
                 currentBtn.ImageAlign = ContentAlignment.MiddleLeft;
@@ -1772,7 +2097,11 @@ namespace SysBot.Pokemon.WinForms
             catch (Exception ex)
             {
                 LogUtil.LogError($"Error in Download Fonts link click: {ex.Message}", "System");
-                WinFormsUtil.Error($"Error showing font download dialog:\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}");
+                WinFormsUtil.Error(
+                    "Error showing font download dialog:",
+                    ex.Message,
+                    "Stack trace:",
+                    ex.StackTrace ?? string.Empty);
             }
         }
 
@@ -1812,7 +2141,11 @@ namespace SysBot.Pokemon.WinForms
             catch (Exception ex)
             {
                 LogUtil.LogError($"Error in Download Fonts link click: {ex.Message}", "System");
-                WinFormsUtil.Error($"Error showing font download dialog:\n{ex.Message}\n\nStack trace:\n{ex.StackTrace}");
+                WinFormsUtil.Error(
+                    "Error showing font download dialog:",
+                    ex.Message,
+                    "Stack trace:",
+                    ex.StackTrace ?? string.Empty);
             }
         }
 
@@ -1847,11 +2180,11 @@ namespace SysBot.Pokemon.WinForms
                 // Check if file already exists
                 if (File.Exists(filePath))
                 {
-                    var overwriteResult = MessageBox.Show(
+                    var overwriteResult = SysBot.Pokemon.WinForms.Controls.ThemedMessageBox.Show(
                         $"The file Fonts.7z already exists in this location.\n\nDo you want to overwrite it?",
                         "File Exists",
                         MessageBoxButtons.YesNo,
-                        MessageBoxIcon.Question
+                        SysBot.Pokemon.WinForms.Controls.ThemedMessageIcon.Question
                     );
 
                     if (overwriteResult != DialogResult.Yes)
@@ -1874,12 +2207,17 @@ namespace SysBot.Pokemon.WinForms
                 await File.WriteAllBytesAsync(filePath, fileBytes);
 
                 LogUtil.LogInfo($"Fonts downloaded successfully to: {filePath}", "System");
-                WinFormsUtil.Alert($"Fonts downloaded successfully!\n\nLocation: {filePath}\n\nPlease install the fonts and restart the program.");
+                WinFormsUtil.Alert(
+                    "Fonts downloaded successfully!",
+                    $"Location: {filePath}",
+                    "Please install the fonts and restart the program.");
             }
             catch (Exception ex)
             {
                 LogUtil.LogError($"Failed to download fonts: {ex.Message}", "System");
-                WinFormsUtil.Error($"Failed to download fonts:\n{ex.Message}");
+                WinFormsUtil.Error(
+                    "Failed to download fonts:",
+                    ex.Message);
             }
         }
 
@@ -1899,12 +2237,24 @@ namespace SysBot.Pokemon.WinForms
             }
             catch (Exception ex)
             {
-                WinFormsUtil.Error($"Failed to save configuration:\n{ex.Message}");
+                WinFormsUtil.Error(
+                    "Failed to save configuration:",
+                    ex.Message);
             }
         }
 
         // WINFORMS JUNK THAT'S NEEDED
         private void panel6_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void panel5_Paint(object sender, PaintEventArgs e)
+        {
+
+        }
+
+        private void panel3_Paint(object sender, PaintEventArgs e)
         {
 
         }

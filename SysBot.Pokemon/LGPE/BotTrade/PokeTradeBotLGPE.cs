@@ -412,6 +412,7 @@ public class PokeTradeBotLGPE(PokeTradeHub<PB7> Hub, PokeBotState Config) : Poke
         Log("Esperando en la pantalla de intercambio...");
 
         await Task.Delay(5_000, token).ConfigureAwait(false);
+        Log(PokeTradeBotUtil.FormatFinalTrainerInfo(toSend));
         var tradeResult = await ConfirmAndStartTrading(poke, 0, token);
         if (tradeResult != PokeTradeResult.Success)
         {

@@ -190,13 +190,13 @@ namespace SysBot.Pokemon.Discord
             }
         }
 
-        private static async Task<string> GetPokePasteHtml(string pokePasteUrl)
+        internal static async Task<string> GetPokePasteHtml(string pokePasteUrl)
         {
             using var httpClient = new HttpClient();
             return await httpClient.GetStringAsync(pokePasteUrl);
         }
 
-        private static List<ShowdownSet> ParseShowdownSets(string pokePasteHtml)
+        internal static List<ShowdownSet> ParseShowdownSets(string pokePasteHtml)
         {
             var showdownSets = new List<ShowdownSet>();
             var regex = new Regex(@"<pre>(.*?)</pre>", RegexOptions.Singleline);

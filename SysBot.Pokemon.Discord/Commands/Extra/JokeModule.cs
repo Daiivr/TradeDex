@@ -8,7 +8,7 @@ public class JokeModule : ModuleBase<SocketCommandContext>
 {
     private readonly Random _random = new Random();
 
-    private readonly List<string> _jokes = new List<string>
+    internal static readonly List<string> Jokes = new List<string>
     {
         "You're so ugly, when your mom dropped you off at school, she got a fine for littering.",
         "If laughter is the best medicine, your face must be curing the world.",
@@ -168,8 +168,8 @@ public class JokeModule : ModuleBase<SocketCommandContext>
     [Summary("Tells a random joke or insults the user.")]
     public async Task InsultAsync()
     {
-        int index = _random.Next(_jokes.Count);
-        string insult = _jokes[index];
+        int index = _random.Next(Jokes.Count);
+        string insult = Jokes[index];
 
         await ReplyAsync(insult);
     }

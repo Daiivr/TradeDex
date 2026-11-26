@@ -31,9 +31,19 @@ namespace SysBot.Base
             if (_rtb.TextLength > _rtb.MaxLength)
                 _rtb.Clear();
 
-            // Format your log string, for example: [Source] LogText
-            string formatted = $"[{source}] {text}{Environment.NewLine}";
-            _rtb.AppendText(formatted);
+            var timestamp = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+            var prefix = $"[{timestamp}] [{source}] ";
+            var normalizedText = text.Replace("\r\n", "\n").Replace('\r', '\n');
+            var lines = normalizedText.Split('\n');
+
+            for (var i = 0; i < lines.Length; i++)
+            {
+                if (i == lines.Length - 1 && lines[i].Length == 0)
+                    continue;
+
+                _rtb.AppendText($"{prefix}{lines[i]}{Environment.NewLine}");
+            }
+
             _rtb.SelectionStart = _rtb.Text.Length;
             _rtb.ScrollToCaret();
         }

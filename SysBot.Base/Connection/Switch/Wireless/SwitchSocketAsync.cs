@@ -29,11 +29,15 @@ public sealed class SwitchSocketAsync : SwitchSocket, ISwitchConnectionAsync
 
     public override void Connect()
     {
-        if (Connected)
+        if (IsConnectionAlive())
         {
             Log("Already connected prior, skipping initial connection.");
             return;
         }
+
+        // Connected can stay true after the peer has dropped the link. A socket that
+        // has already connected cannot be reused, so reconnect with a fresh instance.
+        InitializeSocket();
 
         Log("Connecting to device...");
         IAsyncResult result = Connection.BeginConnect(Info.IP, Info.Port, null, null);
@@ -165,10 +169,22 @@ public sealed class SwitchSocketAsync : SwitchSocket, ISwitchConnectionAsync
 
     public override void Reset()
     {
-        if (Connected)
-            Disconnect();
+        if (IsConnectionAlive())
+        {
+            try
+            {
+                Disconnect();
+            }
+            catch
+            {
+                // A graceful disconnect can fail when the peer already dropped us.
+                InitializeSocket();
+            }
+        }
         else
+        {
             InitializeSocket();
+        }
         Connect();
     }
 

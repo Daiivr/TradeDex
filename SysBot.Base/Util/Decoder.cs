@@ -22,7 +22,9 @@ public static class Decoder
 
     public static ReadOnlySpan<byte> ConvertHexByteStringToBytes(ReadOnlySpan<byte> raw)
     {
-        throw new NotImplementedException();
+        var result = new byte[raw.Length / 2];
+        LoadHexBytesTo(raw[..(result.Length * 2)], result, 2);
+        return result;
     }
 
     public static void LoadHexBytesTo(ReadOnlySpan<byte> str, Span<byte> dest, int tupleSize)

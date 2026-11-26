@@ -2,6 +2,7 @@ using System;
 using System.Linq;
 using System.Windows.Forms;
 using SysBot.Pokemon.Localization;
+using SysBot.Pokemon.WinForms.Controls;
 
 namespace SysBot.Pokemon.WinForms;
 
@@ -17,7 +18,7 @@ public static class WinFormsUtil
     {
         System.Media.SystemSounds.Hand.Play();
         string msg = string.Join(Environment.NewLine + Environment.NewLine, lines.Select(AppLocalization.LocalizeRuntimeMessage));
-        return MessageBox.Show(msg, AppLocalization.Get(LocalizationKeys.DialogErrorTitle), MessageBoxButtons.OK, MessageBoxIcon.Error);
+        return ThemedMessageBox.Show(msg, AppLocalization.Get(LocalizationKeys.DialogErrorTitle), MessageBoxButtons.OK, ThemedMessageIcon.Error);
     }
 
     internal static DialogResult Alert(params string[] lines) => Alert(true, lines);
@@ -27,14 +28,14 @@ public static class WinFormsUtil
         if (sound)
             System.Media.SystemSounds.Asterisk.Play();
         string msg = string.Join(Environment.NewLine + Environment.NewLine, lines.Select(AppLocalization.LocalizeRuntimeMessage));
-        return MessageBox.Show(msg, AppLocalization.Get(LocalizationKeys.DialogAlertTitle), MessageBoxButtons.OK, sound ? MessageBoxIcon.Information : MessageBoxIcon.None);
+        return ThemedMessageBox.Show(msg, AppLocalization.Get(LocalizationKeys.DialogAlertTitle), MessageBoxButtons.OK, sound ? ThemedMessageIcon.Info : ThemedMessageIcon.None);
     }
 
     internal static DialogResult Prompt(MessageBoxButtons btn, params string[] lines)
     {
         System.Media.SystemSounds.Asterisk.Play();
         string msg = string.Join(Environment.NewLine + Environment.NewLine, lines.Select(AppLocalization.LocalizeRuntimeMessage));
-        return MessageBox.Show(msg, AppLocalization.Get(LocalizationKeys.DialogPromptTitle), btn, MessageBoxIcon.Question);
+        return ThemedMessageBox.Show(msg, AppLocalization.Get(LocalizationKeys.DialogPromptTitle), btn, ThemedMessageIcon.Question);
     }
     #endregion
 

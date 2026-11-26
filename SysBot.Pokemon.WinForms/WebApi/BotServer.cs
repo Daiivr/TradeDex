@@ -101,6 +101,49 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
         return memoryStream.ToArray();
     }
 
+    // Content-hash of the static assets, computed once per process start.
+    // Used as a cache-busting query string (?v=<hash>) so Cloudflare and
+    // browsers automatically pick up new JS/CSS on every rebuild without
+    // requiring a manual purge.
+    private static string? _assetVersion;
+    private static readonly object _assetVersionLock = new();
+
+    private static string AssetVersion
+    {
+        get
+        {
+            if (_assetVersion != null) return _assetVersion;
+            lock (_assetVersionLock)
+            {
+                if (_assetVersion != null) return _assetVersion;
+                try
+                {
+                    var js = LoadEmbeddedResourceBinary("TradePortal.js");
+                    var css = LoadEmbeddedResourceBinary("TradePortal.css");
+                    var html = LoadEmbeddedResourceBinary("TradePortal.html");
+                    var combined = new byte[js.Length + css.Length + html.Length];
+                    Buffer.BlockCopy(js, 0, combined, 0, js.Length);
+                    Buffer.BlockCopy(css, 0, combined, js.Length, css.Length);
+                    Buffer.BlockCopy(html, 0, combined, js.Length + css.Length, html.Length);
+                    var hash = System.Security.Cryptography.SHA1.HashData(combined);
+                    _assetVersion = Convert.ToHexString(hash).Substring(0, 10).ToLowerInvariant();
+                }
+                catch
+                {
+                    // Fallback: timestamp-based token so we still bust caches
+                    // even if hashing fails for some reason.
+                    _assetVersion = DateTime.UtcNow.Ticks.ToString("x");
+                }
+                return _assetVersion;
+            }
+        }
+    }
+
+    private static string LoadTradePortalHtml()
+    {
+        return LoadEmbeddedResource("TradePortal.html").Replace("__ASSET_VER__", AssetVersion);
+    }
+
     public void Start()
     {
         if (_running) return;
@@ -226,11 +269,11 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             }
 
 
-            var (statusCode, content, contentType) = await ProcessRequestAsync(request);
+            var (statusCode, content, contentType) = await ProcessRequestAsync(request, response);
 
-            if ((contentType == "image/x-icon" || contentType == "image/png") && content is byte[] imageBytes)
+            if (content is byte[] binaryContent)
             {
-                await SendBinaryResponseAsync(response, 200, imageBytes, contentType);
+                await SendBinaryResponseAsync(response, statusCode, binaryContent, contentType);
             }
             else
             {
@@ -259,16 +302,38 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             response.Headers.Add("Access-Control-Allow-Headers", "Content-Type");
         }
     }
-    private async Task<(int statusCode, object? content, string contentType)> ProcessRequestAsync(HttpListenerRequest request)
+    private async Task<(int statusCode, object? content, string contentType)> ProcessRequestAsync(HttpListenerRequest request, HttpListenerResponse response)
     {
         var path = request.Url?.LocalPath ?? "";
 
         return path switch
         {
             "/" => (200, HtmlTemplate, "text/html"),
+            "/trade" or "/trade/" => (200, LoadTradePortalHtml(), "text/html"),
             "/BotControlPanel.css" => (200, LoadEmbeddedResource("BotControlPanel.css"), "text/css"),
             "/BotControlPanel.js" => (200, LoadEmbeddedResource("BotControlPanel.js"), "text/javascript"),
+            "/TradePortal.css" => (200, LoadEmbeddedResource("TradePortal.css"), "text/css"),
+            "/TradePortal.js" => (200, LoadEmbeddedResource("TradePortal.js"), "text/javascript"),
             "/api/bot/localization" => (200, GetLocalizationInfo(), "application/json"),
+            "/api/trade/auth/config" => (200, GetTradeAuthConfig(request), "application/json"),
+            "/api/trade/auth/login" => (200, StartDiscordLogin(request, response), "application/json"),
+            "/api/trade/auth/callback" => (200, await CompleteDiscordLogin(request, response), "text/html"),
+            "/api/trade/auth/me" => (200, GetCurrentTradeUser(request), "application/json"),
+            "/api/trade/auth/logout" => (200, LogoutTradeUser(response), "application/json"),
+            "/api/trade/profile" => (200, GetTradeProfile(request), "application/json"),
+            "/api/trade/activity" => (200, GetRecentTradeActivity(), "application/json"),
+            "/api/trade/files" => (200, GetRecentTradeFiles(request), "application/json"),
+            "/api/trade/queue" => (200, GetWebTradeQueueStatus(request), "application/json"),
+            var p when p.StartsWith("/api/trade/files/", StringComparison.Ordinal) && request.HttpMethod == "GET" =>
+                DownloadRecentTradeFile(request, response, p),
+            var p when p == "/api/trade/code" && request.HttpMethod == "POST" =>
+                (200, await SaveTradeCode(request), "application/json"),
+            var p when p == "/api/trade/code/delete" && request.HttpMethod == "POST" =>
+                (200, DeleteTradeCode(request), "application/json"),
+            var p when p == "/api/trade/submit" && request.HttpMethod == "POST" =>
+                (200, await SubmitWebTrade(request), "application/json"),
+            var p when p == "/api/trade/cancel" && request.HttpMethod == "POST" =>
+                (200, CancelWebTrade(request), "application/json"),
             "/api/bot/instances" => (200, await GetInstancesAsync(), "application/json"),
             "/api/bot/queue/status" => (200, await Task.FromResult(GetQueueStatus()), "application/json"),
             var p when p.StartsWith("/api/bot/instances/") && p.EndsWith("/bots") =>
@@ -293,6 +358,22 @@ public partial class BotServer(Main mainForm, int port = 8080, int tcpPort = 808
             "/icon.ico" => (200, GetIconBytes(), "image/x-icon"),
             "/LeftJoyCon.png" => (200, LoadEmbeddedResourceBinary("LeftJoyCon.png"), "image/png"),
             "/RightJoyCon.png" => (200, LoadEmbeddedResourceBinary("RightJoyCon.png"), "image/png"),
+            "/sv_mode_image.png" => (200, LoadEmbeddedResourceBinary("sv_mode_image.png"), "image/png"),
+            "/plza_mode_image.png" => (200, LoadEmbeddedResourceBinary("plza_mode_image.png"), "image/png"),
+            "/swsh_mode_image.png" => (200, LoadEmbeddedResourceBinary("swsh_mode_image.png"), "image/png"),
+            "/bdsp_mode_image.png" => (200, LoadEmbeddedResourceBinary("bdsp_mode_image.png"), "image/png"),
+            "/pla_mode_image.png" => (200, LoadEmbeddedResourceBinary("pla_mode_image.png"), "image/png"),
+            "/lgpe_mode_image.png" => (200, LoadEmbeddedResourceBinary("lgpe_mode_image.png"), "image/png"),
+            "/NormalPokeball.svg" => (200, LoadEmbeddedResourceBinary("NormalPokeball.svg"), "image/svg+xml"),
+            "/Pokeball1SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball1SVG.svg"), "image/svg+xml"),
+            "/Pokeball2SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball2SVG.svg"), "image/svg+xml"),
+            "/Pokeball3SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball3SVG.svg"), "image/svg+xml"),
+            "/Pokeball4SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball4SVG.svg"), "image/svg+xml"),
+            "/Pokeball5SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball5SVG.svg"), "image/svg+xml"),
+            "/Pokeball6SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball6SVG.svg"), "image/svg+xml"),
+            "/Pokeball7SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball7SVG.svg"), "image/svg+xml"),
+            "/Pokeball8SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball8SVG.svg"), "image/svg+xml"),
+            "/Pokeball9SVG.svg" => (200, LoadEmbeddedResourceBinary("Pokeball9SVG.svg"), "image/svg+xml"),
             _ => (404, null, "text/plain")
         };
     }

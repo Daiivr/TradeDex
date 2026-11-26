@@ -14,6 +14,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.LanguageButtonEnglish] = "EN";
                 target[LocalizationKeys.LanguageButtonSpanish] = "ES";
                 target[LocalizationKeys.LanguageButtonTooltip] = "Switch language";
+                target[LocalizationKeys.LanguageButtonTooltipEnglish] = "Switch to English";
+                target[LocalizationKeys.LanguageButtonTooltipSpanish] = "Switch to Spanish";
                 target[LocalizationKeys.LanguageChangeBlockedBotRunning] = "A bot is currently running. Stop all bots before changing the language.";
                 target[LocalizationKeys.Loading] = "LOADING ...";
                 target[LocalizationKeys.DownloadFonts] = "Download Fonts";
@@ -31,6 +33,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.LanguageButtonEnglish] = "EN";
                 target[LocalizationKeys.LanguageButtonSpanish] = "ES";
                 target[LocalizationKeys.LanguageButtonTooltip] = "Cambiar idioma";
+                target[LocalizationKeys.LanguageButtonTooltipEnglish] = "Cambiar a inglés";
+                target[LocalizationKeys.LanguageButtonTooltipSpanish] = "Cambiar a español";
                 target[LocalizationKeys.LanguageChangeBlockedBotRunning] = "Hay un bot ejecutandose. Deten todos los bots antes de cambiar el idioma.";
                 target[LocalizationKeys.Loading] = "CARGANDO ...";
                 target[LocalizationKeys.DownloadFonts] = "Descargar fuentes";

@@ -1,5 +1,6 @@
 using System;
 using System.ComponentModel;
+using SysBot.Pokemon.Localization;
 
 // ReSharper disable AutoPropertyCanBeMadeGetOnly.Global
 

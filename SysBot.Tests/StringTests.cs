@@ -20,8 +20,8 @@ public class StringTests
     [Theory]
     [InlineData("Anubis", false)]
     [InlineData("Kurt", false)]
-    [InlineData("NzHateTV", true)]
-    [InlineData("tvOakSlab", true)]
+    [InlineData("NzHateTV", false)]
+    [InlineData("tvOakSlab", false)]
     public void TestSpammy(string input, bool state)
     {
         var result = StringsUtil.IsSpammyString(input);

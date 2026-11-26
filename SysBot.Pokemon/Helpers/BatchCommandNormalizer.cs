@@ -21,7 +21,7 @@ namespace SysBot.Pokemon.Discord.Helpers
 
         // Maps common aliases to their normalized command keys
         // New Showdown Set key → Original Batch Command key
-        private static readonly Dictionary<string, string> BatchCommandAliasMap = new(StringComparer.OrdinalIgnoreCase)
+        public static readonly Dictionary<string, string> BatchCommandAliasMap = new(StringComparer.OrdinalIgnoreCase)
         {
             { "Size", "Scale" },
             { "Weight", "WeightScalar" },
@@ -42,17 +42,18 @@ namespace SysBot.Pokemon.Discord.Helpers
             { "OT Friendship", "OriginalTrainerFriendship" },
             { "HT Friendship", "HandlingTrainerFriendship" },
             { "Characteristic", "Characteristic" },
-            { "Stat Nature", "StatNature" }
+            { "Stat Nature", "StatAlignment" },
+            { "StatNature", "StatAlignment" }
         };
 
-        private static readonly HashSet<string> EqualCommandKeys = new(StringComparer.OrdinalIgnoreCase)
+        public static readonly HashSet<string> EqualCommandKeys = new(StringComparer.OrdinalIgnoreCase)
         {
             "Generation", "Gen", "WasEgg", "Hatched", "Version"
         };
 
         // Core mapping of functions for each key
         // Batch Command key → Handler function
-        private static readonly Dictionary<string, Func<string, string>> CommandProcessors =
+        public static readonly Dictionary<string, Func<string, string>> CommandProcessors =
             new(StringComparer.OrdinalIgnoreCase)
             {
                 { "Scale", ProcessScale },
@@ -76,7 +77,7 @@ namespace SysBot.Pokemon.Discord.Helpers
                 { "HT", ProcessHyperTrain },
                 { "MetLevel", ProcessMetLevel },
                 { "Markings", ProcessMarkings },
-                { "StatNature", ProcessStatNature },
+                { "StatAlignment", ProcessStatNature },
                 { "Nickname", ProcessNickname }
             };
 
@@ -292,6 +293,19 @@ namespace SysBot.Pokemon.Discord.Helpers
                 var line = lines[i].Trim();
                 if (string.IsNullOrWhiteSpace(line))
                     continue;
+
+                // Direct batch form ".MetDate=<value>" bypasses the ":" branch below,
+                // so route it through ProcessMetDate to normalize flexible date formats
+                // (e.g. "4-20-2020" → "20200420") and produce the YYYYMMDD form that
+                // ALM and MetDateValidator both expect.
+                if (line.StartsWith(".MetDate=", StringComparison.OrdinalIgnoreCase))
+                {
+                    var rawValue = line[".MetDate=".Length..];
+                    var normalized = ProcessMetDate(rawValue);
+                    if (!string.IsNullOrWhiteSpace(normalized))
+                        processed.Add(normalized);
+                    continue;
+                }
 
                 if (!line.Contains(":"))
                 {
@@ -541,12 +555,16 @@ namespace SysBot.Pokemon.Discord.Helpers
 
         // .HyperTrainFlags= → HyperTrain: or HyperTrainFlags:
         // Value is "true" or "false"
-        private static string ProcessHyperTrainFlags(string val) =>
-            TryParseBoolean(val, out var b)
-                ? $".HyperTrainFlags={b}"
-                : string.Empty;
+        private static string ProcessHyperTrainFlags(string val)
+        {
+            if (TryParseBoolean(val, out var b))
+                return b == 1 ? ".HyperTrainFlags=$suggest" : ".HyperTrainFlags=0";
+            if (byte.TryParse(val, out var mask) && mask <= 0x3F)
+                return $".HyperTrainFlags={mask}";
+            return string.Empty;
+        }
 
-        // .StatNature= → Stat Nature:
+        // .StatAlignment= → Stat Nature:
         // Value is a Nature enum name or "Random"
         private static string ProcessStatNature(string val)
         {
@@ -561,7 +579,7 @@ namespace SysBot.Pokemon.Discord.Helpers
                 return string.Empty;
 
             // Return exact batch command Showdown expects
-            return $".StatNature={matchedNature}";
+            return $".StatAlignment={matchedNature}";
         }
 
         // Nickname: Suggest → Nickname: [Random]

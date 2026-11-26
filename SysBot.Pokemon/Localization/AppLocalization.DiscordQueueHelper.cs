@@ -30,7 +30,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordHomeTrackerNotice] = "**Home Tracker Detected.**";
                 target[LocalizationKeys.DiscordNonNativeNotice] = "**This Pokemon is Non-Native.**";
                 target[LocalizationKeys.DiscordAutoOtNotApplied] = "*AutoOT not applied.*";
-                target[LocalizationKeys.DiscordCannotEnterHomeAutoOt] = "*Cannot enter HOME & AutoOT not applied.*";
+                target[LocalizationKeys.DiscordCannotEnterHomeAutoOt] = "*It may not be able to enter HOME and AutoOT was not applied.*";
                 target[LocalizationKeys.DiscordTradeDetailsPrepareError] = "An error occurred while preparing the trade details.";
                 target[LocalizationKeys.DiscordHiddenTradeAdded] = "Successfully Added\n//User: ||Owner Access Only||\n//Position: {0}\n//Pokemon: ||{1}||\n//ETA: {2:F1} min(s)";
                 target[LocalizationKeys.DiscordBatchAddedSummary] = "{0} - Added batch trade with {1} Pokemon to the queue! Position: {2}. Estimated: {3:F1} min(s).";
@@ -41,6 +41,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordMysteryEggBatchDescription] = "You are currently receiving **{0}** Mystery Egg{1}!\nWhat could they be?";
                 target[LocalizationKeys.DiscordMysteryEggBatchAuthor] = "{0}'s Mystery Egg Batch Trade";
                 target[LocalizationKeys.DiscordMysteryEggBatchAddedPlain] = "{0} - Added Mystery Egg batch ({1}x) to queue! Position: {2}. Estimated: {3:F1} min(s).";
+                target[LocalizationKeys.DiscordMysteryMonBatchDescription] = "**{0}** Mystery Pokemon";
+                target[LocalizationKeys.DiscordMysteryMonBatchAddedSummary] = "{0} - Added batch of {1} Mystery Pokemon to the queue! Position: {2}. Estimated: {3:F1} min(s).";
                 target[LocalizationKeys.DiscordItemBatchDescription] = "**{0}** will deliver your **{1}** {2}{3}!";
                 target[LocalizationKeys.DiscordItemBatchAuthor] = "{0}'s Item Batch Trade";
                 target[LocalizationKeys.DiscordItemBatchAddedPlain] = "{0} - Added item batch trade ({1}x) to queue! Position: {2}. Estimated: {3:F1} min(s).";
@@ -69,7 +71,7 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordHomeTrackerNotice] = "**Tracker de HOME detectado.**";
                 target[LocalizationKeys.DiscordNonNativeNotice] = "**Este Pokemon no es nativo.**";
                 target[LocalizationKeys.DiscordAutoOtNotApplied] = "*AutoOT no aplicado.*";
-                target[LocalizationKeys.DiscordCannotEnterHomeAutoOt] = "*No puede entrar a HOME y AutoOT no fue aplicado.*";
+                target[LocalizationKeys.DiscordCannotEnterHomeAutoOt] = "*Puede que no pueda ir a HOME y AutoOT no fue aplicado.*";
                 target[LocalizationKeys.DiscordTradeDetailsPrepareError] = "Ocurrio un error al preparar los detalles del trade.";
                 target[LocalizationKeys.DiscordHiddenTradeAdded] = "Agregado correctamente\n//Usuario: ||Solo acceso de owner||\n//Posicion: {0}\n//Pokemon: ||{1}||\n//ETA: {2:F1} min";
                 target[LocalizationKeys.DiscordBatchAddedSummary] = "{0} - Se agrego un lote de {1} Pokemon a la cola! Posicion: {2}. Estimado: {3:F1} min.";
@@ -80,6 +82,8 @@ public static partial class AppLocalization
                 target[LocalizationKeys.DiscordMysteryEggBatchDescription] = "Ahora estas recibiendo **{0}** Huevo{1} Misterioso{1}!\nQue podran ser?";
                 target[LocalizationKeys.DiscordMysteryEggBatchAuthor] = "Lote de Huevos Misteriosos de {0}";
                 target[LocalizationKeys.DiscordMysteryEggBatchAddedPlain] = "{0} - Se agrego un lote de Huevos Misteriosos ({1}x) a la cola! Posicion: {2}. Estimado: {3:F1} min.";
+                target[LocalizationKeys.DiscordMysteryMonBatchDescription] = "**{0}** Pokemon misteriosos";
+                target[LocalizationKeys.DiscordMysteryMonBatchAddedSummary] = "{0} - Se agrego un lote de {1} Pokemon misteriosos a la cola! Posicion: {2}. Estimado: {3:F1} min.";
                 target[LocalizationKeys.DiscordItemBatchDescription] = "**{0}** entregara tus **{1}** {2}{3}!";
                 target[LocalizationKeys.DiscordItemBatchAuthor] = "Lote de items de {0}";
                 target[LocalizationKeys.DiscordItemBatchAddedPlain] = "{0} - Se agrego un lote de items ({1}x) a la cola! Posicion: {2}. Estimado: {3:F1} min.";

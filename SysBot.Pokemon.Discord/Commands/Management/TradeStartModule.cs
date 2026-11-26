@@ -158,10 +158,10 @@ public class TradeStartModule<T> : ModuleBase<SocketCommandContext> where T : PK
                         ? GetMysteryEggTypeImageUrl(detail.TradeData)
                         : detail.Type switch
                     {
-                        PokeTradeType.Clone => "https://i.imgur.com/aSTCjUn.png",
-                        PokeTradeType.Dump => "https://i.imgur.com/9wfEHwZ.png",
-                        PokeTradeType.FixOT => "https://i.imgur.com/gRZGFIi.png",
-                        PokeTradeType.Seed => "https://i.imgur.com/EI1BHr5.png",
+                        PokeTradeType.Clone => "https://raw.githubusercontent.com/Daiivr/SysBot-Images/refs/heads/main/Bot%20Status/Clone.png",
+                        PokeTradeType.Dump => "https://raw.githubusercontent.com/Daiivr/SysBot-Images/refs/heads/main/Bot%20Status/Dump.png",
+                        PokeTradeType.FixOT => "https://raw.githubusercontent.com/Daiivr/SysBot-Images/refs/heads/main/Bot%20Status/FixOT.png",
+                        PokeTradeType.Seed => "https://raw.githubusercontent.com/Daiivr/SysBot-Images/refs/heads/main/Bot%20Status/SR.png",
                         _ => TradeExtensions<T>.PokeImg(detail.TradeData!, false, false, SysCord<T>.Runner.Config.Trade.TradeEmbedSettings.PreferredImageSize)
                     };
             }

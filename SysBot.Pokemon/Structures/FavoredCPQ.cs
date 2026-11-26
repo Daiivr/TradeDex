@@ -98,7 +98,7 @@ public sealed class FavoredCPQ<TKey, TValue> : ConcurrentPriorityQueue<TKey, TVa
         int pos = s.Mode switch
         {
             FavoredMode.Exponent => (int)Math.Ceiling(Math.Pow(unfavored, s.Exponent)),
-            FavoredMode.Multiply => (int)Math.Ceiling(unfavored * s.Multiply),
+            FavoredMode.Multiply => (int)decimal.Ceiling(unfavored * Convert.ToDecimal(s.Multiply)),
             _ => unfavored,
         };
 

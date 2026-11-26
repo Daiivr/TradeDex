@@ -391,7 +391,6 @@ public static class AutoLegalityWrapper
 
                     var beforeOverride = pk.Clone();
                     bool wasLegal = new LegalityAnalysis(pk).Valid;
-
                     // Capture shiny state before overwriting TID/SID. Reading pk.IsShiny
                     // afterwards reflects the new trainer IDs against the old PID and would
                     // skip the PID rebuild below — losing the shiny we just generated.

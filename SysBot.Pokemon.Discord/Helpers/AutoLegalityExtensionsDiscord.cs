@@ -133,7 +133,6 @@ public static class AutoLegalityExtensionsDiscord
             bool allowHT = userHTPreferences is null || !userHTPreferences.TryGetValue("ALL", out var htAll) || htAll;
             if (!isEggRequest && pkm is PA9 pa9IVs && ZAIVSeedSearch.TryApplyRequestedIVs(ref pa9IVs, set.IVs, set.Nature, allowHT))
                 pkm = pa9IVs;
-
             var la = new LegalityAnalysis(pkm);
             var spec = GameInfo.Strings.Species[set.Species];
 

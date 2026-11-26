@@ -32,8 +32,9 @@ jobs:
           $number = $tag.Substring(1)
           "tag=$tag" >> $env:GITHUB_OUTPUT
           "number=$number" >> $env:GITHUB_OUTPUT
-          gh release view $tag --repo $env:GITHUB_REPOSITORY --json tagName *> $null
-          if ($LASTEXITCODE -eq 0) {
+          $releases = gh release list --repo $env:GITHUB_REPOSITORY --json tagName --limit 100 | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { throw 'Could not list GitHub releases.' }
+          if ($releases.tagName -contains $tag) {
             'publish=false' >> $env:GITHUB_OUTPUT
             Write-Host "Release $tag already exists; skipping."
           } else {
